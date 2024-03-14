@@ -680,7 +680,7 @@ def set_casecc(self, data: bytes, idtype: str, fdtype: str, size: int=4,
      nonlinear, partn, cyclic, random, nlparm, fmethod,
      nwords_to_lsem) = ints[150:166]
     if nwords_to_lsem // 4 not in {150, 300}:
-        self.log.warning(f'nwords_to_lsem={nwords_to_lsem} nwords_to_lsem//4={nwords_to_lsem//4}')
+        self.log.debug(f'nwords_to_lsem={nwords_to_lsem} nwords_to_lsem//4={nwords_to_lsem//4}')
 
     #assert nwords_to_lsem == 4 * 150, f'nwords_to_lsem={nwords_to_lsem} size={size} nwords_to_lsem//size={nwords_to_lsem//size}'
     # LCC=1200 @ word 166
