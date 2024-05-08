@@ -1323,7 +1323,7 @@ def _output_helper(out_filename: Optional[str], interspersed: bool,
     assert is_double in {True, False}, f'is_double={is_double!r}'
     if size == 8:
         if is_double is True:
-            log.warning('is_double=True...changing size from 8 to 16...')
+            log.debug('is_double=True...changing size from 8 to 16...')
             size = 16
     else:
         assert is_double in {True, False}, f'is_double={is_double!r}'
