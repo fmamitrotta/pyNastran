@@ -855,21 +855,6 @@ class DYNAMICS(GeomCommon):
             norm = norm.decode('latin1').rstrip('\x00 ')
             #print('self._nastran_format =', self._nastran_format)
             if nums == 0: # and self._nastran_format == 'nx':
-<<<<<<< HEAD
-                op2.log.debug(f'sid={sid} v1={v1} v2={v2} nd={nd} msglvl={msglvl} maxset={maxset} '
-                              f'shfscl={shfscl} flag1={flag1} flag2={flag2} norm={norm} alpha={alpha} nums={nums}')
-                nums = None
-                is_none = True
-
-            if nums is None:
-                nums = 14
-                nums_total = nums * 4
-                edata2 = data[n+nbytes:n+nbytes+nums_total]
-                if op2.is_debug_file:
-                    op2.show_data(edata2, types=types)
-                    fi = unpack(mapfmt('%if' % nums, self.size), edata2)
-                    print(out, fi)
-=======
                 #op2.log.warning(f'sid={sid} v1={v1} v2={v2} nd={nd} msglvl={msglvl} maxset={maxset} '
                                 #f'shfscl={shfscl} flag1={flag1} flag2={flag2} norm={norm} alpha={alpha} nums={nums}')
                 #pass
@@ -884,7 +869,6 @@ class DYNAMICS(GeomCommon):
                 #op2.show_data(edata2, types=types)
                 #fi = unpack(mapfmt('%if' % nums, size), edata2)
                 #print(out, fi)
->>>>>>> main
                 #nbytes += nums_total
 
             elif nums != 538976288:
