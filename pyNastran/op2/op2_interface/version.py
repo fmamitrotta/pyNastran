@@ -14,7 +14,11 @@ MSC_LONG_VERSION = [
     b'XXXXXXXX20200', b'XXXXXXXX20201', b'XXXXXXXX20202',
     b'XXXXXXXX20210', b'XXXXXXXX20211', b'XXXXXXXX20212', b'XXXXXXXX20214',
     b'XXXXXXXX20220', b'XXXXXXXX20221', b'XXXXXXXX20222',
+<<<<<<< HEAD
     b'XXXXXXXX20230', b'XXXXXXXX20231', b'XXXXXXXX20232', b'XXXXXXXX20234', # not checked
+=======
+    b'XXXXXXXX20230', b'XXXXXXXX20231', b'XXXXXXXX20232', b'XXXXXXXX20234',
+>>>>>>> main
     b'XXXXXXXX20240', b'XXXXXXXX20241', b'XXXXXXXX20242',  # not checked
 ]
 
@@ -56,22 +60,25 @@ def parse_nastran_version(data: bytes, version: bytes, encoding: bytes,
         mode, version_str = _parse_nastran_version_8(data, version, encoding, log)
     elif len(data) == 16:
         mode, version_str = _parse_nastran_version_16(data, version, encoding, log)
-    else:
+    else:  # pragma: no cover
         raise NotImplementedError(f'version={version!r}; n={len(data)}')
     return mode, version_str
 
 def _parse_nastran_version_16(data: bytes, version: bytes, encoding: str,
                               log) -> tuple[str, str]:
     """parses an 8 character version string"""
-    version2 = reshape_bytes_block(version)
+    version2 = reshape_bytes_block(version, is_interlaced_block=True)
     if version2[:2] == b'NX':
         version_str = version2[2:].decode('latin1')
         if version_str in NX_VERSIONS:
             mode = 'nx'
-        else:
+        else:  # pragma: no cover
             raise RuntimeError(f'unknown version={version_str}')
-    else:
-        raise RuntimeError(f'unknown version={version}')
+    elif version2 in MSC_VERSIONS:
+        version_str = version2.decode('latin1')
+        mode = 'msc'
+    else:  # pragma: no cover
+        raise RuntimeError(f'unknown version={version!r}; version2={version2!r}')
     return mode, version_str
 
 def _parse_nastran_version_8(data: bytes, version: bytes, encoding: str,
@@ -115,6 +122,6 @@ def _parse_nastran_version_8(data: bytes, version: bytes, encoding: str,
         #self.set_table_type()
     elif version == b'NASA95':
         mode = 'nasa95'
-    else:
+    else:  # pragma: no cover
         raise RuntimeError(f'unknown version={version!r}')
     return mode, version_str
