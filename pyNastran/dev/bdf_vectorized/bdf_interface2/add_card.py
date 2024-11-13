@@ -197,7 +197,7 @@ class AddCard(BDFAttributes):
 
     def _add_aesurf_object(self, aesurf):
         """adds an AESURF object"""
-        key = aesurf.aesid
+        key = aesurf.aesurf_id
         assert key not in self.aesurf, '\naesurf=\n%s old=\n%s' % (
             aesurf, self.aesurf[key])
         assert key >= 0
@@ -234,7 +234,7 @@ class AddCard(BDFAttributes):
         key = paero.pid
         assert key not in self.paeros, '\npaero=\n|%s| old_paero=\n|%s|' % (
             paero, self.paeros[key])
-        assert key > 0, 'paero.pid = %r' % (key)
+        assert key > 0, 'paero.pid = %r' % key
         self.paeros[key] = paero
         self._type_to_id_map[paero.type].append(key)
 

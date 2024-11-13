@@ -68,6 +68,15 @@ class Table(BaseCard):
     #def parse_fields(self, xy, nrepeated, is_data=False):
         #self.table = TableObj(xy, nrepeated, is_data)
 
+    def plot(self, figure_id=None):
+        import matplotlib.pyplot as plt
+        fig = plt.figure(figure_id)
+        ax = fig.gca()
+        ax.suptitle(f'{self.type}: {self.tid}')
+        ax.plot(self.x, self.y)
+        ax.grid(True)
+        return fig, ax
+
     def write_card(self, size: int=8, is_double: bool=False) -> str:
         card = self.repr_fields()
         if size == 8:
@@ -251,8 +260,8 @@ class TABLED1(Table):
         self.y = np.asarray(y, dtype='float64')
         self.xaxis = xaxis
         self.yaxis = yaxis
-        assert self.xaxis in ['LINEAR', 'LOG'], 'xaxis=%r' % (self.xaxis)
-        assert self.yaxis in ['LINEAR', 'LOG'], 'yaxis=%r' % (self.yaxis)
+        assert self.xaxis in ['LINEAR', 'LOG'], f'xaxis={self.xaxis!r}'
+        assert self.yaxis in ['LINEAR', 'LOG'], f'yaxis={self.yaxis!r}'
 
     @classmethod
     def add_card(cls, card: BDFCard, comment: str=''):
@@ -697,7 +706,7 @@ class TABLED4(Table):
         a = []
         j = 0
         for i in range(9, nfields):
-            ai = double(card, i, 'a%i' % (j))
+            ai = double(card, i, f'a{j:d}')
             a.append(ai)
             j += 1
         string(card, nfields, 'ENDT')
@@ -1350,7 +1359,7 @@ class TABLEM4(Table):
         a = []
         j = 0
         for i in range(9, nfields):
-            ai = double_or_blank(card, i, 'a%i' % (j), 0.0)
+            ai = double_or_blank(card, i, f'a{j:d}', 0.0)
             a.append(ai)
             j += 1
         string(card, nfields, 'ENDT')
@@ -1848,8 +1857,8 @@ class TABRND1(Table):
         self.y = np.asarray(y, dtype='float64')
         self.xaxis = xaxis
         self.yaxis = yaxis
-        assert self.xaxis in ['LINEAR', 'LOG'], 'xaxis=%r' % (self.xaxis)
-        assert self.yaxis in ['LINEAR', 'LOG'], 'yaxis=%r' % (self.yaxis)
+        assert self.xaxis in ['LINEAR', 'LOG'], f'xaxis={self.xaxis!r}'
+        assert self.yaxis in ['LINEAR', 'LOG'], f'yaxis={self.yaxis!r}'
 
     @classmethod
     def add_card(cls, card, comment=''):
@@ -1983,7 +1992,7 @@ class TABRNDG(Table):
         #: Root-mean-square gust velocity. (Real)
         self.WG = WG
         assert self.Type in [1, 2], ('Type must be 1 or 2.  '
-                                     'Type=%s' % (self.Type))
+                                     f'Type={self.Type}')
 
     @classmethod
     def add_card(cls, card, comment=''):

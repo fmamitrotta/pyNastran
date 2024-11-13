@@ -462,7 +462,7 @@ class CQUAD4(ShellElement):
 
         knorm = 1.0
         self.model.log.info("K_norm / %s = \n" % knorm + list_print(K / knorm, float_fmt='%-4.4f'))
-        return(K, dofs, n_ijv)
+        return K, dofs, n_ijv
 
     def displacement_stress(self, model, positions, q, dofs):
         n = self.n
@@ -611,7 +611,7 @@ class CQUAD4(ShellElement):
 def _cquad4_normal_A(n1, n2, n3, n4, calculate_area=True, normalize=True):
     v13 = n1 - n3
     v24 = n2 - n4
-    normal = cross(v13, v24)
+    normal = np.cross(v13, v24)
 
     A = None
     if calculate_area:

@@ -18,11 +18,12 @@ from qtpy import QtGui
 from qtpy.QtWidgets import (
     QLabel, QPushButton, QGridLayout, QApplication, QHBoxLayout, QVBoxLayout,
     QSpinBox, QDoubleSpinBox, QColorDialog, QLineEdit, QCheckBox,
-    QTabWidget, QWidget,
+    QTabWidget, QWidget, QComboBox,
 )
 
 from pyNastran.utils.locale import func_str, float_locale
 from pyNastran.gui.utils.qt.pydialog import PyDialog, make_font, check_color
+from pyNastran.gui.utils.qt.qcombobox import make_combo_box, get_combo_box_text
 from pyNastran.gui.utils.qt.qpush_button_color import QPushButtonColor
 from pyNastran.gui.utils.qt.checks.qlineedit import QLINEEDIT_GOOD, QLINEEDIT_ERROR
 
@@ -37,7 +38,7 @@ from pyNastran.gui.gui_objects.settings import (
     HIGHLIGHT_COLOR, HIGHLIGHT_OPACITY, HIGHLIGHT_POINT_SIZE, HIGHLIGHT_LINE_WIDTH,
     SHEAR_MOMENT_TORQUE_COLOR, SHEAR_MOMENT_TORQUE_OPACITY, SHEAR_MOMENT_TORQUE_POINT_SIZE, SHEAR_MOMENT_TORQUE_LINE_WIDTH,
     OPACITY_MIN, OPACITY_MAX,
-    USE_PARALLEL_PROJECTION,
+    USE_PARALLEL_PROJECTION, IS_TRACKBALL_CAMERA,
     NASTRAN_BOOL_KEYS,
     POINT_SIZE_MIN, POINT_SIZE_MAX,
     COORD_TEXT_SCALE_MIN, COORD_TEXT_SCALE_MAX,
@@ -46,7 +47,9 @@ from pyNastran.gui.gui_objects.settings import (
     COORD_SCALE_MIN, COORD_SCALE_MAX,
     MAGNIFY_MIN, MAGNIFY_MAX,
     ANNOTATION_SIZE_MIN, ANNOTATION_SIZE_MAX,
+    NASTRAN_VERSIONS,
 )
+
 if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.gui.gui_objects.settings import Settings, NastranSettings
     from pyNastran.gui.typing import ColorInt
@@ -54,6 +57,21 @@ if TYPE_CHECKING:  # pragma: no cover
 
 USE_TABS = True
 IS_SMT = False
+UNITS_MODEL_IN = [
+    'in-lbf-s', 'm-kg-s', 'unitless',
+]
+LENGTH_UNITS = ['in', 'ft', 'm', 'cm', 'mm']
+PRESSURE_UNITS = ['psi', 'ksi', 'Pa', 'MPa']
+STRESS_UNITS = PRESSURE_UNITS
+FORCE_UNITS = ['lbf', 'N', 'kN', 'MN', 'mN']
+MOMENT_UNITS = ['in-lbf', 'ft-lbf', 'N-m']
+AREA_UNITS = [f'{unit}^2' for unit in LENGTH_UNITS]
+
+DISPLAMCENT_UNITS = LENGTH_UNITS
+VELOCITY_UNITS = [f'{unit}/s' for unit in LENGTH_UNITS]
+ACCELERATION_UNITS = [f'{unit}/s^2' for unit in LENGTH_UNITS] + ['g']
+
+
 class PreferencesWindow(PyDialog):
     """
     +-------------+
@@ -99,6 +117,21 @@ class PreferencesWindow(PyDialog):
         #self._default_annotation_size = data['annotation_size'] # int
         #self.default_magnify = data['magnify']
 
+        self._cart3d_fluent_include = data['cart3d_fluent_include']
+        self._cart3d_fluent_remove = data['cart3d_fluent_remove']
+
+        self._units_model_in = data['units_model_in']
+        self._units_length = data['units_length']
+        #self._units_area = data['units_area']
+        self._units_force = data['units_force']
+        self._units_moment = data['units_moment']
+        self._units_pressure = data['units_pressure']
+        self._units_stress = data['units_stress']
+        self._units_displacement = data['units_displacement']
+        self._units_velocity = data['units_velocity']
+        self._units_acceleration = data['units_acceleration']
+
+        self._is_trackball_camera = data['is_trackball_camera']
         self._parallel_projection = data['use_parallel_projection']
         self._use_gradient_background = data['use_gradient_background'] # bool
         self._show_corner_coord = data['show_corner_coord']
@@ -127,18 +160,31 @@ class PreferencesWindow(PyDialog):
         self.highlight_color_float, self.highlight_color_int = check_color(
             data['highlight_color'])
 
+        self.caero_color_float, self.caero_color_int = check_color(
+            data['caero_color'])
+        self.rbe_line_color_float, self.rbe_line_color_int = check_color(
+            data['rbe_line_color'])
+        self.plotel_color_float, self.plotel_color_int = check_color(
+            data['plotel_color'])
+
         #self._shear_moment_torque_opacity = data['shear_moment_torque_opacity']
         #self._shear_moment_torque_point_size = data['shear_moment_torque_point_size']
         #self._shear_moment_torque_color_int = data['shear_moment_torque_color']
         #self._shear_moment_torque_line_thickness = data['shear_moment_torque_line_thickness']
 
+        self._nastran_version = data['nastran_version']
         self._nastran_is_element_quality = data['nastran_is_element_quality']
         self._nastran_is_properties = data['nastran_is_properties']
         self._nastran_is_3d_bars = data['nastran_is_3d_bars']
         self._nastran_is_3d_bars_update = data['nastran_is_3d_bars_update']
+        self._nastran_is_mass_update = data['nastran_is_mass_update']
+        self._nastran_is_constraints = data['nastran_is_constraints']
         self._nastran_is_bar_axes = data['nastran_is_bar_axes']
         self._nastran_create_coords = data['nastran_create_coords']
         self._nastran_is_shell_mcids = data['nastran_is_shell_mcids']
+        self._nastran_is_rbe = data['nastran_is_rbe']
+        self._nastran_is_aero = data['nastran_is_aero']
+        self._nastran_is_plotel = data['nastran_is_plotel']
 
         self._nastran_stress = data['nastran_stress']
         self._nastran_plate_stress = data['nastran_plate_stress']
@@ -153,15 +199,16 @@ class PreferencesWindow(PyDialog):
         self._nastran_bar_strain = data['nastran_bar_strain']
         self._nastran_beam_strain = data['nastran_beam_strain']
 
-
         self._nastran_displacement = data['nastran_displacement']
         self._nastran_velocity = data['nastran_velocity']
         self._nastran_acceleration = data['nastran_acceleration']
         self._nastran_eigenvector = data['nastran_eigenvector']
+        self._nastran_temperature = data['nastran_temperature']
 
         self._nastran_spc_force = data['nastran_spc_force']
         self._nastran_mpc_force = data['nastran_mpc_force']
         self._nastran_applied_load = data['nastran_applied_load']
+        self._nastran_heat_flux = data['nastran_heat_flux']
 
         self._nastran_force = data['nastran_force']
         self._nastran_grid_point_force = data['nastran_grid_point_force']
@@ -182,14 +229,6 @@ class PreferencesWindow(PyDialog):
         self.font_size_edit = QSpinBox(self)
         self.font_size_edit.setValue(self._default_font_size)
         self.font_size_edit.setRange(FONT_SIZE_MIN, FONT_SIZE_MAX)
-
-        #-----------------------------------------------------------------------
-        self.startup_directory_label = QLabel('Remember Last Directory:')
-        self.startup_directory_checkbox = QCheckBox(self)
-        self.startup_directory_checkbox.setChecked(self.use_startup_directory)
-        self.startup_directory_checkbox.setToolTip('True: Remember the last directory when saving\n'
-                                                   'False: Start from local directory')
-        #self.startup_directory_button = QPushButton('...')
 
         #-----------------------------------------------------------------------
         # Corner Text Color
@@ -298,10 +337,16 @@ class PreferencesWindow(PyDialog):
         self.picker_size_edit.setToolTip('Sets the picker tolerance')
 
         self.parallel_projection_label = QLabel('Parallel Projection:')
-        self.parallel_projection_edit = QCheckBox()
-        self.parallel_projection_edit.setChecked(self._parallel_projection)
-        self.parallel_projection_edit.setToolTip('Checked: Typical engineering perspective\n'
-                                                 'Unchecked: Distort the model like a real camera')
+        self.parallel_projection_checkbox = QCheckBox()
+        self.parallel_projection_checkbox.setChecked(self._parallel_projection)
+        self.parallel_projection_checkbox.setToolTip('Checked: Typical engineering perspectivfe (default)\n'
+                                                     'Unchecked: Distort the model like a real camera')
+
+        self.trackball_camera_label = QLabel('Trackball Camera:')
+        self.trackball_camera_checkbox = QCheckBox()
+        self.trackball_camera_checkbox.setChecked(self._is_trackball_camera)
+        self.trackball_camera_checkbox.setToolTip('Checked: Trackball Camera (default)\n'
+                                                  'Unchecked: Joystick Camera (for 3d mice)')
 
         #-----------------------------------------------------------------------
         # Clipping Min
@@ -347,8 +392,17 @@ class PreferencesWindow(PyDialog):
         self.magnify_edit.setMaximum(MAGNIFY_MAX)
         self.magnify_edit.setValue(self._magnify)
         self.magnify_edit.setToolTip('1: Standard resolution; >1: high quality')
+        self._set_widgets_nastran()
+        self._set_widgets_other()
 
-        #-----------------------------------------------------------------------
+    def _set_widgets_nastran(self):
+        self.nastran_version_label = QLabel('Version')
+        self.nastran_version_pulldown = QComboBox(self)
+        self.nastran_version_pulldown.addItems(NASTRAN_VERSIONS)
+        nastran_versions_lower = [version.lower() for version in NASTRAN_VERSIONS]
+        iversion = nastran_versions_lower.index(self._nastran_version.lower())
+        self.nastran_version_pulldown.setItemText(iversion, self._nastran_version)
+
         self.nastran_is_element_quality_checkbox = QCheckBox('Element Quality')
         self.nastran_is_element_quality_checkbox.setToolTip('Cacluate Aspect Ratio, Skew Angle, Max/Min Interior Angle, etc.')
         self.nastran_is_element_quality_checkbox.setChecked(self._nastran_is_element_quality)
@@ -363,12 +417,33 @@ class PreferencesWindow(PyDialog):
         #self.nastran_is_3d_bars_checkbox.setDisabled(True)
 
         self.nastran_is_3d_bars_update_checkbox = QCheckBox('Update 3D Bars')
-        self.nastran_is_3d_bars_update_checkbox.setToolTip('Update the 3D Bar/Beam cross-sections when deformations are applied')
+        self.nastran_is_3d_bars_update_checkbox.setToolTip('Update the 3D geometry (Bar/Beam cross-sections and CONMw) when deformations are applied')
         self.nastran_is_3d_bars_update_checkbox.setChecked(self._nastran_is_3d_bars_update)
+
+        self.nastran_is_mass_update_checkbox = QCheckBox('Update Masses')
+        self.nastran_is_mass_update_checkbox.setToolTip('Update the masses when nodes change')
+        self.nastran_is_mass_update_checkbox.setChecked(self._nastran_is_mass_update)
+
+        self.nastran_is_constraints_checkbox = QCheckBox('Constraints')
+        self.nastran_is_constraints_checkbox.setToolTip('Create actors for the constraints (SPC, MPC, SUPORT)')
+        self.nastran_is_constraints_checkbox.setChecked(self._nastran_is_constraints)
+
 
         self.nastran_is_shell_mcids_checkbox = QCheckBox('Shell MCIDs')
         self.nastran_is_shell_mcids_checkbox.setToolTip('Calculate the Material Coordinate Systems for Shells')
         self.nastran_is_shell_mcids_checkbox.setChecked(self._nastran_is_shell_mcids)
+
+        self.nastran_is_rbe_checkbox = QCheckBox('RBEs')
+        self.nastran_is_rbe_checkbox.setToolTip('Create MPC/RBE2/RBE3 dependent and indepdent nodes and lines')
+        self.nastran_is_rbe_checkbox.setChecked(self._nastran_is_rbe)
+
+        self.nastran_is_aero_checkbox = QCheckBox('Aero')
+        self.nastran_is_aero_checkbox.setToolTip('Create aero panel (CAERO/SPLINE/SET) visualization')
+        self.nastran_is_aero_checkbox.setChecked(self._nastran_is_aero)
+
+        self.nastran_is_plotel_checkbox = QCheckBox('PLOTELs')
+        self.nastran_is_plotel_checkbox.setToolTip('Create PLOTELs')
+        self.nastran_is_plotel_checkbox.setChecked(self._nastran_is_plotel)
 
         self.nastran_create_coords_checkbox = QCheckBox('Coords')
         self.nastran_create_coords_checkbox.setChecked(self._nastran_create_coords)
@@ -382,17 +457,21 @@ class PreferencesWindow(PyDialog):
             self.nastran_velocity_checkbox = QCheckBox('Velocity')
             self.nastran_acceleration_checkbox = QCheckBox('Acceleration')
             self.nastran_eigenvector_checkbox = QCheckBox('Eigenvector')
+            self.nastran_temperature_checkbox = QCheckBox('Temperature')
             self.nastran_displacement_checkbox.setChecked(self._nastran_displacement)
             self.nastran_velocity_checkbox.setChecked(self._nastran_velocity)
             self.nastran_acceleration_checkbox.setChecked(self._nastran_acceleration)
             self.nastran_eigenvector_checkbox.setChecked(self._nastran_eigenvector)
+            self.nastran_temperature_checkbox.setChecked(self._nastran_temperature)
 
             self.nastran_spc_force_checkbox = QCheckBox('SPC Force')
             self.nastran_mpc_force_checkbox = QCheckBox('MPC Force')
             self.nastran_applied_load_checkbox = QCheckBox('Applied Load')
+            self.nastran_heat_flux_checkbox = QCheckBox('Heat Flux')
             self.nastran_spc_force_checkbox.setChecked(self._nastran_spc_force)
             self.nastran_mpc_force_checkbox.setChecked(self._nastran_mpc_force)
             self.nastran_applied_load_checkbox.setChecked(self._nastran_applied_load)
+            self.nastran_heat_flux_checkbox.setChecked(self._nastran_heat_flux)
 
             self.nastran_force_checkbox = QCheckBox('Force')
             self.nastran_grid_point_force_checkbox = QCheckBox('Grid Point Force')
@@ -431,11 +510,75 @@ class PreferencesWindow(PyDialog):
             #self.nastran_beam_strain_checkbox.setChecked(self._nastran_beam_strain)
 
         #-----------------------------------------------------------------------
+        # colors
+        self.caero_color_label = QLabel("Default CAERO panel color:")
+        self.caero_color_edit = QPushButtonColor(self.caero_color_int)
+        self.caero_color_edit.setToolTip('Sets the color for the caero/caero sub-panels actors')
+
+        self.rbe_line_color_label = QLabel("Default RBE2/RBE3 line color:")
+        self.rbe_line_color_edit = QPushButtonColor(self.rbe_line_color_int)
+        self.rbe_line_color_edit.setToolTip('Sets the color for the RBE2/RBE3 lines')
+
+        self.plotel_color_label = QLabel("Default PLOTEL color:")
+        self.plotel_color_edit = QPushButtonColor(self.plotel_color_int)
+        self.plotel_color_edit.setToolTip('Sets the color for the PLOTELs')
+
+        #-----------------------------------------------------------------------
         # closing
         self.reset_defaults_button = QPushButton('Reset Defaults')
         self.apply_button = QPushButton('Apply')
         self.ok_button = QPushButton('OK')
         self.cancel_button = QPushButton('Cancel')
+
+    def _set_widgets_other(self):
+        self.cart3d_fluent_label = QLabel('Cart3d/Fluent')
+        self.region_include_label = QLabel('Regions (Include):')
+        self.region_remove_label = QLabel('Regions (Remove):')
+        include_str = ' '.join(str(val) for val in self._cart3d_fluent_include)
+        remove_str = ' '.join(str(val) for val in self._cart3d_fluent_remove)
+        self.cart3d_fluent_regions_include = QLineEdit(include_str)
+        self.cart3d_fluent_regions_remove = QLineEdit(remove_str)
+
+        self.units_label = QLabel('Units:')
+        self.model_in_label = QLabel('Input Units:')
+        self.length_label = QLabel('Length:')
+
+        self.stress_label = QLabel('Stress:')
+        self.pressure_label = QLabel('Pressure:')
+        self.force_label = QLabel('Force:')
+        self.moment_label = QLabel('Moment:')
+        self.displacement_label = QLabel('Displacement:')
+        self.velocity_label = QLabel('Velocity:')
+        self.acceleration_label = QLabel('Acceleration:')
+        self.length_pulldown = make_combo_box(LENGTH_UNITS, self._units_length, partial(self.on_unit, 'length'))
+        self.stress_pulldown = make_combo_box(STRESS_UNITS, self._units_stress, partial(self.on_unit, 'stress'))
+        self.pressure_pulldown = make_combo_box(PRESSURE_UNITS, self._units_pressure, partial(self.on_unit, 'pressure'))
+        #self.area_pulldown = make_combo_box(AREA_UNITS, self._units_area, partial(self.on_unit, 'area'))
+        self.force_pulldown = make_combo_box(FORCE_UNITS, self._units_force, partial(self.on_unit, 'force'))
+        self.moment_pulldown = make_combo_box(MOMENT_UNITS, self._units_moment, partial(self.on_unit, 'moment'))
+        self.displacement_pulldown = make_combo_box(DISPLAMCENT_UNITS, self._units_displacement, partial(self.on_unit, 'displacement'))
+        self.velocity_pulldown = make_combo_box(VELOCITY_UNITS, self._units_velocity, partial(self.on_unit, 'velocity'))
+        self.acceleration_pulldown = make_combo_box(ACCELERATION_UNITS, self._units_acceleration, partial(self.on_unit, 'acceleration'))
+
+        pulldowns = [
+            #self.area_labe, self.area_pulldown,
+            self.force_label, self.force_pulldown,
+            self.moment_label, self.moment_pulldown,
+            self.pressure_label, self.pressure_pulldown,
+            self.stress_label, self.stress_pulldown,
+            self.displacement_label, self.displacement_pulldown,
+            self.velocity_label, self.velocity_pulldown,
+            self.acceleration_label, self.acceleration_pulldown,
+        ]
+        for pulldown in pulldowns:
+            pulldown.setVisible(False)
+
+        #('in', 'lbf', 's', 'psi')
+        #self.units_model_in = ('unitless','','','')
+        self.units_model_label = QLabel('Model Units:')
+        units_model_in_str = '-'.join(self._units_model_in[:3]).rstrip('-')
+        self.units_model_pulldown = make_combo_box(UNITS_MODEL_IN, units_model_in_str,
+                                                   self.on_units_model_in)
 
     #def create_legend_widgets(self):
         #"""
@@ -498,10 +641,6 @@ class PreferencesWindow(PyDialog):
         irow = 0
         grid.addWidget(self.font_size_label, irow, 0)
         grid.addWidget(self.font_size_edit, irow, 1)
-        irow += 1
-
-        grid.addWidget(self.startup_directory_label, irow, 0)
-        grid.addWidget(self.startup_directory_checkbox, irow, 1)
         irow += 1
 
         grid.addWidget(self.gradient_scale_label, irow, 0)
@@ -582,25 +721,17 @@ class PreferencesWindow(PyDialog):
         irow += 1
 
         grid.addWidget(self.parallel_projection_label, irow, 0)
-        grid.addWidget(self.parallel_projection_edit, irow, 1)
+        grid.addWidget(self.parallel_projection_checkbox, irow, 1)
+        irow += 1
+
+        grid.addWidget(self.trackball_camera_label, irow, 0)
+        grid.addWidget(self.trackball_camera_checkbox, irow, 1)
         irow += 1
 
         #--------------------------------------------------
 
-        grid_nastran = self._get_grid_nastran_layout()
-        grid_nastran_results = self._get_grid_nastran_results_layout()
-
-        #bold_font = make_font(self.font_size, is_bold=True)
-        vbox_nastran = QVBoxLayout()
-        self.nastran_label = QLabel('Nastran Geometry:')
-        vbox_nastran.addWidget(self.nastran_label)
-        vbox_nastran.addLayout(grid_nastran)
-
-        vbox_nastran_results = QVBoxLayout()
-        self.nastran_results_label = QLabel('Nastran Results:')
-        vbox_nastran_results.addWidget(self.nastran_results_label)
-        vbox_nastran_results.addLayout(grid_nastran_results)
-
+        out = self._get_nastran_vboxs()
+        vbox_nastran, vbox_nastran_results, vbox_nastran_actors = out
 
         #self.create_legend_widgets()
         #grid2 = self.create_legend_layout()
@@ -618,13 +749,28 @@ class PreferencesWindow(PyDialog):
             vbox_nastran_tab = QVBoxLayout()
             vbox_nastran_tab.addLayout(vbox_nastran)
             vbox_nastran_tab.addLayout(vbox_nastran_results)
+            vbox_nastran_tab.addLayout(vbox_nastran_actors)
             vbox_nastran_tab.addStretch()
+
+            vbox_other = self._get_grid_other()
+            vbox_fluent_cart3d = QVBoxLayout()
+            vbox_fluent_cart3d.addLayout(vbox_other)
+
+            vbox_other_tab = QVBoxLayout()
+            vbox_other_tab.addLayout(vbox_fluent_cart3d)
+            #vbox_other_tab.addLayout(vbox_nastran_results)
+            #vbox_other_tab.addLayout(vbox_nastran_actors)
+            vbox_other_tab.addStretch()
 
             nastran_tab_widget = QWidget(self)
             nastran_tab_widget.setLayout(vbox_nastran_tab)
 
+            other_tab_widget = QWidget(self)
+            other_tab_widget.setLayout(vbox_other_tab)
+
             tabs.addTab(general_tab_widget, 'General')
             tabs.addTab(nastran_tab_widget, 'Nastran')
+            tabs.addTab(other_tab_widget, 'Other')
             vbox.addWidget(tabs)
 
         else:
@@ -632,6 +778,7 @@ class PreferencesWindow(PyDialog):
             vbox.addLayout(grid)
             vbox.addLayout(vbox_nastran)
             vbox.addLayout(vbox_nastran_results)
+            vbox.addLayout(vbox_nastran_actors)
         #vbox.addStretch()
         #vbox.addLayout(grid2)
         vbox.addStretch()
@@ -640,9 +787,89 @@ class PreferencesWindow(PyDialog):
         vbox.addLayout(ok_cancel_box)
         self.setLayout(vbox)
 
+    def _get_grid_other(self):
+        vbox_other = QGridLayout()
+        irow = 1
+        vbox_other.addWidget(self.cart3d_fluent_label, irow, 0)
+        irow += 1
+        vbox_other.addWidget(self.region_include_label, irow, 0)
+        vbox_other.addWidget(self.cart3d_fluent_regions_include, irow, 1)
+        irow += 1
+        vbox_other.addWidget(self.region_remove_label, irow, 0)
+        vbox_other.addWidget(self.cart3d_fluent_regions_remove, irow, 1)
+
+
+        irow += 1
+        vbox_other.addWidget(self.units_label, irow, 0)
+        irow += 1
+        vbox_other.addWidget(self.units_model_label, irow, 0)
+        vbox_other.addWidget(self.units_model_pulldown, irow, 1)
+        irow += 1
+        vbox_other.addWidget(self.length_label, irow, 0)
+        vbox_other.addWidget(self.length_pulldown, irow, 1)
+        irow += 1
+        vbox_other.addWidget(self.stress_label, irow, 0)
+        vbox_other.addWidget(self.stress_pulldown, irow, 1)
+        irow += 1
+        vbox_other.addWidget(self.pressure_label, irow, 0)
+        vbox_other.addWidget(self.pressure_pulldown, irow, 1)
+        irow += 1
+        vbox_other.addWidget(self.force_label, irow, 0)
+        vbox_other.addWidget(self.force_pulldown, irow, 1)
+        irow += 1
+        vbox_other.addWidget(self.moment_label, irow, 0)
+        vbox_other.addWidget(self.moment_pulldown, irow, 1)
+
+        irow += 1
+        vbox_other.addWidget(self.displacement_label, irow, 0)
+        vbox_other.addWidget(self.displacement_pulldown, irow, 1)
+        irow += 1
+        vbox_other.addWidget(self.velocity_label, irow, 0)
+        vbox_other.addWidget(self.velocity_pulldown, irow, 1)
+        irow += 1
+        vbox_other.addWidget(self.acceleration_label, irow, 0)
+        vbox_other.addWidget(self.acceleration_pulldown, irow, 1)
+        return vbox_other
+
+    def _get_nastran_vboxs(self) -> tuple[QVBoxLayout, QVBoxLayout, QVBoxLayout]:
+        grid_nastran = self._get_grid_nastran_layout()
+        grid_nastran_results = self._get_grid_nastran_results_layout()
+
+        #bold_font = make_font(self.font_size, is_bold=True)
+        vbox_nastran = QVBoxLayout()
+        self.nastran_label = QLabel('Nastran Geometry:')
+        vbox_nastran.addWidget(self.nastran_label)
+        vbox_nastran.addLayout(grid_nastran)
+
+        vbox_nastran_results = QVBoxLayout()
+        self.nastran_results_label = QLabel('Nastran Results:')
+        vbox_nastran_results.addWidget(self.nastran_results_label)
+        vbox_nastran_results.addLayout(grid_nastran_results)
+
+        grid_nastran_actors = QGridLayout()
+        irow = 1
+        grid_nastran_actors.addWidget(self.caero_color_label, irow, 0)
+        grid_nastran_actors.addWidget(self.caero_color_edit, irow, 1)
+        irow += 1
+        grid_nastran_actors.addWidget(self.rbe_line_color_label, irow, 0)
+        grid_nastran_actors.addWidget(self.rbe_line_color_edit, irow, 1)
+        irow += 1
+        grid_nastran_actors.addWidget(self.plotel_color_label, irow, 0)
+        grid_nastran_actors.addWidget(self.plotel_color_edit, irow, 1)
+
+        vbox_nastran_actors = QVBoxLayout()
+        self.nastran_actors_label = QLabel('Nastran Actors:')
+        vbox_nastran_actors.addWidget(self.nastran_actors_label)
+        vbox_nastran_actors.addLayout(grid_nastran_actors)
+        return vbox_nastran, vbox_nastran_results, vbox_nastran_actors
+
     def _get_grid_nastran_layout(self) -> QGridLayout:
         grid_nastran = QGridLayout()
         irow = 0
+
+        grid_nastran.addWidget(self.nastran_version_label, irow, 0)
+        grid_nastran.addWidget(self.nastran_version_pulldown, irow, 1)
+        irow += 1
 
         grid_nastran.addWidget(self.nastran_create_coords_checkbox, irow, 0)
         irow += 1
@@ -651,15 +878,20 @@ class PreferencesWindow(PyDialog):
         grid_nastran.addWidget(self.nastran_is_properties_checkbox, irow, 1)
         irow += 1
 
-        grid_nastran.addWidget(self.nastran_is_bar_axes_checkbox, irow, 0)
+        grid_nastran.addWidget(self.nastran_is_constraints_checkbox, irow, 0)
+        grid_nastran.addWidget(self.nastran_is_rbe_checkbox, irow, 1)
         irow += 1
 
         grid_nastran.addWidget(self.nastran_is_shell_mcids_checkbox, irow, 0)
+        grid_nastran.addWidget(self.nastran_is_aero_checkbox, irow, 1)
         irow += 1
 
-        grid_nastran.addWidget(self.nastran_is_3d_bars_checkbox, irow, 0)
-        grid_nastran.addWidget(self.nastran_is_3d_bars_update_checkbox, irow, 1)
+        grid_nastran.addWidget(self.nastran_is_bar_axes_checkbox, irow, 0)
+        grid_nastran.addWidget(self.nastran_is_3d_bars_checkbox, irow, 1)
+        grid_nastran.addWidget(self.nastran_is_3d_bars_update_checkbox, irow, 2)
         irow += 1
+        grid_nastran.addWidget(self.nastran_is_mass_update_checkbox, irow, 0)
+        grid_nastran.addWidget(self.nastran_is_plotel_checkbox, irow, 1)
         return grid_nastran
 
     def _get_grid_nastran_results_layout(self) -> QGridLayout:
@@ -678,6 +910,10 @@ class PreferencesWindow(PyDialog):
         grid_nastran.addWidget(self.nastran_spc_force_checkbox, irow, 0)
         grid_nastran.addWidget(self.nastran_mpc_force_checkbox, irow, 1)
         grid_nastran.addWidget(self.nastran_applied_load_checkbox, irow, 2)
+        irow += 1
+
+        grid_nastran.addWidget(self.nastran_temperature_checkbox, irow, 0)
+        grid_nastran.addWidget(self.nastran_heat_flux_checkbox, irow, 1)
         irow += 1
 
         # ------------------------
@@ -726,18 +962,28 @@ class PreferencesWindow(PyDialog):
         #self.nastran_rod_strain_checkbox = QCheckBox('Rod Strain')
         #self.nastran_bar_strain_checkbox = QCheckBox('Bar Strain')
         #self.nastran_beam_strain_checkbox = QCheckBox('Beam Strain')
-
         return grid_nastran
+
+    def _set_other_connections(self):
+        #self.cart3d_fluent_regions_include
+        pass
 
     def _set_nastran_connections(self):
         # format-specific
+        self.nastran_version_pulldown.currentIndexChanged.connect(self.on_nastran_version)
         self.nastran_is_element_quality_checkbox.clicked.connect(partial(on_nastran, self, 'is_element_quality'))
         self.nastran_is_properties_checkbox.clicked.connect(partial(on_nastran, self, 'is_properties'))
         self.nastran_is_3d_bars_checkbox.clicked.connect(partial(on_nastran, self, 'is_3d_bars'))
         self.nastran_is_3d_bars_update_checkbox.clicked.connect(partial(on_nastran, self, 'is_3d_bars_update'))
+        self.nastran_is_mass_update_checkbox.clicked.connect(partial(on_nastran, self, 'is_mass_update'))
+
         self.nastran_is_bar_axes_checkbox.clicked.connect(partial(on_nastran, self, 'is_bar_axes'))
         self.nastran_create_coords_checkbox.clicked.connect(partial(on_nastran, self, 'create_coords'))
         self.nastran_is_shell_mcids_checkbox.clicked.connect(partial(on_nastran, self, 'is_shell_mcids'))
+        self.nastran_is_aero_checkbox.clicked.connect(partial(on_nastran, self, 'is_aero'))
+        self.nastran_is_plotel_checkbox.clicked.connect(partial(on_nastran, self, 'is_plotel'))
+        self.nastran_is_rbe_checkbox.clicked.connect(partial(on_nastran, self, 'is_rbe'))
+        self.nastran_is_constraints_checkbox.clicked.connect(partial(on_nastran, self, 'is_constraints'))
 
         #self.nastran_is_shell_mcid_checkbox.clicked.connect(self.on_nastran_is_shell_mcids)
         #self.nastran_is_shell_mcid_checkbox.clicked.connect(self.on_nastran_is_shell_mcids2)
@@ -746,6 +992,7 @@ class PreferencesWindow(PyDialog):
         self.nastran_velocity_checkbox.clicked.connect(partial(on_nastran, self, 'acceleration'))
         self.nastran_acceleration_checkbox.clicked.connect(partial(on_nastran, self, 'acceleration'))
         self.nastran_eigenvector_checkbox.clicked.connect(partial(on_nastran, self, 'eigenvector'))
+        self.nastran_temperature_checkbox.clicked.connect(partial(on_nastran, self, 'temperature'))
 
         self.nastran_spc_force_checkbox.clicked.connect(partial(on_nastran, self, 'spc_force'))
         self.nastran_mpc_force_checkbox.clicked.connect(partial(on_nastran, self, 'mpc_force'))
@@ -757,11 +1004,15 @@ class PreferencesWindow(PyDialog):
         self.nastran_stress_checkbox.clicked.connect(partial(on_nastran, self, 'stress'))
         self.nastran_strain_energy_checkbox.clicked.connect(partial(on_nastran, self, 'strain_energy'))
 
+        # --------------------------
+        # colors
+        self.caero_color_edit.clicked.connect(self.on_caero_color)
+        self.rbe_line_color_edit.clicked.connect(self.on_rbe_line_color)
+        self.plotel_color_edit.clicked.connect(self.on_plotel_color)
+
     def set_connections(self):
         """creates the actions for the menu"""
         self.font_size_edit.valueChanged.connect(self.on_font)
-
-        self.startup_directory_checkbox.clicked.connect(self.on_startup_directory_checked)
 
         self.annotation_size_edit.editingFinished.connect(self.on_annotation_size)
         self.annotation_size_edit.valueChanged.connect(self.on_annotation_size)
@@ -783,7 +1034,8 @@ class PreferencesWindow(PyDialog):
         self.picker_size_edit.valueChanged.connect(self.on_picker_size)
         self.picker_size_edit.editingFinished.connect(self.on_picker_size)
 
-        self.parallel_projection_edit.clicked.connect(self.on_parallel_projection)
+        self.parallel_projection_checkbox.clicked.connect(self.on_parallel_projection)
+        self.trackball_camera_checkbox.clicked.connect(self.on_trackball_camera)
 
         self.coord_scale_edit.valueChanged.connect(self.on_coord_scale)
         self.coord_scale_edit.editingFinished.connect(self.on_coord_scale)
@@ -802,20 +1054,14 @@ class PreferencesWindow(PyDialog):
 
         #------------------------------------
         self._set_nastran_connections()
+        self._set_other_connections()
         #------------------------------------
-
 
         self.reset_defaults_button.clicked.connect(self.on_reset_defaults)
         self.apply_button.clicked.connect(self.on_apply)
         self.ok_button.clicked.connect(self.on_ok)
         self.cancel_button.clicked.connect(self.on_cancel)
         # closeEvent
-
-    def on_startup_directory_checked(self):
-        """opens a folder dialog"""
-        is_checked = self.startup_directory_checkbox.isCheckable()
-        if self.win_parent is not None:
-            self.nastran_settings.use_startup_directory = is_checked
 
     def on_reset_defaults(self):
         """reset all of the preferences to their defaults"""
@@ -826,14 +1072,14 @@ class PreferencesWindow(PyDialog):
         self.on_default_coord_scale()
         self.on_default_coord_text_scale()
         self.on_default_corner_text_size()
-        self.startup_directory_checkbox.setChecked(True)
 
         self.magnify_edit.setValue(MAGNIFY)
         self.picker_size_edit.setValue(self._picker_size)
 
         self.highlight_opacity_edit.setValue(HIGHLIGHT_OPACITY)
         self.highlight_point_size_edit.setValue(HIGHLIGHT_POINT_SIZE)
-        self.parallel_projection_edit.setChecked(USE_PARALLEL_PROJECTION)
+        self.parallel_projection_checkbox.setChecked(USE_PARALLEL_PROJECTION)
+        self.trackball_camera_checkbox.setChecked(IS_TRACKBALL_CAMERA)
         #self.highlight_line_width_edit.setValue(HIGHLIGHT_LINE_WIDTH)
 
         self.background_color1_float = BACKGROUND_COLOR
@@ -854,12 +1100,12 @@ class PreferencesWindow(PyDialog):
         self.annotation_color_int = tuple([round(val * 255) for val in ANNOTATION_COLOR])
         self.shear_moment_torque_color_int = tuple([round(val * 255) for val in SHEAR_MOMENT_TORQUE_COLOR])
 
-        set_label_color(self.corner_text_color_edit, self.corner_text_color_int)
-        set_label_color(self.highlight_color_edit, self.highlight_color_int)
-        set_label_color(self.background_color_edit, self.background_color1_int)
-        set_label_color(self.background_color2_edit, self.background_color2_int)
-        set_label_color(self.annotation_color_edit, self.annotation_color_int)
-        #set_label_color(self.shear_moment_torque_color_edit, self.shear_moment_torque_color_int)
+        set_pushbutton_color(self.corner_text_color_edit, self.corner_text_color_int)
+        set_pushbutton_color(self.highlight_color_edit, self.highlight_color_int)
+        set_pushbutton_color(self.background_color_edit, self.background_color1_int)
+        set_pushbutton_color(self.background_color2_edit, self.background_color2_int)
+        set_pushbutton_color(self.annotation_color_edit, self.annotation_color_int)
+        #set_pushbutton_color(self.shear_moment_torque_color_edit, self.shear_moment_torque_color_int)
 
         for key in NASTRAN_BOOL_KEYS:
             checkbox_name = f'{key}_checkbox'
@@ -875,7 +1121,6 @@ class PreferencesWindow(PyDialog):
             is_edges_visible = settings.is_edges_visible
             settings.reset_settings(resize=False, reset_dim_max=False)
 
-
             self.win_parent.on_set_edge_visibility(is_edges_black, render=False)
             self.win_parent.on_set_edge_visibility(is_edges_black, render=False)
 
@@ -885,6 +1130,27 @@ class PreferencesWindow(PyDialog):
             settings.set_background_color2(self.background_color2_float, render=True)
         self.on_apply()
 
+    def on_units_model_in(self):
+        text = get_combo_box_text(self.units_model_pulldown)
+        units_model_in_sline0 = text.split('-')
+        units_model_in_sline = [''] * 4
+        units_model_in_sline[:len(units_model_in_sline0)] = units_model_in_sline0
+        if self.win_parent is not None:
+            settings: Settings = self.settings
+            other_settings = settings.other_settings
+            assert len(units_model_in_sline) == len(other_settings.units_model_in)
+            #print(f'on_units_model_in: units_model_in_sline={units_model_in_sline}')
+            other_settings.units_model_in = tuple(units_model_in_sline)
+
+    def on_unit(self, name: str) -> None:
+        pulldown = getattr(self, f'{name}_pulldown')
+        text = get_combo_box_text(pulldown)
+        if self.win_parent is not None:
+            settings: Settings = self.settings
+            other_settings = settings.other_settings
+            setattr(other_settings, f'units_{name}', text)
+            #print(f'set units_{name} = {text}')
+
     @property
     def settings(self) -> Settings:
         return self.win_parent.settings
@@ -892,6 +1158,12 @@ class PreferencesWindow(PyDialog):
     @property
     def nastran_settings(self) -> NastranSettings:
         return self.settings.nastran_settings
+
+    def on_nastran_version(self) -> None:
+        version = get_combo_box_text(self.nastran_version_pulldown).lower()
+        #iversion = self.nastran_version_pulldown.currentIndex()
+        #version = NASTRAN_VERSIONS[iversion].lower()
+        self.nastran_settings.version = version
 
     #def on_nastran_is_shell_mcids2(self):
         #"""set the nastran properties preferences"""
@@ -906,11 +1178,16 @@ class PreferencesWindow(PyDialog):
         font = make_font(value, is_bold=False)
         self.setFont(font)
         bold_font = make_font(value, is_bold=True)
-        self.nastran_label.setFont(bold_font)
-        self.nastran_results_label.setFont(bold_font)
-        if IS_SMT:
-            self.shear_moment_torque_label.setFont(bold_font)
 
+        bold_labels = [
+            self.nastran_label, self.nastran_results_label,
+            self.nastran_actors_label,
+            self.cart3d_fluent_label, self.units_label,
+        ]
+        if IS_SMT:
+            bold_labels.append(self.shear_moment_torque_label)
+        for label in bold_labels:
+            label.setFont(bold_font)
 
     def on_annotation_size(self, value=None) -> None:
         """update the annotation size"""
@@ -956,7 +1233,7 @@ class PreferencesWindow(PyDialog):
         rgb_color_ints = self.background_color_int
         color_edit = self.background_color_edit
         func_name = 'set_background_color'
-        passed, rgb_color_ints, rgb_color_floats = self._background_color(
+        passed, rgb_color_ints, rgb_color_floats = self._load_color(
             title, color_edit, rgb_color_ints, func_name)
         if passed:
             self.background_color_int = rgb_color_ints
@@ -968,11 +1245,47 @@ class PreferencesWindow(PyDialog):
         rgb_color_ints = self.background_color2_int
         color_edit = self.background_color2_edit
         func_name = 'set_background_color2'
-        passed, rgb_color_ints, rgb_color_floats = self._background_color(
+        passed, rgb_color_ints, rgb_color_floats = self._load_color(
             title, color_edit, rgb_color_ints, func_name)
         if passed:
             self.background_color2_int = rgb_color_ints
             self.background_color2_float = rgb_color_floats
+
+    def on_caero_color(self) -> None:
+        """ Choose a CAERO color"""
+        title = "Choose a default CAERO color"
+        rgb_color_ints = self.caero_color_int
+        color_edit = self.caero_color_edit
+        func_name = 'set_caero_color'
+        passed, rgb_color_ints, rgb_color_floats = self._load_nastran_color(
+            title, color_edit, rgb_color_ints, func_name)
+        if passed:
+            self.caero_color_int = rgb_color_ints
+            self.caero_color_float = rgb_color_floats
+
+    def on_rbe_line_color(self) -> None:
+        """ Choose an RBE color"""
+        title = "Choose a default RBE2/RBE3 line color"
+        rgb_color_ints = self.rbe_line_color_int
+        color_edit = self.rbe_line_color_edit
+        func_name = 'set_rbe_line_color'
+        passed, rgb_color_ints, rgb_color_floats = self._load_nastran_color(
+            title, color_edit, rgb_color_ints, func_name)
+        if passed:
+            self.rbe_line_color_int = rgb_color_ints
+            self.rbe_line_color_float = rgb_color_floats
+
+    def on_plotel_color(self) -> None:
+        """ Choose an RBE color"""
+        title = "Choose a default PLOTEL line color"
+        rgb_color_ints = self.plotel_color_int
+        color_edit = self.plotel_color_edit
+        func_name = 'set_plotel_color'
+        passed, rgb_color_ints, rgb_color_floats = self._load_nastran_color(
+            title, color_edit, rgb_color_ints, func_name)
+        if passed:
+            self.plotel_color_int = rgb_color_ints
+            self.plotel_color_float = rgb_color_floats
 
     def on_highlight_color(self) -> None:
         """ Choose a highlight color"""
@@ -980,7 +1293,7 @@ class PreferencesWindow(PyDialog):
         rgb_color_ints = self.highlight_color_int
         color_edit = self.highlight_color_edit
         func_name = 'set_highlight_color'
-        passed, rgb_color_ints, rgb_color_floats = self._background_color(
+        passed, rgb_color_ints, rgb_color_floats = self._load_color(
             title, color_edit, rgb_color_ints, func_name)
         if passed:
             self.highlight_color_int = rgb_color_ints
@@ -999,19 +1312,6 @@ class PreferencesWindow(PyDialog):
         self._highlight_point_size = value
         if self.win_parent is not None:
             self.settings.set_highlight_point_size(value)
-
-    def _background_color(self, title: str, color_edit: QPushButtonColor,
-                          rgb_color_ints: tuple[int, int, int],
-                          func_name: str):
-        """helper method for ``on_background_color`` and ``on_background_color2``"""
-        passed, rgb_color_ints, rgb_color_floats = self.on_color(
-            color_edit, rgb_color_ints, title)
-        if passed:
-            if self.win_parent is not None:
-                settings = self.settings
-                func_background_color = getattr(settings, func_name)
-                func_background_color(rgb_color_floats)
-        return passed, rgb_color_ints, rgb_color_floats
 
     def on_corner_text_color(self) -> None:
         """Choose a corner text color"""
@@ -1036,6 +1336,32 @@ class PreferencesWindow(PyDialog):
         if self.win_parent is not None:
             self.settings.set_corner_text_size(value)
 
+    def _load_nastran_color(self, title: str, color_edit: QPushButtonColor,
+                            rgb_color_ints: tuple[int, int, int],
+                            func_name: str):
+        """helper method for nastran colors"""
+        passed, rgb_color_ints, rgb_color_floats = self.on_color(
+            color_edit, rgb_color_ints, title)
+        if passed:
+            if self.win_parent is not None:
+                settings = self.settings.nastran_settings
+                func_color = getattr(settings, func_name)
+                func_color(rgb_color_floats)
+        return passed, rgb_color_ints, rgb_color_floats
+
+    def _load_color(self, title: str, color_edit: QPushButtonColor,
+                    rgb_color_ints: tuple[int, int, int],
+                    func_name: str):
+        """helper method for ``on_background_color`` and ``on_background_color2``"""
+        passed, rgb_color_ints, rgb_color_floats = self.on_color(
+            color_edit, rgb_color_ints, title)
+        if passed:
+            if self.win_parent is not None:
+                settings = self.settings
+                func_color = getattr(settings, func_name)
+                func_color(rgb_color_floats)
+        return passed, rgb_color_ints, rgb_color_floats
+
     def on_color(self, color_edit: QPushButtonColor,
                  rgb_color_ints: tuple[int, int, int],
                  title: str) -> tuple[bool, tuple[int, int, int], Any]:
@@ -1051,7 +1377,7 @@ class PreferencesWindow(PyDialog):
         assert isinstance(color_float[0], float), color_float
         assert isinstance(color_int[0], int), color_int
 
-        set_label_color(color_edit, color_int)
+        set_pushbutton_color(color_edit, color_int)
         return True, color_int, color_float
 
     def on_picker_size(self) -> None:
@@ -1062,9 +1388,15 @@ class PreferencesWindow(PyDialog):
 
     def on_parallel_projection(self) -> None:
         """set the nastran properties preferences"""
-        is_checked = self.parallel_projection_edit.isChecked()
+        is_checked = self.parallel_projection_checkbox.isChecked()
         if self.win_parent is not None:
             self.settings.set_parallel_projection(is_checked)
+
+    def on_trackball_camera(self) -> None:
+        """set the nastran properties preferences"""
+        is_checked = self.trackball_camera_checkbox.isChecked()
+        if self.win_parent is not None:
+            self.settings.set_trackball_camera(is_checked)
 
     def on_magnify(self, value=None) -> None:
         if value is None:
@@ -1121,13 +1453,23 @@ class PreferencesWindow(PyDialog):
         clipping_min_value, flag3 = check_float(self.clipping_min_edit)
         clipping_max_value, flag4 = check_float(self.clipping_max_edit)
 
-        if all([flag0, flag1, flag2, flag3, flag4]):
+        cart3d_fluent_include, flag5 = check_tuple_ints(self.cart3d_fluent_regions_include)
+        cart3d_fluent_remove, flag6 = check_tuple_ints(self.cart3d_fluent_regions_remove)
+        is_regions = len(cart3d_fluent_include) and len(cart3d_fluent_remove)
+        if is_regions and ([flag5, flag6]):
+            # error
+            self.cart3d_fluent_regions_include.setStyleSheet(QLINEEDIT_ERROR)
+            self.cart3d_fluent_regions_remove.setStyleSheet(QLINEEDIT_ERROR)
+
+        if all([flag0, flag1, flag2, flag3, flag4, flag5, flag6]):
             self._annotation_size = annotation_size_value
             self._picker_size = picker_size_value
 
             self.out_data['font_size'] = int(font_size_value)
             self.out_data['min_clip'] = min(clipping_min_value, clipping_max_value)
             self.out_data['max_clip'] = max(clipping_min_value, clipping_max_value)
+            self.out_data['cart3d_fluent_include'] = cart3d_fluent_include
+            self.out_data['cart3d_fluent_remove'] = cart3d_fluent_remove
             self.out_data['clicked_ok'] = True
             return True
         return False
@@ -1137,6 +1479,7 @@ class PreferencesWindow(PyDialog):
 
         if (passed or force) and self.win_parent is not None:
             self.settings.on_set_font_size(self.out_data['font_size'])
+            self.settings.other_settings.update(self.out_data)
             #self.settings.set_annotation_size_color(self._annotation_size)
             #self.win_parent.element_picker_size = self._picker_size / 100.
         if passed and self.win_parent is not None:
@@ -1197,8 +1540,8 @@ def create_opacity_edit(parent, value: float) -> QDoubleSpinBox:
     return opacity_edit
 
 
-def set_label_color(color_edit: QPushButtonColor,
-                    color_tuple: tuple[int, int, int]) -> None:
+def set_pushbutton_color(color_edit: QPushButtonColor,
+                         color_tuple: tuple[int, int, int]) -> None:
     color_edit.setStyleSheet(
         "QPushButton {"
         "background-color: rgb(%s, %s, %s);" % tuple(color_tuple) +
@@ -1220,7 +1563,20 @@ def check_label_float(cell) -> tuple[Optional[float], bool]:
         cell.setStyleSheet(QLINEEDIT_ERROR)
         return None, False
 
-def on_nastran(self: PreferencesWindow, result_name: str) -> None:
+def check_tuple_ints(cell) -> tuple[tuple[int, ...], bool]:
+    text = cell.text()
+    text2 = text.replace(',', ' ').strip()
+    sline = text2.split()
+    try:
+        values = [int(value) for value in sline]
+        cell.setStyleSheet(QLINEEDIT_GOOD)
+        return tuple(values), True
+    except ValueError:
+        cell.setStyleSheet(QLINEEDIT_ERROR)
+        return tuple(), False
+
+def on_nastran(self: PreferencesWindow,
+               result_name: str) -> None:
     """
     Auto-checks to verify result name is correct.
     Used for all Nastran settings, it's a lot less code.
@@ -1251,7 +1607,7 @@ def main():  # pragma: no cover
     app = QApplication(sys.argv)
     #The Main window
     data = {
-        'font_size' : 8,
+        'font_size' : 9,
         'use_startup_directory': True,
         'use_gradient_background' : True,
         'background_color' : (0., 0., 0.), # black
@@ -1268,16 +1624,35 @@ def main():  # pragma: no cover
         'highlight_opacity' : 0.8,
         'highlight_point_size' : 10.0,
 
+        'is_trackball_camera': True,
         'use_parallel_projection': True,
         'annotation_color' : (1., 0., 0.), # red
         'annotation_size' : 11,
         'picker_size' : 10.,
 
+        'caero_color': (0.2, 0.7, 0.4),
+        'rbe_line_color': (0.5, 0.6, 0.7),
+        'plotel_color': (0.5, 0.6, 0.7),
+        'nastran_version' : 'MSC',
+
         'min_clip' : 0.,
         'max_clip' : 10,
 
         'dim_max' : 502.,
-
+        #------------------------------------
+        #other
+        'cart3d_fluent_include': (),
+        'cart3d_fluent_remove': (3,),
+        'units_model_in': ('in', 'lbf', 's', 'psi'),
+        'units_length': 'in',
+        #'units_area': 'in^2',
+        'units_force': 'lbf',
+        'units_moment': 'in-lbf',
+        'units_pressure': 'psi',
+        'units_stress': 'psi',
+        'units_displacement': 'in',
+        'units_velocity': 'in/s',
+        'units_acceleration': 'in/s^2',
     }
     for name in NASTRAN_BOOL_KEYS:
         data[name] = True

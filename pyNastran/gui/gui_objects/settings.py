@@ -20,7 +20,8 @@ defines:
 """
 from __future__ import annotations
 import os
-from typing import Any, TYPE_CHECKING
+import copy
+from typing import Optional, Any, TYPE_CHECKING
 import numpy as np
 from qtpy import QtGui
 
@@ -32,11 +33,14 @@ from pyNastran.utils import object_attributes #, object_stats
 
 from pyNastran.gui.qt_files.colors import (
     BLACK_FLOAT, WHITE_FLOAT, GREY_FLOAT, ORANGE_FLOAT, HOT_PINK_FLOAT,
+    RED_FLOAT,
+    YELLOW_FLOAT, LIGHT_GREEN_FLOAT,
 )
 if TYPE_CHECKING:  # pragma: no cover
     from vtkmodules.vtkFiltersGeneral import vtkAxes
     from qtpy.QtCore import QSettings
     from pyNastran.gui.typing import ColorFloat
+    from pyNastran.gui.main_window import MainWindow
 
 from pyNastran.gui import (
     USE_OLD_SIDEBAR_OBJS_ as USE_OLD_SIDEBAR_OBJECTS,
@@ -66,6 +70,7 @@ SHEAR_MOMENT_TORQUE_LINE_WIDTH = 5.0
 LINE_WIDTH_MIN = 0.1
 LINE_WIDTH_MAX = 2000.
 
+IS_TRACKBALL_CAMERA = True
 USE_PARALLEL_PROJECTION = True
 DEFAULT_COLORMAP = 'jet'
 NFILES_TO_SAVE = 9
@@ -101,17 +106,34 @@ MAGNIFY = 5
 MAGNIFY_MIN = 1
 MAGNIFY_MAX = 10
 
+PLOTEL_COLOR = RED_FLOAT
+CAERO_COLOR = YELLOW_FLOAT
+RBE_LINE_COLOR = LIGHT_GREEN_FLOAT
+DISPLACEMENT_MODEL_SCALE = 0.1
 
+NASTRAN_VERSIONS = ['Guess', 'MSC', 'NX', 'Optistruct']
+NASTRAN_COLOR_KEYS = [
+    'nastran_caero_color', 'nastran_rbe_line_color',
+    'nastran_plotel_color',
+]
+NASTRAN_STR_KEYS = ['nastran_version']
 NASTRAN_BOOL_KEYS = [
     'nastran_create_coords',
     'nastran_is_properties',
     'nastran_is_element_quality',
     'nastran_is_bar_axes',
     'nastran_is_3d_bars', 'nastran_is_3d_bars_update',
-    'nastran_is_shell_mcids', 'nastran_is_update_conm2',
+    'nastran_is_mass_update',
+    'nastran_is_constraints',
+    'nastran_is_shell_mcids',
+    'nastran_is_rbe',
+    'nastran_is_aero',
+    'nastran_is_plotel',
 
-    'nastran_displacement', 'nastran_velocity', 'nastran_acceleration', 'nastran_eigenvector',
-    'nastran_spc_force', 'nastran_mpc_force', 'nastran_applied_load',
+    'nastran_displacement', 'nastran_velocity',
+    'nastran_acceleration', 'nastran_eigenvector', 'nastran_temperature',
+    'nastran_spc_force', 'nastran_mpc_force',
+    'nastran_applied_load', 'nastran_heat_flux',
 
     'nastran_stress', 'nastran_plate_stress', 'nastran_composite_plate_stress',
     'nastran_strain', 'nastran_plate_strain', 'nastran_composite_plate_strain',
@@ -132,23 +154,101 @@ NASTRAN_BOOL_KEYS = [
     #'nastran_show_control_surfaces',
     #'nastran_show_conm',
 ]
+NASTRAN_BOOL_STR_KEYS = NASTRAN_BOOL_KEYS + NASTRAN_STR_KEYS
+
+OTHER_STRING_KEYS = [
+    'units_length', 'units_force', 'units_moment',
+    'units_stress', 'units_pressure',
+    'units_displacement',
+    'units_velocity', 'units_acceleration',
+]
+OTHER_LIST_INT_KEYS = [
+    'cart3d_fluent_include', 'cart3d_fluent_remove',]
+OTHER_LIST_STR_KEYS = [
+    'units_model_in', ]
+
+
+class OtherSettings:
+    def __init__(self, parent):
+        """
+        Creates the OtherSettings object
+        """
+        self.parent = parent
+        self.reset_settings()
+
+    def reset_settings(self) -> None:
+        self.cart3d_fluent_include = ()
+        self.cart3d_fluent_remove = ()
+        #('in', 'lbf', 's', 'psi')
+        self.units_model_in = ('unitless','','','')
+        self.units_length = 'in'
+        #self.units_area = 'in^2'
+        self.units_force = 'lbf'
+        self.units_moment = 'in-lbf'
+        self.units_stress = 'psi'
+        self.units_pressure = 'psi'
+        self.units_displacement = 'in'
+        self.units_velocity = 'in/s'
+        self.units_acceleration = 'in/s^2'
+
+    def update(self, out_data: dict[str, Any]):
+        """from preferences"""
+        self.cart3d_fluent_include = out_data['cart3d_fluent_include']
+        self.cart3d_fluent_remove = out_data['cart3d_fluent_remove']
+        #self.units_model_in = out_data['units_model_in']
+        #self.units_length = out_data['units_length']
+        #self.units_area = out_data['units_area']
+        #self.units_force  = out_data['units_force']
+        #self.units_moment = out_data['units_moment']
+        #self.units_stress = out_data['units_stress']
+        #self.units_pressure = out_data['units_pressure']
+        #self.units_displacement = out_data['units_displacement']
+        #self.units_velocity = out_data['units_velocity']
+        #self.units_acceleration = out_data['units_acceleration']
+
+    def save(self, settings: QSettings) -> None:
+        """save_json -> all keys"""
+        keys = object_attributes(self, mode='public', keys_to_skip=['parent'])
+        for key in keys:
+            #base, key2 = key.split('_', 1)
+            value = getattr(self, key)
+            #print(f'save other: key={key!r} value={value!r}')
+            settings.setValue(key, value)
+
+    def __repr__(self) -> str:
+        msg = '<OtherSettings>\n'
+        keys = object_attributes(self, mode='public', keys_to_skip=['parent'])
+        for key in keys:
+            #if key.startswith('nastran'):
+            #    raise RuntimeError(key)
+            value = getattr(self, key)
+            if isinstance(value, tuple):
+                value = str(value)
+            msg += '  %r = %r\n' % (key, value)
+        return msg
 
 class NastranSettings:
-    def __init__(self):
+    def __init__(self, parent):
         """
-        Creates the Settings object
+        Creates the NastranSettings object
         """
+        self.parent = parent
         self.reset_settings()
 
     def reset_settings(self):
+        self.version = 'Guess'
         self.is_element_quality = True
         self.is_properties = True
         self.is_3d_bars = True
         self.is_3d_bars_update = True
+        self.is_mass_update = True
+        self.is_constraints = True
         self.create_coords = True
         self.is_bar_axes = True
         self.is_shell_mcids = True
-        self.is_update_conm2 = True
+        self.is_rbe = True
+        self.is_aero = True
+        self.is_plotel = True
 
         self.stress = True
         self.spring_stress = True
@@ -180,16 +280,24 @@ class NastranSettings:
         self.displacement = True
         self.velocity = True
         self.acceleration = True
+        self.temperature = True
 
         self.spc_force = True
         self.mpc_force = True
         self.applied_load = True
+        self.heat_flux = True
 
         #self.stress = True
         #self.stress = True
         #self.strain = True
         self.strain_energy = True
         self.grid_point_force = True
+
+        #---------------------------------------0000000000000000
+        # colors
+        self.caero_color = CAERO_COLOR
+        self.rbe_line_color = RBE_LINE_COLOR
+        self.plotel_color = PLOTEL_COLOR
 
         # ------------------------------------------------------
 
@@ -201,6 +309,64 @@ class NastranSettings:
         self.show_caero_actor = True  # show the caero mesh
         #self.show_control_surfaces = True
         #self.show_conm = True
+
+    def save(self, settings: QSettings) -> None:
+        #print(nastran_settings)
+        for key in NASTRAN_BOOL_STR_KEYS:
+            base, key2 = key.split('_', 1)
+            value = getattr(self, key2)
+            settings.setValue(key, value)
+            #print(f'*key={key!r} key2={key2!r} value={value!r}')
+
+        for key in NASTRAN_COLOR_KEYS:
+            base, key2 = key.split('_', 1)
+            value = getattr(self, key2)
+            settings.setValue(key, value)
+
+    def set_caero_color(self, color: ColorFloat, render: bool=True) -> None:
+        """
+        Set the CAEROx color
+
+        Parameters
+        ----------
+        color : ColorFloat
+            RGB values as floats
+        """
+        self.caero_color = color
+        parent = self.parent
+        if render:
+            parent.vtk_interactor.Render()
+        parent.log_command('self.settings.nastran_settings.set_caero_color(%s, %s, %s)' % color)
+
+    def set_rbe_line_color(self, color: ColorFloat, render: bool=True) -> None:
+        """
+        Set the RBE2/RBE3 line color
+
+        Parameters
+        ----------
+        color : ColorFloat
+            RGB values as floats
+        """
+        self.rbe_line_color = color
+        parent = self.parent
+        if render:
+            parent.vtk_interactor.Render()
+        parent.log_command('self.settings.nastran_settings.set_rbe_line_color(%s, %s, %s)' % color)
+
+    def set_plotel_color(self, color: ColorFloat, render: bool=True) -> None:
+        """
+        Set the PLOTEL line color
+
+        Parameters
+        ----------
+        color : ColorFloat
+            RGB values as floats
+        """
+        self.plotel_color = color
+        parent = self.parent
+        if render:
+            parent.vtk_interactor.Render()
+        parent.log_command('self.settings.nastran_settings.set_plotel_color(%s, %s, %s)' % color)
 
     def __repr__(self) -> str:
         msg = '<NastranSettings>\n'
@@ -217,7 +383,7 @@ class NastranSettings:
 
 class Settings:
     """storage class for various settings"""
-    def __init__(self, parent):
+    def __init__(self, parent: MainWindow):
         """
         Creates the Settings object
 
@@ -233,7 +399,8 @@ class Settings:
         #self.annotation_scale = 1.0
 
         self.reset_settings(resize=True, reset_dim_max=True)
-        self.nastran_settings = NastranSettings()
+        self.nastran_settings = NastranSettings(parent)
+        self.other_settings = OtherSettings(parent)
 
     def reset_settings(self, resize: bool=True,
                        reset_dim_max: bool=True) -> None:
@@ -281,7 +448,9 @@ class Settings:
         self.shear_moment_torque_point_size = SHEAR_MOMENT_TORQUE_POINT_SIZE # float
         self.shear_moment_torque_line_width = SHEAR_MOMENT_TORQUE_LINE_WIDTH # float
 
+        self.is_trackball_camera = IS_TRACKBALL_CAMERA
         self.use_parallel_projection = USE_PARALLEL_PROJECTION
+        self.displacement_model_scale = DISPLACEMENT_MODEL_SCALE
         self.show_info = True
         self.show_debug = False
         self.show_command = True
@@ -310,7 +479,7 @@ class Settings:
             self.dim_max = 1.0
         #self.annotation_scale = 1.0
 
-        self.nastran_settings = NastranSettings()
+        self.nastran_settings = NastranSettings(self.parent)
 
     def finish_startup(self):
         self.set_background_color(self.background_color, render=False, quiet=True)
@@ -319,7 +488,10 @@ class Settings:
 
     def add_model_settings_to_dict(self, data: dict[str, Any]):
         nastran_settings = self.nastran_settings
-        for key in NASTRAN_BOOL_KEYS:
+        for key in NASTRAN_BOOL_STR_KEYS:
+            base, key2 = key.split('_', 1)
+            data[key] = getattr(nastran_settings, key2)
+        for key in NASTRAN_COLOR_KEYS:
             base, key2 = key.split('_', 1)
             data[key] = getattr(nastran_settings, key2)
 
@@ -350,6 +522,9 @@ class Settings:
             self.font_size, min_value=FONT_SIZE_MIN, max_value=None)
 
         # parallel/perspective
+        self._set_setting(settings, setting_keys, ['is_trackball_camera'],
+                          default=self.is_trackball_camera,
+                          save=True, auto_type=bool)
         self._set_setting(settings, setting_keys, ['use_parallel_projection'],
                           default=self.use_parallel_projection,
                           save=True, auto_type=bool)
@@ -508,6 +683,10 @@ class Settings:
             self.shear_moment_torque_line_width,
             min_value=LINE_WIDTH_MIN, max_value=LINE_WIDTH_MAX)
 
+        # displacement_model_scale - unused
+        self._set_setting(settings, setting_keys, ['displacement_model_scale'],
+                          default=DISPLACEMENT_MODEL_SCALE, save=True, auto_type=float)
+
         # default colormap for legend
         self._set_setting(settings, setting_keys, ['colormap'], default=DEFAULT_COLORMAP, save=True)
         if self.colormap not in COLORMAPS:
@@ -522,21 +701,30 @@ class Settings:
             #screen_shape = screen_shape_default
 
         #if 'recent_files' in setting_keys:
-        recent_files = self.recent_files
+        recent_files_og = copy.deepcopy(self.recent_files)
         try:
-            recent_files = settings.value("recent_files", default=self.recent_files)
+            recent_files = settings.value("recent_files", default=recent_files_og)
         except (TypeError, AttributeError):
-            pass
+            recent_files = recent_files_og
+
+        if recent_files is None:
+            recent_files = []
+            self.recent_files = recent_files
+
         if not isinstance(recent_files, int):
             # yeah seriously...it just returns 0
-            recent_files2 = [(fname, fmt) for (fname, fmt) in recent_files
-                             if os.path.exists(fname)]
+            try:
+                recent_files2 = [(fname, fmt) for (fname, fmt) in recent_files
+                                 if os.path.exists(fname)]
+            except TypeError:
+                raise TypeError(f'recent_files = {recent_files}')
 
             #  only save 10 files
             self.recent_files = recent_files2[:NFILES_TO_SAVE]
 
         self.recent_files = filter_recent_files(self.recent_files)
         self._load_nastran_settings(settings, setting_keys)
+        self._load_other_settings(settings, setting_keys)
 
         #w = screen_shape.width()
         #h = screen_shape.height()
@@ -576,13 +764,42 @@ class Settings:
         is_loaded = True
         return is_loaded
 
+    def _load_other_settings(self, settings: QSettings,
+                             setting_keys: list[str]) -> None:
+        other_settings: OtherSettings = self.other_settings
+        # self.cart3d_fluent_include = ()
+        # self.cart3d_fluent_remove = ()
+        for key in OTHER_STRING_KEYS:
+            default = getattr(other_settings, key)
+            value = self._set_setting(
+                settings, setting_keys, [key],
+                default=default, save=False, auto_type=str)
+            setattr(other_settings, key, value)
+
+        for key in OTHER_LIST_INT_KEYS:
+            default = getattr(other_settings, key)
+            #print(key, default)
+            value = self._set_setting(
+                settings, setting_keys, [key],
+                default=default, save=False, auto_type=int)
+            setattr(other_settings, key, tuple(value))
+
+        for key in OTHER_LIST_STR_KEYS:
+            default = getattr(other_settings, key)
+            #print(key, default)
+            value = self._set_setting(
+                settings, setting_keys, [key],
+                default=default, save=False, auto_type=str)
+            setattr(other_settings, key, tuple(value))
+
+
     def _load_nastran_settings(self, settings: QSettings,
                                setting_keys: list[str]) -> None:
         """
         loads the settings from 'nastran_displacement' (or similar)
         and save it to 'nastran_settings.displacement'
         """
-        nastran_settings = self.nastran_settings
+        nastran_settings: NastranSettings = self.nastran_settings
         #print('-----default------')
         #print(nastran_settings)
         for key in NASTRAN_BOOL_KEYS:
@@ -598,7 +815,27 @@ class Settings:
             #print(f'key={key!r} key2={key2!r} default={default!r} value={value!r}')
             setattr(nastran_settings, key2, value)
 
-    def _set_setting(self, settings, setting_keys: list[str],
+        for key in NASTRAN_STR_KEYS:
+            base, key2 = key.split('_', 1)
+            default = getattr(nastran_settings, key2)
+            value = self._set_setting(settings, setting_keys, [key],
+                                      default, save=True, auto_type=str)
+            setattr(nastran_settings, key2, value)
+
+        for key in NASTRAN_COLOR_KEYS:
+            # nastran_is_properties -> nastran, is_properties
+            base, key2 = key.split('_', 1)
+
+            # we get default from the nastran_settings
+            default = getattr(nastran_settings, key2)
+
+            # pull it from the QSettings
+            value = self._set_setting(settings, setting_keys, [key],
+                                      default, save=True, auto_type=float)
+            #print(f'key={key!r} key2={key2!r} default={default!r} value={value!r}')
+            setattr(nastran_settings, key2, value)
+
+    def _set_setting(self, settings: QSettings, setting_keys: list[str],
                      setting_names: list[str], default: Any,
                      save: bool=True, auto_type=None) -> Any:
         """
@@ -612,7 +849,8 @@ class Settings:
             setattr(self, set_name, value)
         return value
 
-    def save(self, settings, is_testing: bool=False) -> None:
+    def save(self, settings: QSettings,
+             is_testing: bool=False) -> None:
         """saves the settings"""
         #if not is_testing:
         parent = self.parent
@@ -622,6 +860,7 @@ class Settings:
             settings.setValue('main_window_state', parent.saveState())
 
         # booleans
+        settings.setValue('is_trackball_camera', self.is_trackball_camera)
         settings.setValue('use_parallel_projection', self.use_parallel_projection)
         settings.setValue('use_gradient_background', self.use_gradient_background)
 
@@ -651,6 +890,10 @@ class Settings:
         settings.setValue('shear_moment_torque_point_size', self.shear_moment_torque_point_size)
         settings.setValue('shear_moment_torque_line_width', self.shear_moment_torque_line_width)
 
+        # float
+        settings.setValue('displacement_model_scale', self.displacement_model_scale)
+
+        # logging
         settings.setValue('show_info', self.show_info)
         settings.setValue('show_debug', self.show_debug)
         settings.setValue('show_command', self.show_command)
@@ -682,12 +925,10 @@ class Settings:
 
         # format-specific
         nastran_settings = self.nastran_settings
-        #print(nastran_settings)
-        for key in NASTRAN_BOOL_KEYS:
-            base, key2 = key.split('_', 1)
-            value = getattr(nastran_settings, key2)
-            settings.setValue(key, value)
-            #print(f'*key={key!r} key2={key2!r} value={value!r}')
+        nastran_settings.save(settings)
+
+        other_settings = self.other_settings
+        other_settings.save(settings)
 
         #screen_shape = QtGui.QDesktopWidget().screenGeometry()
 
@@ -1029,6 +1270,14 @@ class Settings:
     def set_magnify(self, magnify: int=5) -> None:
         """sets the screenshot magnification factor"""
         self.magnify = magnify
+
+    def set_trackball_camera(self, is_trackball_camera: bool,
+                             render: bool=True) -> None:
+        """sets the trackball_camera flag"""
+        self.is_trackball_camera = is_trackball_camera
+        self.parent.mouse_actions.set_style()
+        if render:
+            self.parent.vtk_interactor.Render()
 
     def set_parallel_projection(self, parallel_projection: bool,
                                 render: bool=True) -> None:

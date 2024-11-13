@@ -1,5 +1,5 @@
 """Defines the BDFCard class that is passed into the various Nastran cards."""
-from typing import Union, Optional, Any
+from typing import Optional, Any
 from pyNastran.bdf.field_writer import print_card
 from pyNastran.bdf.field_writer_16 import print_field_16
 from pyNastran.bdf.cards.utils import wipe_empty_fields
@@ -31,8 +31,8 @@ class BDFCard:
         if has_none:
             long_fields = [print_field_16(field).strip() for field in card]
             card = wipe_empty_fields(long_fields)
-        self.card = card  # type: list[Optional[str]]
-        self.nfields = len(self.card)  # type: int
+        self.card: list[Optional[str]] = card
+        self.nfields: int = len(self.card)
 
     def pop(self) -> Optional[str]:
         """card.pop()"""
@@ -147,7 +147,7 @@ class BDFCard:
         return out
 
     def field(self, i: int,
-              default: Optional[Union[int, float, str]]=None) -> Optional[Union[int, float, str]]:
+              default: Optional[int | float | str]=None) -> Optional[int | float | str]:
         """
         Gets the ith field on the card
 
@@ -175,4 +175,3 @@ class BDFCard:
         except IndexError:
             pass
         return default
-

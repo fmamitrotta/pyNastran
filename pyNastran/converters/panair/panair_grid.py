@@ -286,13 +286,13 @@ class PanairGrid:
 
         return points
 
-    def add_wake_patch(self, network_name, options, xyz):
+    def add_wake_patch(self, network_name: str, options, xyz: np.ndarray) -> None:
         patch = PanairWakePatch(self.nnetworks, network_name, options, xyz, self.log)
         self.msg += patch.process()
         self.patches[patch.inetwork] = patch  # deepcopy?
         self.nnetworks += 1
 
-    def add_patch(self, network_name, kt, cp_norm, xyz):
+    def add_patch(self, network_name: str, kt: int, cp_norm: int, xyz: np.ndarray) -> None:
         patch = PanairPatch(self.nnetworks, network_name, kt, cp_norm, xyz, self.log)
         self.msg += patch.process()
         self.patches[patch.inetwork] = patch  # deepcopy?
@@ -400,7 +400,7 @@ class PanairGrid:
         if cp_norm:
             self.log.debug("nnetworks=%s cp_norm=%s" % (nnetworks, cp_norm))
         else:
-            self.log.debug("nnetworks=%s" % (nnetworks))
+            self.log.debug("nnetworks=%s" % nnetworks)
         #print("nnetworks=%s cp_norm=%s" % (nnetworks, cp_norm))
 
         n = 3
@@ -676,7 +676,7 @@ class PanairGrid:
             try:
                 patch = self.find_patch_by_name(trailed_panel)
             except KeyError:
-                self.log.debug('trailed_panel is not defined...trailed_panel=%r' % (trailed_panel))
+                self.log.debug(f'trailed_panel is not defined...trailed_panel={trailed_panel!r}')
                 raise
 
             (unused_p1, xyz1) = patch.get_edge(edge_number)
@@ -810,14 +810,14 @@ class PanairGrid:
         valid_maps = section_map.keys()
 
         for section, section_name in zip(sections, section_names):  # 1st line
-            self.msg += '  $%s\n' % (section_name)
+            self.msg += f'  ${section_name}\n'
             #print "section = ", len(section)
             #self.log.debug("section_name=%s" % (section_name))
             if section_name in valid_maps:
                 #self.log.debug("section[0] = %s" % (section[0]))
                 function_map = section_map[section_name]
                 ran = function_map(section)
-                assert ran, '%s didnt run' % (section_name)
+                assert ran, f'{section_name} didnt run'
                 #self.log.debug("")
             if section_name == 'end':
                 break

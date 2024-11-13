@@ -6,9 +6,8 @@ defines:
 """
 from __future__ import annotations
 from abc import abstractmethod
-from typing import Union, Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 import numpy as np
-in1d = np.in1d
 from pyNastran.utils.numpy_utils import integer_types, integer_float_types
 if TYPE_CHECKING:
     from pyNastran.op2.tables.ogf_gridPointForces.ogf_objects import RealGridPointForceArray
@@ -86,8 +85,8 @@ class GuiResultCommon:
         raise NotImplementedError(f'{self.class_name}.get_nlabels_labelsize_ncolors_colormap')
 
     @abstractmethod
-    def get_imin_imax(self, i: int, name: str) -> Union[tuple[int, int],
-                                                        tuple[None, None]]:  # pragma: no cover
+    def get_imin_imax(self, i: int, name: str,
+                      ) -> tuple[int, int] | tuple[None, None]:  # pragma: no cover
         raise NotImplementedError(f'{self.class_name}.get_imin_imax')
     @abstractmethod
     def get_min_max(self, i: int, name: str):  # pragma: no cover
@@ -439,6 +438,7 @@ class GuiResult(GuiResultCommon):
                  colormap: str='jet',
                  data_map: Any=None,
                  data_format: Optional[str]=None,
+                 scale_type: str='',
                  uname: str='GuiResult'):
         """
         Parameters
@@ -464,7 +464,7 @@ class GuiResult(GuiResultCommon):
 
         """
         GuiResultCommon.__init__(self)
-
+        self.scale_type = scale_type
         self.data_map = data_map
         self.subcase_id = subcase_id
         #assert self.subcase_id > 0, self.subcase_id
@@ -515,7 +515,7 @@ class GuiResult(GuiResultCommon):
                 inan_short = np.where(self.scalar == mask_value)[0]
                 if len(inan_short):
                     # overly complicated way to allow us to use ~inan to invert the array
-                    inan = in1d(np.arange(len(self.scalar)), inan_short)
+                    inan = np.isin(np.arange(len(self.scalar)), inan_short)
                     inan_remaining = self.scalar[~inan]
 
                     self.scalar = np.asarray(self.scalar, 'f')

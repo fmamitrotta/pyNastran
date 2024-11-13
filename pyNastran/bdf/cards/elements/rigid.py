@@ -15,7 +15,7 @@ All rigid elements are RigidElement and Element objects.
 """
 from __future__ import annotations
 from itertools import count
-from typing import TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 import numpy as np
 
 from pyNastran.utils.numpy_utils import integer_types, float_types
@@ -31,11 +31,11 @@ if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import BDF
     from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 
-class RigidElement(Element):
+class RigidElementBase(Element):
     def cross_reference(self, model: BDF) -> None:
         pass
 
-class RROD(RigidElement):
+class RROD(RigidElementBase):
     """
     Rigid Pin-Ended Element Connection
     Defines a pin-ended element that is rigid in translation
@@ -80,7 +80,7 @@ class RROD(RigidElement):
             a comment for the card
 
         """
-        RigidElement.__init__(self)
+        RigidElementBase.__init__(self)
         if comment:
             self.comment = comment
         if cma == '0':
@@ -172,8 +172,9 @@ class RROD(RigidElement):
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by RROD eid=%s' % (self.eid)
+        msg = f', which is required by RROD eid={self.eid:d}'
         self.nodes_ref = model.Nodes(self.nodes, msg=msg)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
@@ -224,7 +225,7 @@ class RROD(RigidElement):
         return self.comment + print_card_16(card)
 
 
-class RBAR(RigidElement):
+class RBAR(RigidElementBase):
     """
     Defines a rigid bar with six degrees-of-freedom at each end.
 
@@ -274,7 +275,7 @@ class RBAR(RigidElement):
             a comment for the card
 
         """
-        RigidElement.__init__(self)
+        RigidElementBase.__init__(self)
         if comment:
             self.comment = comment
         self.eid = eid
@@ -331,11 +332,11 @@ class RBAR(RigidElement):
                 independent_b.add(comp)
             if comp in self.cma:
                 if comp in independent_a:
-                    msg += 'dof=%s on node %s is both independent and dependent\n' % (self.ga)
+                    msg += f'dof={comp} on node {self.ga:d} is both independent and dependent\n'
                 dependent_a.add(comp)
             if comp in self.cmb:
                 if comp in independent_b:
-                    msg += 'dof=%s on node %s is both independent and dependent\n' % (self.gb)
+                    msg += f'dof={comp} on node {self.gb:d} is both independent and dependent\n'
                 dependent_b.add(comp)
         if msg:
             raise RuntimeError(msg + str(self))
@@ -349,7 +350,7 @@ class RBAR(RigidElement):
                 #raise RuntimeError(msg)
             for comp in '123456':
                 if comp not in independent:
-                    msgi += '  comp=%s is not independent\n' % (comp)
+                    msgi += f'  comp={comp} is not independent\n'
             if msgi:
                 msg1 += 'cna=%r cnb=%r\n%s' % (self.cna, self.cnb, msgi)
 
@@ -361,7 +362,7 @@ class RBAR(RigidElement):
                 raise RuntimeError(msg)
             for comp in '123456':
                 if comp not in dependent:
-                    msgi2 += '  comp=%s is not dependent\n' % (comp)
+                    msgi2 += f'  comp={comp} is not dependent\n'
             if msgi2:
                 msg2 = 'cma=%r cmb=%r\n%s' % (self.cma, self.cmb, msgi2)
 
@@ -465,8 +466,9 @@ class RBAR(RigidElement):
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by RBAR eid=%s' % (self.eid)
+        msg = f', which is required by RBAR eid={self.eid:d}'
         self.ga_ref = model.Node(self.Ga(), msg=msg)
         self.gb_ref = model.Node(self.Gb(), msg=msg)
 
@@ -478,6 +480,7 @@ class RBAR(RigidElement):
         ----------
         model : BDF()
             the BDF object
+
         """
         self.cross_reference(model)
 
@@ -517,7 +520,7 @@ class RBAR(RigidElement):
         return self.comment + print_card_16(card)
 
 
-class RBAR1(RigidElement):
+class RBAR1(RigidElementBase):
     """
     +-------+-----+----+----+-----+-------+
     |   1   |  2  |  3 |  4 |  5  |   6   |
@@ -542,7 +545,7 @@ class RBAR1(RigidElement):
                  nids: list[int],
                  cb: Optional[str],
                  alpha: float=0., comment: str=''):
-        RigidElement.__init__(self)
+        RigidElementBase.__init__(self)
         if comment:
             self.comment = comment
         self.eid = eid
@@ -621,8 +624,9 @@ class RBAR1(RigidElement):
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by RBAR1 eid=%s' % (self.eid)
+        msg = f', which is required by RBAR1 eid={self.eid:d}'
         self.ga_ref = model.Node(self.Ga(), msg=msg)
         self.gb_ref = model.Node(self.Gb(), msg=msg)
 
@@ -634,6 +638,7 @@ class RBAR1(RigidElement):
         ----------
         model : BDF()
             the BDF object
+
         """
         self.cross_reference(model)
 
@@ -660,7 +665,7 @@ class RBAR1(RigidElement):
         return self.comment + print_card_16(card)
 
 
-class RBE1(RigidElement):  # maybe not done, needs testing
+class RBE1(RigidElementBase):  # maybe not done, needs testing
     """
     +------+-----+-----+-----+-------+-----+-----+-----+
     |   1  |  2  |  3  |  4  |   5   |  6  |  7  |  8  |
@@ -716,7 +721,7 @@ class RBE1(RigidElement):  # maybe not done, needs testing
         comment : str; default=''
             a comment for the card
         """
-        RigidElement.__init__(self)
+        RigidElementBase.__init__(self)
         if comment:
             self.comment = comment
         self.eid = eid
@@ -805,8 +810,9 @@ class RBE1(RigidElement):  # maybe not done, needs testing
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by RBE1 eid=%s' % (self.eid)
+        msg = f', which is required by RBE1 eid={self.eid:d}'
         self.Gni_ref = model.EmptyNodes(self.Gni, msg=msg)
         self.Gmi_ref = model.EmptyNodes(self.Gmi, msg=msg)
 
@@ -818,6 +824,7 @@ class RBE1(RigidElement):  # maybe not done, needs testing
         ----------
         model : BDF()
             the BDF object
+
         """
         self.cross_reference(model)
 
@@ -895,7 +902,7 @@ class RBE1(RigidElement):  # maybe not done, needs testing
         return self.comment + print_card_16(card)
 
 
-class RBE2(RigidElement):
+class RBE2(RigidElementBase):
     """
     +-------+-----+-----+-----+------+-------+------+-----+-----+
     |   1   |  2  |  3  |  4  |  5   |   6   |  7   |  8  |  9  |
@@ -965,7 +972,7 @@ class RBE2(RigidElement):
             reference temperature
             TREF was added in MSC 2021
         """
-        RigidElement.__init__(self)
+        RigidElementBase.__init__(self)
         if comment:
             self.comment = comment
         #: Element identification number
@@ -1208,7 +1215,7 @@ class RBE2(RigidElement):
         return self.comment + print_card_16(card)
 
 
-class RBE3(RigidElement):
+class RBE3(RigidElementBase):
     """
     +------+---------+---------+---------+------+--------+--------+------+--------+
     |   1  |    2    |    3    |    4    |  5   |    6   |    7   |   8  |    9   |
@@ -1282,7 +1289,7 @@ class RBE3(RigidElement):
             a comment for the card
 
         """
-        RigidElement.__init__(self)
+        RigidElementBase.__init__(self)
         if comment:
             self.comment = comment
         if Gmi is None:
@@ -1305,6 +1312,9 @@ class RBE3(RigidElement):
         self.weights = weights
         self.comps = comps
         # allow for Gijs as a list or list of lists
+        if len(Gijs) == 0:
+            raise RuntimeError(f'RBE3 eid={eid}; Gijs is be empty')
+
         if isinstance(Gijs[0], integer_types):
             Gijs2 = []
             for Gij in Gijs:
@@ -1538,8 +1548,9 @@ class RBE3(RigidElement):
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by RBE3 eid=%s' % (self.eid)
+        msg = f', which is required by RBE3 eid={self.eid:d}'
         assert self.Gmi is not None
         self.Gmi_ref = model.EmptyNodes(self.Gmi, msg=msg)
 
@@ -1551,7 +1562,7 @@ class RBE3(RigidElement):
             self.Gijs_ref.append(model.EmptyNodes(Gij, msg=msg))
 
     def safe_cross_reference(self, model: BDF, debug: bool=True) -> int:
-        msg = ', which is required by RBE3 eid=%s' % (self.eid)
+        msg = f', which is required by RBE3 eid={self.eid:d}'
         assert self.Gmi is not None
         self.Gmi_ref, unused_missing_nodes = model.safe_empty_nodes(self.Gmi, msg=msg)
 
@@ -1636,7 +1647,7 @@ class RBE3(RigidElement):
         return write_card(self.comment, card, size, is_double=False)
 
 
-class RSPLINE(RigidElement):
+class RSPLINE(RigidElementBase):
     type = 'RSPLINE'
     _properties = ['dependent_nodes', 'independent_nodes']
     """
@@ -1686,7 +1697,7 @@ class RSPLINE(RigidElement):
             a comment for the card
 
         """
-        RigidElement.__init__(self)
+        RigidElementBase.__init__(self)
         if comment:
             self.comment = comment
         self.eid = eid
@@ -1802,7 +1813,7 @@ class RSPLINE(RigidElement):
         return self.comment + print_card_16(card)
 
 
-class RSSCON(RigidElement):
+class RSSCON(RigidElementBase):
     type = 'RSSCON'
     """
     Defines multipoint constraints to model clamped connections
@@ -1854,7 +1865,7 @@ class RSSCON(RigidElement):
 
         B----S----A
         """
-        RigidElement.__init__(self)
+        RigidElementBase.__init__(self)
         if comment:
             self.comment = comment
         self.eid = eid
@@ -1947,7 +1958,7 @@ class RSSCON(RigidElement):
         model : BDF()
             the BDF object
         """
-        unused_msg = ', which is required by RSSCON eid=%s' % (self.eid)
+        unused_msg = f', which is required by RSSCON eid={self.eid:d}'
         #if self.rigid_type == 'ELEM':
             #self.shell_eid_ref = model.Element(self.shell_eid, msg=msg)
             #self.solid_eid_ref = model.Element(self.shell_eid, msg=msg)
@@ -2010,3 +2021,5 @@ class RSSCON(RigidElement):
         if size == 8:
             return self.comment + print_card_8(card)
         return self.comment + print_card_16(card)
+
+RigidElement = RBAR | RBE1 | RBE2 | RBE3 | RBAR | RBAR1 | RROD | RSPLINE | RSSCON

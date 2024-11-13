@@ -24,12 +24,10 @@ from collections import defaultdict
 import traceback
 
 from typing import (
-    Sequence, Optional, Union, Any, cast, TYPE_CHECKING)
+    Sequence, Optional, Any, cast, TYPE_CHECKING)
 from pickle import load, dump, dumps  # type: ignore
 
 import numpy as np  # type: ignore
-in1d = np.in1d
-#in1d = np.in1d if hasattr(np, 'in1d') else getattr(np, 'in')
 from cpylog import get_logger2
 
 from pyNastran.utils import PathLike, object_attributes, check_path, deprecated as _deprecated
@@ -50,11 +48,13 @@ from .cards.base_card import _format_comment
 from .cards.utils import wipe_empty_fields
 
 #from .write_path import write_include
-from .bdf_interface.assign_type import (integer,
-                                        integer_or_string, string)
+from .bdf_interface.assign_type import (
+    integer, integer_or_string, string)
 
 from pyNastran.bdf.bdf_interface.model_group import ModelGroup
-from .cards.elements.elements import CFAST, CGAP, CRAC2D, CRAC3D, PLOTEL, GENEL
+from .cards.elements.elements import (
+    CFAST, CGAP, CRAC2D, CRAC3D, GENEL,
+    PLOTEL, PLOTEL3, PLOTEL4, PLOTELs)
 from .cards.properties.properties import PFAST, PGAP, PRAC2D, PRAC3D
 from .cards.properties.solid import PLSOLID, PSOLID, PIHEX, PCOMPS, PCOMPLS
 from .cards.cyclic import CYAX, CYJOIN
@@ -69,7 +69,7 @@ from .cards.elements.solid import (
     CTETRA4, CPYRAM5, CPENTA6, CHEXA8,
     CTETRA10, CPYRAM13, CPENTA15, CHEXA20,
 )
-from .cards.elements.rigid import RBAR, RBAR1, RBE1, RBE2, RBE3, RROD, RSPLINE, RSSCON
+from .cards.elements.rigid import RBAR, RBAR1, RBE1, RBE2, RBE3, RROD, RSPLINE, RSSCON, RigidElement
 from .cards.bolt import BOLT, BOLTLD, BOLTFOR, BOLTSEQ, BOLTFRC, BOLT_MSC
 
 from .cards.axisymmetric.axisymmetric import (
@@ -112,11 +112,11 @@ from .cards.coordinate_systems import (MATCID,
                                        CORD1R, CORD1C, CORD1S,
                                        CORD2R, CORD2C, CORD2S, #CORD3G,
                                        transform_coords_vectorized,
-                                       CORDx)
+                                       Coord)
 #from .cards.coordinate_systems.msgmesh import CGEN, GMCORD, GMLOAD
 from .cards.deqatn import DEQATN
 from .cards.dynamic import (
-    DELAY, DPHASE, FREQ, FREQ1, FREQ2, FREQ3, FREQ4, FREQ5,
+    DELAY, DPHASE, FREQ, FREQ1, FREQ2, FREQ3, FREQ4, FREQ5, FREQs,
     TSTEP, TSTEP1, TSTEPNL, NLPARM, NLPCI, TF, ROTORG, ROTORD, TIC)
 from .cards.loads.loads import (
     LSEQ, SLOAD, DAREA, RFORCE, RFORCE1, SPCD, DEFORM, LOADCYN, LOADCYH)
@@ -138,10 +138,10 @@ from .cards.methods import EIGB, EIGC, EIGR, EIGP, EIGRL, MODTRAK
 from .cards.nodes import GRID, GRDSET, SPOINTs, EPOINTs, POINT, SEQGP, GRIDB
 from .cards.aero.aero import (
     AECOMP, AECOMPL, AEFACT, AELINK, AELIST, AEPARM, AESURF, AESURFS,
-    CAERO1, CAERO2, CAERO3, CAERO4, CAERO5,
-    PAERO1, PAERO2, PAERO3, PAERO4, PAERO5,
+    CAERO1, CAERO2, CAERO3, CAERO4, CAERO5, CAEROs,
+    PAERO1, PAERO2, PAERO3, PAERO4, PAERO5, PAEROs,
     MONPNT1, MONPNT2, MONPNT3, MONDSP1,
-    SPLINE1, SPLINE2, SPLINE3, SPLINE4, SPLINE5)
+    SPLINE1, SPLINE2, SPLINE3, SPLINE4, SPLINE5, SPLINEs)
 from .cards.aero.static_loads import AESTAT, AEROS, CSSCHD, TRIM, TRIM2, DIVERG
 from .cards.aero.dynamic_loads import AERO, FLFACT, FLUTTER, GUST, MKAERO1, MKAERO2
 from .cards.optimization import (
@@ -197,8 +197,8 @@ from .bdf_interface.verify_validate import verify_bdf, validate_bdf
 from .bdf_interface.stats import get_bdf_stats
 
 from .errors import (CrossReferenceError, DuplicateIDsError,
-                                  CardParseSyntaxError, UnsupportedCard, DisabledCardError,
-                                  SuperelementFlagError, ReplicationError)
+                     CardParseSyntaxError, UnsupportedCard, DisabledCardError,
+                     SuperelementFlagError, ReplicationError)
 from .bdf_interface.pybdf import (
     BDFInputPy, _clean_comment, _clean_comment_bulk, _check_for_spaces,
     add_superelements_from_deck_lines,
@@ -208,8 +208,49 @@ from .bdf_interface.pybdf import (
 if TYPE_CHECKING:  # pragma: no cover
     from cpylog import SimpleLogger
 
-CORD = Union[CORD1R, CORD1C, CORD1S,
-             CORD2R, CORD2C, CORD2S]
+SpringElement = CELAS1 | CELAS2 | CELAS3 | CELAS4
+DamperElement = CDAMP1 | CDAMP2 | CDAMP3 | CDAMP4 | CDAMP5
+ShellElement = CTRIA3 | CTRIA6 | CTRIAR | \
+               CQUAD4 | CQUAD8 | CQUADR | CQUAD
+SolidElement = CTETRA4 | CTETRA10 | CPENTA6 | CPENTA15 | \
+               CHEXA8 | CHEXA20 | CPYRAM5 | CPYRAM13
+
+Element = (
+    SpringElement | DamperElement |
+    CVISC | CBUSH | CBUSH1D | CBUSH2D | CFAST | #CWELD
+    CGAP | GENEL | CCONEAX |
+    CROD | CTUBE | CONROD |
+    CBAR | CBEAM | CBEAM3 | CBEND | CSHEAR |
+    ShellElement |
+    CTRIAX | CTRIAX6 |
+    CQUADX | CQUADX4 | CQUADX8 |
+    CRAC2D | CRAC3D |
+    CPLSTN3 | CPLSTN4 | CPLSTN6 | CPLSTN8 |
+    CPLSTS3 | #CPLSTS4 | CPLSTS6 | CPLSTS8 |
+    SolidElement |
+    CTRAX3 | CTRAX6 |
+    # thermal
+    CHBDYE | CHBDYG | CHBDYP |
+    # Nastran 95
+    CIHEX1 | CIHEX2 |
+    CHEXA1 | CHEXA2)
+Property = (
+    PELAS | PELAST | PDAMP | PDAMPT | PDAMP5 | PMASS |
+    PROD | PTUBE | PVISC |
+    PBUSH | PBUSH1D | PBUSH2D | PGAP |
+    PRAC2D | PRAC3D | PCONEAX |
+    PBAR | PBARL | PBEAM | PBRSECT |
+    PBEAML | PBCOMP | PBMSECT |
+    PBEND | PBEAM3 |
+    PSHEAR | PPLANE |
+    PSHELL | PCOMP | PCOMPG |
+    PSOLID | PLSOLID | PIHEX | PCOMPS | PCOMPLS |
+    PTRSHL #| PWELD
+)
+Material = (
+        MAT1 | MAT2 | MAT3 | MAT8 | MAT9 | MAT10 | MAT11 |
+        MAT3D | EQUIV | MATG)
+ThermalMaterial = MAT4 | MAT5
 
 REMOVED_CARDS = {
     'ADAPT',
@@ -521,7 +562,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
     #: required for sphinx bug
     #: http://stackoverflow.com/questions/11208997/autoclass-and-instance-attributes
     #__slots__ = ['_is_dynamic_syntax']
-    def __init__(self, debug: Union[str, bool, None]=True,
+    def __init__(self, debug: str | bool | None=True,
                  log: Optional[SimpleLogger]=None,
                  mode: str='msc') -> None:
         """
@@ -549,8 +590,8 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         self.use_new_deck_parser = False
 
         # file management parameters
-        self.active_filenames = []  # type: list[str]
-        self.active_filename = None  # type: Optional[str]
+        self.active_filenames: list[str] = []
+        self.active_filename: Optional[str] = None
         self.include_dir = ''
         self.dumplines = False
 
@@ -575,6 +616,10 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
 
         # flag that allows for OpenMDAO-style optimization syntax to be used
         self._is_dynamic_syntax = False
+
+        # True:  relax strictness on card parser
+        # False: use strict parser (default)
+        self.is_lax_parser = False
 
         # lines that were rejected b/c they were for a card that isn't supported
         self.reject_lines: list[list[str]] = []
@@ -646,7 +691,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             'RBAR', 'RBAR1', 'RBE1', 'RBE2', 'RBE3', 'RROD', 'RSPLINE', 'RSSCON',
 
             ## plotels
-            'PLOTEL',
+            'PLOTEL', 'PLOTEL3', 'PLOTEL4',
 
             ## properties
             'PMASS',
@@ -1152,7 +1197,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         if cards is None:
             return
         elif isinstance(cards, str):
-            disable_set = set([cards])
+            disable_set = {cards}
         else:
             disable_set = set(cards)
         self.cards_to_read = self.cards_to_read.difference(disable_set)
@@ -1190,10 +1235,6 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
                 return func(self, *args, **kwargs)
             return wrapper
         return decorator
-
-    @deprecated('set_cards', 'enable_cards', '1.4')
-    def set_cards(self, cards: Sequence[str]) -> None:
-        self.enable_cards(cards)
 
     def set_error_storage(self, nparse_errors: int=100, stop_on_parsing_error: bool=True,
                           nxref_errors: int=100, stop_on_xref_error: bool=True) -> None:
@@ -1274,7 +1315,9 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
                          consider_superelements=self.is_superelements,
                          log=self.log, debug=self.debug)
         main_lines = obj.get_main_lines(self.bdf_filename)
-        all_lines, ilines = obj.lines_to_deck_lines(main_lines, make_ilines=make_ilines)
+        all_lines, ilines = obj.lines_to_deck_lines(main_lines)
+        if not make_ilines:
+            ilines = None
         self._set_pybdf_attributes(obj, save_file_structure=False)
         return all_lines, ilines
 
@@ -1416,7 +1459,6 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
 
     def _parse_all_cards(self, bulk_data_lines: list[str], bulk_data_ilines: Any) -> None:
         """creates and loads all the cards the bulk data section"""
-        strict = True
         cards_list = []
         cards_dict = {}
         if self._is_cards_dict:
@@ -1438,7 +1480,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
                 #card_name = card[0]
                 #if card_name == 'CBAR':
                     #print(card)
-        self._parse_cards(cards_list, cards_dict, card_count, strict=strict)
+        self._parse_cards(cards_list, cards_dict, card_count)
 
         if self.values_to_skip:
             for key, values in self.values_to_skip.items():
@@ -1622,7 +1664,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         if bulk_data_ilines is None:
             bulk_data_ilines = np.zeros((len(bulk_data_lines), 2), dtype='int32')
 
-        cards_list = []  # type: list[Any]
+        cards_list: list[Any] = []
         cards_dict: dict[str, list[Any]] = defaultdict(list)
         dict_cards = ['BAROR', 'BEAMOR']
         #cards = defaultdict(list)
@@ -1869,7 +1911,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             self.sol_method = None
 
     def update_card(self, card_name: str, icard: int, ifield: int,
-                    value: Union[int, float, str]) -> None:
+                    value: int | float | str) -> None:
         """
         Updates a Nastran card based on standard Nastran optimization names
 
@@ -1930,7 +1972,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         obj.update_field(ifield, value)
         return obj
 
-    def set_dynamic_syntax(self, dict_of_vars: dict[str, Union[int, float, str]]) -> None:
+    def set_dynamic_syntax(self, dict_of_vars: dict[str, int | float | str]) -> None:
         """
         Uses the OpenMDAO syntax of %varName in an embedded BDF to
         update the values for an optimization study.
@@ -2382,7 +2424,6 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             'MAT10' : (MAT10, add_methods._add_structural_material_object),
             'MAT11' : (MAT11, add_methods._add_structural_material_object),
             'MAT3D' : (MAT3D, add_methods._add_structural_material_object),
-            'MATEV' : (MATEV, add_methods._add_structural_material_object),
             'EQUIV' : (EQUIV, add_methods._add_structural_material_object),
             'MATG' : (MATG, add_methods._add_structural_material_object),
 
@@ -2683,6 +2724,9 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             'DELAY' : (DELAY, add_methods._add_delay_object),
 
             'CYJOIN' : (CYJOIN, add_methods._add_cyjoin_object),
+
+            'PLOTEL3': (PLOTEL3, add_methods._add_plotel_object),
+            'PLOTEL4': (PLOTEL4, add_methods._add_plotel_object),
         }
 
         self._card_parser_prepare = {
@@ -2991,7 +3035,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
                 self._dmig_temp[name].append((card_obj, comment))
         return dmig
 
-    def _prepare_dmix(self, class_obj, add_method, card_obj, comment='') -> Union[DMI, DMIJ, DMIJI, DMIK]:
+    def _prepare_dmix(self, class_obj, add_method, card_obj, comment='') -> DMI | DMIJ | DMIJI | DMIK:
         """adds a DMI, DMIJ, DMIJI, or DMIK"""
         field2 = integer(card_obj, 2, 'flag')
         if field2 == 0:
@@ -3564,7 +3608,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         is_acoustic = nacoustic > 0
         return is_acoustic
 
-    def get_bdf_stats(self, return_type: str='string') -> Union[str, list[str]]:
+    def get_bdf_stats(self, return_type: str='string') -> str | list[str]:
         """
         Print statistics for the BDF
 
@@ -3692,13 +3736,13 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             if cd in [0, -1]:
                 continue
             nids = np.array(nids)
-            icd_transform[cd] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cd] = np.where(np.isin(nids_all, nids))[0]
 
         for cp, nids in sorted(nids_cp_transform.items()):
             if cp in [-1]:
                 continue
             nids = np.array(nids)
-            icp_transform[cp] = np.where(in1d(nids_all, nids))[0]
+            icp_transform[cp] = np.where(np.isin(nids_all, nids))[0]
         return icd_transform, icp_transform, xyz_cp, nid_cp_cd
 
     def get_xyz_in_coord_array(self, cid: int=0,
@@ -4048,7 +4092,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         nids_all = np.array(sorted(self.point_ids))
         for cid in sorted(nids_transform.keys()):
             nids = np.array(nids_transform[cid])
-            icd_transform[cid] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cid] = np.where(np.isin(nids_all, nids))[0]
         return nids_all, nids_transform, icd_transform
 
     def increase_card_count(self, card_name: str, count_num: int=1) -> None:
@@ -4258,8 +4302,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
 
     def _parse_cards(self, cards_list: list[list[str]],
                      cards_dict: dict[str, list[str]],
-                     card_count: dict[str, int],
-                     strict: bool=True) -> None:
+                     card_count: dict[str, int]) -> None:
         """creates card objects and adds the parsed cards to the deck"""
         # we don't want replication markers in the card_count
         card_names_to_remove = (card_name for card_name in list(card_count.keys())
@@ -4273,13 +4316,14 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
 
         if cards_list:
             # this is the block that actually runs
-            self._parse_cards_list(cards_list, strict=strict)
+            self._parse_cards_list(cards_list)
 
     def _parse_cards_dict(self, cards_dict: dict[str, list[str]]) -> None:
         """parses the cards that are in dictionary format"""
         if self.save_file_structure:
             raise NotImplementedError('save_file_structure=True is not supported\n%s' % (
                 list(cards_dict.keys())))
+        add_card = self.add_card_lax if self.is_lax_parser else self.add_card
 
         for card_name, cards in sorted(cards_dict.items()):
             try:
@@ -4296,13 +4340,12 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
                     self.reject_lines.append([_format_comment(comment)] + card_lines)
             else:
                 for comment, card_lines, (ifile, unused_iline) in cards:
-                    self.add_card(card_lines, card_name, comment=comment, ifile=ifile,
-                                  is_list=False, has_none=False)
+                    add_card(card_lines, card_name, comment=comment, ifile=ifile,
+                             is_list=False, has_none=False)
 
-    def _parse_cards_list(self, cards_list: list[str], strict: bool=True):
+    def _parse_cards_list(self, cards_list: list[str]):
         """parses the cards that are in list format"""
-        add_card = self.add_card if strict else self.add_card_lax
-        del strict
+        add_card = self.add_card_lax if self.is_lax_parser else self.add_card
 
         save_file_structure = self.save_file_structure
         if save_file_structure:
@@ -4388,7 +4431,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
                 #return False
         #return True
 
-    def _parse_primary_file_header(self, bdf_filename: Union[str, StringIO]) -> None:
+    def _parse_primary_file_header(self, bdf_filename: str | StringIO) -> None:
         """
         Extract encoding, nastran_format, and punch from the primary BDF.
 
@@ -4407,6 +4450,10 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             $ pyNastran: nelements=100
             $ pyNastran: skip_cards=PBEAM,CBEAM
             $ pyNastran: units=in,lb,s
+            $ pyNastran: skip properties=1,2,3
+            $ pyNastran: skip elements=4,5,6
+            $ pyNastran: skip materials=7,8,9
+            $ pyNastran: skip thermal_materials=10,11
 
         ..warning :: pyNastran lines must be at the top of the file
 
@@ -4443,7 +4490,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         self._check_pynastran_header(lines, check_header=True)
         map_update(self, self.nastran_format)
 
-    def _update_for_nastran(self):
+    def _update_for_nastran(self) -> None:
         """updates for msc/nx/optistruct"""
         # TODO: undo the changes for zona
         card_parser = self._card_parser
@@ -4451,28 +4498,29 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         card_parser['PARAM'] = (PARAM, self._add_methods._add_param_object)
         self.add_param = self._add_param_nastran
 
-    def _update_for_optistruct(self):
+    def _update_for_optistruct(self) -> None:
         """updates for mystran"""
         self._update_for_nastran() # copies this...
         card_parser = self._card_parser
         CARD_MAP['PBUSH_OPTISTRUCT'] = PBUSH_OPTISTRUCT
         card_parser['PBUSH'] = (PBUSH_OPTISTRUCT, self._add_methods._add_property_object)
 
-    def _update_for_mystran(self):
+    def _update_for_mystran(self) -> None:
         """updates for mystran"""
         card_parser = self._card_parser
         CARD_MAP['PARAM'] = PARAM_MYSTRAN
         card_parser['PARAM'] = (PARAM_MYSTRAN, self._add_methods._add_param_object)
         self.add_param = self._add_param_mystran
 
-    def _update_for_nasa95(self):
+    def _update_for_nasa95(self) -> None:
         """updates for nasa95"""
         CARD_MAP['PARAM'] = PARAM_NASA95
         card_parser = self._card_parser
         card_parser['PARAM'] = (PARAM_NASA95, self._add_methods._add_param_object)
         self.add_param = self._add_param_nasa95
 
-    def _check_pynastran_header(self, lines: list[str], check_header: bool=True) -> None:
+    def _check_pynastran_header(self, lines: list[str],
+                                check_header: bool=True) -> None:
         """updates the $pyNastran: key=value variables"""
         if not check_header:
             return
@@ -4486,7 +4534,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
 
             # key/value are lowercase
             if key == 'version':
-                assert value.lower() in ['msc', 'nx', 'optistruct', 'zona', 'nasa95', 'mystran'], f'version={value!r} is not supported'
+                assert value.lower() in {'msc', 'nx', 'optistruct', 'zona', 'nasa95', 'mystran'}, f'version={value!r} is not supported'
                 self.nastran_format = value
             elif key == 'encoding':
                 self._encoding = value
@@ -4518,7 +4566,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             #elif key == 'skip_properties'
             elif key == 'units':
                 self.units = [value.strip() for value in value.upper().split(',')]
-            elif key in ['code-block', 'code_block']:
+            elif key in {'code-block', 'code_block'}:
                 value = line.split('=', 1)[1]
                 if not hasattr(self, 'code_block'):
                     self.code_block = ''
@@ -4535,7 +4583,8 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
     # HDF5
     def _read_bdf_cards(self, bdf_filename: Optional[str]=None,
                         punch: bool=False,
-                        read_includes: bool=True, encoding: Optional[str]=None) -> dict[str, list[Any]]:
+                        read_includes: bool=True,
+                        encoding: Optional[str]=None) -> dict[str, list[Any]]:
         """
         Read method for the bdf files
 
@@ -4603,7 +4652,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         self.case_control_deck.rsolmap_to_str = self.rsolmap_to_str
         return cards_out
 
-    def create_subcases(self, subcase_ids: Union[int, list[int], None]=None) -> dict[int, Subcase]:
+    def create_subcases(self, subcase_ids: Optional[int | list[int]]=None) -> dict[int, Subcase]:
         """creates a series of subcases"""
         if subcase_ids is None:
             subcase_ids = []
@@ -4620,7 +4669,8 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             subcases[subcase_id] = subcase
         return subcases
 
-    def _parse_cards_hdf5(self, cards: dict[str, Any], unused_card_count) -> dict[str, list[Any]]:
+    def _parse_cards_hdf5(self, cards: dict[str, Any],
+                          unused_card_count) -> dict[str, list[Any]]:
         """creates card objects and adds the parsed cards to the deck"""
         self.echo = False
         cards_out = {}
@@ -4640,7 +4690,9 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         return cards_out
 
     def _add_card_hdf5(self, card_lines: list[str], card_name: str,
-                       comment='', is_list: bool=True, has_none: bool=True) -> Any:
+                       comment: str='',
+                       is_list: bool=True,
+                       has_none: bool=True) -> Any:
         """
         Creates a BaseCard object that will be used to simplify HDF5 adding.
 
@@ -4785,7 +4837,8 @@ class BDF(BDF_):
         #'dmigs', 'dmijs', 'dmiks', 'dmijis', 'dtis', 'dmis',
     ]
 
-    def __init__(self, debug: Optional[bool]=True, log: Any=None, mode: str='msc') -> None:
+    def __init__(self, debug: Optional[bool]=True, log: Any=None,
+                 mode: str='msc') -> None:
         """
         Initializes the BDF object
 
@@ -4806,15 +4859,15 @@ class BDF(BDF_):
         """
         BDF_.__init__(self, debug=debug, log=log, mode=mode)
         #: stores SPOINT, GRID cards
-        self.nodes = {}  # type: dict[int, Any]
+        self.nodes: dict[int, Any] = {}
 
         # loads
         #: stores LOAD, FORCE, FORCE1, FORCE2, MOMENT, MOMENT1, MOMENT2,
         #: PLOAD, PLOAD2, PLOAD4, SLOAD
         #: GMLOAD, SPCD, DEFORM,
         #: QVOL
-        self.loads = {}  # type: dict[int, list[Any]]
-        self.load_combinations = {}  # type: dict[int, list[Any]]
+        self.loads: dict[int, list[Any]] = {}
+        self.load_combinations: dict[int, list[Any]] = {}
 
     def __deepcopy__(self, memo: dict[str, Any]):
         """performs a deepcopy"""
@@ -4846,7 +4899,7 @@ class BDF(BDF_):
         #        word='')
         return result
 
-    def _add_disabled_cards(self):
+    def _add_disabled_cards(self) -> None:
         self._remove_disabled_cards = False
         self.cards_to_read.update(REMOVED_CARDS)  # add
 
@@ -4861,7 +4914,8 @@ def _echo_card(card, card_obj):
         else:
             print(print_card_16(card_obj).rstrip())
 
-def read_bdf(bdf_filename: Optional[str]=None, validate: bool=True, xref: bool=True, punch: bool=False,
+def read_bdf(bdf_filename: Optional[str]=None, validate: bool=True,
+             xref: bool=True, punch: bool=False,
              save_file_structure: bool=False,
              skip_cards: Optional[list[str]]=None,
              read_cards: Optional[list[str]]=None,
@@ -4999,7 +5053,7 @@ def read_bdf(bdf_filename: Optional[str]=None, validate: bool=True, xref: bool=T
         #model.get_bdf_stats()
     return model
 
-def _prep_comment(comment):
+def _prep_comment(comment: str) -> str:
     return comment.rstrip()
     #print('comment = %r' % comment)
     #comment = '  this\n  is\n  a comment\n'
@@ -5029,11 +5083,11 @@ def _check_replicated_cards(replicated_cards):
 def _set_nodes(model: BDF,
                spoints, epoints,
                nnodes: int, nspoints: int, nepoints: int, ngridb: int,
-               idtype, fdtype):
+               idtype: str, fdtype: str):
     """helper method for ``get_displacement_index_xyz_cp_cd``"""
     i = 0
-    nids_cd_transform = defaultdict(list)  # type: dict[int, np.ndarray]
-    nids_cp_transform = defaultdict(list)  # type: dict[int, np.ndarray]
+    nids_cd_transform: dict[int, np.ndarray] = defaultdict(list)
+    nids_cp_transform: dict[int, np.ndarray] = defaultdict(list)
     nxyz = nnodes + nspoints + nepoints + ngridb
     xyz_cp = np.zeros((nxyz, 3), dtype=fdtype)
     nid_cp_cd = np.zeros((nxyz, 3), dtype=idtype)
@@ -5069,13 +5123,13 @@ def _set_nodes(model: BDF,
             i += 1
     return nid_cp_cd, xyz_cp, nids_cd_transform, nids_cp_transform
 
-def _bool(value):
+def _bool(value) -> bool:
     """casts a lower string to a booean"""
     return True if value == 'true' else False
 
 
-def _get_coords_to_update(coords: dict[int, Union[CORD1R, CORD1C, CORD1S,
-                                                  CORD2R, CORD2C, CORD2S]],
+def _get_coords_to_update(coords: dict[int, CORD1R | CORD1C | CORD1S |
+                                            CORD2R | CORD2C | CORD2S],
                           cps_to_check: list[int],
                           cps_checked: list[int],
                           nids_checked: list[int]) -> tuple[int, list[int], list[int], list[int]]:
@@ -5131,7 +5185,7 @@ def _get_coords_to_update(coords: dict[int, Union[CORD1R, CORD1C, CORD1S,
         #raise RuntimeError(msg)
     return ncoords, cord1s_to_update_list, cord2s_to_update_list, nids_checked
 
-def map_version(fem: BDF, version: str):
+def map_version(fem: BDF, version: str) -> None:
     version_map = {
         'msc': fem.set_as_msc,
         'nx': fem.set_as_nx,
@@ -5148,7 +5202,7 @@ def map_version(fem: BDF, version: str):
         raise RuntimeError(msg)
     func()
 
-def map_update(fem: BDF, version: str):
+def map_update(fem: BDF, version: str) -> None:
     #if self.nastran_format == 'zona':
         #self.zona.update_for_zona()
     #elif self.nastran_format == 'mystran':
@@ -5190,7 +5244,7 @@ def map_update(fem: BDF, version: str):
     #raise NotImplementedError(msg)
 
 
-def main():  # pragma: no cover
+def main() -> None:  # pragma: no cover
     """shows off how unicode works because it's overly complicated"""
     import pyNastran
     pkg_path = pyNastran.__path__[0]

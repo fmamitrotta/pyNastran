@@ -3,7 +3,7 @@ defines readers for BDF objects in the OP2 EDOM/EDOMS table
 """
 from __future__ import annotations
 from struct import Struct
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import numpy as np
 
 from pyNastran.op2.tables.geom.geom_common import GeomCommon
@@ -675,7 +675,7 @@ class EDOM(GeomCommon):
                                       #card_name, op2.add_op2_element)
         return n
 
-    def read_doptprm_msc_74(self, data: bytes, n: int) -> int:
+    def read_doptprm_msc_74(self, data: bytes, n: int) -> tuple[int, list[DOPTPRM]]:
         """MSC"""
         raise NotImplementedError()
 
@@ -995,8 +995,8 @@ class EDOM(GeomCommon):
         op2: OP2Geom = self.op2
         if self.size == 4:
             struct1 = Struct(op2._endian + b'8s f')
-        else:
-            aaa
+        else:  # pragma: no cover
+            raise RuntimeError(self.size)
 
         ints = np.frombuffer(data[n:], op2.idtype8).copy()
         #floats = np.frombuffer(data[n:], self.fdtype8).copy()
@@ -1015,6 +1015,8 @@ class EDOM(GeomCommon):
                 key_bytes, value = struct1.unpack(edata)
                 if size == 4:
                     key = key_bytes.decode('latin1').rstrip()
+                else:  # pragma: no cover
+                    raise RuntimeError(key_bytes)
                 default_values[key] = value
                 n += ntotal
                 assert n <= len(data), n
@@ -1276,6 +1278,8 @@ class EDOM(GeomCommon):
         floats = np.frombuffer(data[n:], op2.fdtype8).copy()
         istart, iend = get_minus1_start_end(ints)
         size = self.size
+        prop_type = ''
+        prop_name = ''
         for (i0, i1) in zip(istart, iend):
             #self.show_data(data[n+i0*size:n+i1*size], types='ifs')
             assert ints[i1] == -1, ints[i1]
@@ -1291,8 +1295,9 @@ class EDOM(GeomCommon):
             if size == 4:
                 prop_type = prop_type_bytes.decode('latin1').rstrip()
                 prop_name = prop_name_bytes.decode('latin1').rstrip()
-            else:
-                asdf
+            else:  # pragma: no cover
+                raise RuntimeError(size)
+
             if prop_name_bytes == b'        ':
                 assert fid != 0
                 pname_fid = fid
@@ -1366,11 +1371,13 @@ class EDOM(GeomCommon):
             #data[n0+iflag*size:n0+(iflag+1)*size])
             mp_name_bytes = data[n0+(i0+8)*size:n0+(i0+10)*size]
 
+            # mat_type = ''
+            # mp_name = ''
             if size == 4:
                 mat_type = mat_type_bytes.decode('latin1').rstrip()
                 mp_name = mp_name_bytes.decode('latin1').rstrip()
-            else:
-                asdf
+            else:  # pragma: no cover
+                raise NotImplementedError(size)
             if mp_name_bytes == b'        ':
                 assert fid != 0, fid
             else:
@@ -1402,6 +1409,8 @@ class EDOM(GeomCommon):
                                          labels=labels,
                                          mp_min=mp_min, mp_max=mp_max,
                                          validate=True)
+            else:  # pragma: no cover
+                raise NotImplementedError(card_name)
             dvxrel.validate()
             #print(dvxrel)
             #print('--------------------')
@@ -1676,7 +1685,7 @@ class EDOM(GeomCommon):
 
         size = self.size
 
-        def _pick_attbi_attbf(attbi: int, attbf: float) -> Union[float, str]:
+        def _pick_attbi_attbf(attbi: int, attbf: float) -> float | str:
             """
             9 ATTB  RS Frequency value; -1 (integer) spawn for all
             frequencies in set; -1.10000E+08 for SUM;
@@ -1775,8 +1784,8 @@ class EDOM(GeomCommon):
                 #   10 MONE  I Entry is -1 (MONE=MINUS ONE)
                 property_type = None
                 region, atta, attb = ints[i0+6:i0+9]
-                assert atta == 0, msg
-                assert attb == -9999, msg
+                assert atta == 0, atta
+                assert attb == -9999, attb
                 atti = None
                 attb = None
             elif response_type == 'LAMA': # flag == 3:
@@ -2317,7 +2326,7 @@ class EDOM(GeomCommon):
             try:
                 constraint_type = constraint_map[constraint_int]
             except KeyError:
-                raise NotImplementedError(f'disp_stress_force={disp_stress_force} out={out}')
+                raise NotImplementedError(f'disp_stress_force={constraint_int} out={out}')
             assert min_max in [0, 1], min_max
             out = list(out)
 
@@ -2433,13 +2442,14 @@ def _read_dvxrel2_flag(data: bytes, n0: int,
     dvids = []
     labels = []
     flags_found = []
+    iend = -1
     while flag != -1:
         flags_found.append(flag)
         #print(f'i0={i0} iflag={iflag} i1={i1}')
         flag2 = ints[iflag]
         assert flag == flag2
         flag_test, = Struct(b'i').unpack(data[n0+iflag*size:n0+(iflag+1)*size])
-        assert flag == flag_test, f'flag={flag} flag_test={flag_test}; n={n}'
+        assert flag == flag_test, f'flag={flag} flag_test={flag_test}'
         if flag == 1000:
             assert ints[iflag] == 1000, ints[iflag]
             #print('  ', ints[iflag:i1])

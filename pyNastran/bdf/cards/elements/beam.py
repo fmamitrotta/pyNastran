@@ -6,7 +6,7 @@ defines:
 
 """
 from __future__ import annotations
-from typing import Union, Any, TYPE_CHECKING
+from typing import  Any, TYPE_CHECKING
 
 import numpy as np
 from numpy.linalg import norm  # type: ignore
@@ -64,7 +64,7 @@ class CBEAM(LineElement):
         17:'sa', 18:'sb',
     }
 
-    def _get_field_helper(self, n: int) -> Union[int, float]:
+    def _get_field_helper(self, n: int) -> int | float:
         if n == 11:
             value = self.wa[0]
         elif n == 12:
@@ -803,7 +803,7 @@ class CBEAM(LineElement):
             the BDF object
 
         """
-        msg = ', which is required by CBEAM eid=%s' % (self.eid)
+        msg = f', which is required by CBEAM eid={self.eid:d}'
         self.nodes_ref = [
             model.Node(self.ga, msg=msg),
             model.Node(self.gb, msg=msg),
@@ -819,7 +819,7 @@ class CBEAM(LineElement):
             assert self.offt == 'GGG', 'NX only support offt=GGG; offt=%r' % self.offt
 
     def safe_cross_reference(self, model: BDF, xref_errors):
-        msg = ', which is required by CBEAM eid=%s' % (self.eid)
+        msg = f', which is required by CBEAM eid={self.eid:d}'
         self.nodes_ref = [
             model.Node(self.ga, msg=msg),
             model.Node(self.gb, msg=msg),
@@ -904,7 +904,7 @@ class CBEAM(LineElement):
 
         """
         if self.g0 is not None:
-            return (self.G0(), None, None)
+            return self.G0(), None, None
         else:
             return list(self.x)
 

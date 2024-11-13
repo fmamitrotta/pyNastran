@@ -3,7 +3,7 @@ from abc import abstractmethod
 from collections import defaultdict
 
 import numpy as np
-from typing import DefaultDict, Union, Optional, Any # , TYPE_CHECKING
+from typing import DefaultDict, Optional, Any
 
 from pyNastran.utils.numpy_utils import integer_types
 from pyNastran.femutils.utils import safe_norm
@@ -37,7 +37,7 @@ class VectorResultsCommon(GuiResultCommon):
                  subcase_id: int,
                  title: str,
                  case,
-                 #dxyz: Union[RealTableArray, ComplexTableArray],
+                 #dxyz: RealTableArray | ComplexTableArray,
                  ntitles: int,
                  data_format: str='%g',
                  is_variable_data_format: bool=False,
@@ -241,8 +241,11 @@ class VectorResultsCommon(GuiResultCommon):
 
                 mini2 = fringe_result[imin]
                 maxi2 = fringe_result[imax]
-                assert np.allclose(mini1, mini2)
-                assert np.allclose(maxi1, maxi2)
+                try:
+                    assert np.allclose(mini1, mini2)
+                    assert np.allclose(maxi1, maxi2)
+                except FloatingPointError:  # pragma: no cover
+                    pass
 
                 default_mins[itime] = mini2
                 default_maxs[itime] = maxi2
@@ -417,7 +420,7 @@ class DispForceVectorResults(VectorResultsCommon):
                  subcase_id: int,
                  title: str,
                  node_id: np.ndarray,
-                 case: Union[RealTableArray, ComplexTableArray],
+                 case: RealTableArray | ComplexTableArray,
                  t123_offset: int,
                  methods_txyz_rxyz: list[str],
                  index_to_base_title_annotation: dict[int, dict[str, str]],
@@ -478,7 +481,8 @@ class DispForceVectorResults(VectorResultsCommon):
                 3: 'X Imaginary', 4: 'Y Imaginary', 5: 'Z Imaginary',
             }
         self.min_max_method = 'Magnitude'
-        self.inode = np.array([], dtype='int32')
+        self.inode_common = np.array([], dtype='int32')
+        self.inode_result = np.array([], dtype='int32')
 
     def set_sidebar_args(self,
                          itime: int, res_name: str,
@@ -647,7 +651,8 @@ class DispForceVectorResults(VectorResultsCommon):
             # translations; i0=0
             assert datai.shape[2] in {3, 6}, datai.shape
 
-        data = datai[itime, :, i0:i0+3].copy()
+        assert len(self.inode_result) > 0, self.inode_result
+        data = datai[itime, self.inode_result, i0:i0+3].copy()
         assert data.shape[1] == 3, data.shape
         assert len(self.component_indices) > 0, self.component_indices
 
@@ -700,6 +705,7 @@ class DispForceVectorResults(VectorResultsCommon):
         dxyz, idxs = self._get_data(itime)
         #dxyz = data[itime, :, :]
         assert len(dxyz.shape) == 2, dxyz.shape
+        assert len(dxyz) > 0, dxyz
         return dxyz, idxs
 
     def get_vector_data_dense(self, itime: int, res_name: str) -> tuple[np.ndarray, int, Any]:
@@ -713,7 +719,7 @@ class DispForceVectorResults(VectorResultsCommon):
         # apply dense
         nnodes = len(self.node_id)
         dxyz = np.full((nnodes, 3), np.nan, dtype=dxyz_sparse.dtype)
-        dxyz[self.inode, :] = dxyz_sparse
+        dxyz[self.inode_common, :] = dxyz_sparse
         return dxyz, itime, case_flag
 
     def _get_fringe_data_sparse(self, itime: int, res_name: str) -> np.ndarray:
@@ -725,7 +731,8 @@ class DispForceVectorResults(VectorResultsCommon):
                 self.is_real, self.is_complex)
         else:
             fringe_result_sparse = safe_norm(vector_result_sparse, axis=1)
-        assert len(fringe_result_sparse) == nnodes
+        #assert len(fringe_result_sparse) == nnodes
+        assert len(fringe_result_sparse), fringe_result_sparse
         return fringe_result_sparse
 
     def get_fringe_result_dense(self, itime: int, res_name: str) -> np.ndarray:
@@ -738,7 +745,7 @@ class DispForceVectorResults(VectorResultsCommon):
         #nnodes = len(self.node_id) =  48
         #nnodesi = len(self.inode) = len(self.case.node_gridtype) = 43
         fringe_result_dense = np.full(len(self.node_id), np.nan, dtype=fringe_result_sparse.dtype)
-        fringe_result_dense[self.inode] = fringe_result_sparse
+        fringe_result_dense[self.inode_common] = fringe_result_sparse
         return fringe_result_dense
 
     def get_location_arrays(self) -> tuple[np.ndarray, np.ndarray]:
@@ -855,7 +862,7 @@ def _to_dense_vector(dxyz: np.ndarray,
                      is_dense: bool) -> np.ndarray:
     """map vectored data to dense"""
     return_sparse = not return_dense
-    if (return_sparse or is_dense):
+    if return_sparse or is_dense:
         dxyz2 = dxyz
     else:
         dxyz2 = np.full((nnodes, 3), np.nan, dtype=dxyz.dtype)

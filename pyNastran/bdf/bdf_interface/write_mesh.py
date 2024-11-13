@@ -8,7 +8,7 @@ from __future__ import annotations
 import sys
 from io import IOBase
 from pathlib import PurePath
-from typing import Union, Optional, Any, cast, TYPE_CHECKING
+from typing import Optional, Any, cast, TYPE_CHECKING
 
 from pyNastran.bdf.field_writer_8 import print_card_8
 from pyNastran.bdf.field_writer_16 import print_card_16
@@ -83,7 +83,7 @@ class WriteMesh(BDFAttributes):
             size = 16
         return is_long_ids, size
 
-    def write_bdf(self, out_filename: Optional[Union[str, StringIO]]=None,
+    def write_bdf(self, out_filename: Optional[str | StringIO]=None,
                   encoding: Optional[str]=None,
                   size: int=8,
                   nodes_size: Optional[int]=None,
@@ -247,8 +247,8 @@ class WriteMesh(BDFAttributes):
             bdf_file.write(f'$pyNastran: version={self.nastran_format}\n')
             bdf_file.write(f'$pyNastran: punch={self.punch}\n')
             bdf_file.write(f'$pyNastran: encoding={encoding}\n')
-            bdf_file.write(f'$pyNastran: nnodes={len(self.nodes):d}\n')
-            bdf_file.write(f'$pyNastran: nelements={len(self.elements):d}\n')
+            #bdf_file.write(f'$pyNastran: nnodes={len(self.nodes):d}\n')
+            #bdf_file.write(f'$pyNastran: nelements={len(self.elements):d}\n')
 
         if not self.punch:
             self._write_executive_control_deck(bdf_file)
@@ -465,8 +465,8 @@ class WriteMesh(BDFAttributes):
         if (write_aero_in_gust and self.aero) or self.gusts:
             bdf_file.write('$GUST\n')
             if write_aero_in_gust:
-                if model.aero is not None:
-                    bdf_file.write(model.aero.write_card(size, is_double))
+                if self.aero is not None:
+                    bdf_file.write(self.aero.write_card(size, is_double))
             for (unused_id, gust) in sorted(self.gusts.items()):
                 bdf_file.write(gust.write_card(size, is_double))
 
@@ -1432,4 +1432,3 @@ def write_optimization_include(model: BDF, pch_include_filename: str, size: int=
         for desvar in desvars:
             pch_file.write(desvar.write_card(size=size))
     return
-

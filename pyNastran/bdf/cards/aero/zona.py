@@ -9,7 +9,7 @@ All cards are BaseCard objects.
 """
 from __future__ import annotations
 from itertools import count
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 import numpy as np
 
 from pyNastran.utils import object_attributes, object_methods
@@ -29,7 +29,7 @@ from pyNastran.bdf.cards.aero.static_loads import TRIM, AEROS
 from pyNastran.bdf.cards.aero.dynamic_loads import AERO # MKAERO1,
 from pyNastran.bdf.cards.aero.utils import (
     elements_from_quad, points_elements_from_quad_points, create_ellipse)
-from pyNastran.bdf.cards.coordinate_systems import Coord
+from pyNastran.bdf.cards.coordinate_systems import CoordBase
 if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import BDF
     import matplotlib
@@ -190,7 +190,7 @@ class ZONA:
             'TRIMVAR', 'TRIMLNK', 'FLUTTER']
         self.model.cards_to_read.update(set(cards))
 
-    def _add_panlst_object(self, panlst: Union[PANLST1, PANLST3]) -> None:
+    def _add_panlst_object(self, panlst: PANLST1 |PANLST3) -> None:
         """adds an PANLST1/PANLST2/PANLST3 object"""
         assert panlst.eid not in self.panlsts
         assert panlst.eid > 0
@@ -376,7 +376,7 @@ class ZONA:
         for unused_aesurf_name, aesurfi in sorted(model.aesurf.items()):
             aelist, aesurfi2 = aesurfi.convert_to_nastran(model, aesurf_id, aelist_id)
             aelists[aelist.sid] = aelist
-            aesurf[aesurfi2.aesid] = aesurfi2
+            aesurf[aesurfi2.aesurf_id] = aesurfi2
             aesurf_id += 1
             aelist_id += 1
         return aesurf, aelists
@@ -407,7 +407,7 @@ class ZONA:
         return msg
 
 
-class ACOORD(Coord):  # not done
+class ACOORD(CoordBase):  # not done
     """
     Defines a general coordinate system using three rotational angles as
     functions of coordinate values in the reference coordinate system.
@@ -446,7 +446,7 @@ class ACOORD(Coord):  # not done
             a comment for the card
 
         """
-        Coord.__init__(self)
+        CoordBase.__init__(self)
         if comment:
             self.comment = comment
         self.cid = cid
@@ -1319,7 +1319,7 @@ class PANLST3(Spline):
         group_id = 1
         panel_groups = []
         for ifield in range(2, len(card)):
-            name = string(card, ifield, 'group_%i'%  (group_id))
+            name = string(card, ifield, f'group_{group_id:d}')
             panel_groups.append(name)
         assert len(card) > 2, 'len(PANLST3 card) = %i; no panel_groups were defined\ncard=%s' % (len(card), card)
         return PANLST3(eid, panel_groups, comment=comment)
@@ -2423,9 +2423,9 @@ class CAERO7(BaseCard):
         distance along the flow direction from node 1 to node 2; (typically x, root chord)
     x43 : float
         distance along the flow direction from node 4 to node 3; (typically x, tip chord)
-    cp : int, CORDx
+    cp : int, Coord
         int : coordinate system
-        CORDx : Coordinate object (xref)
+        Coord : Coordinate object (xref)
     nspan : int
         int > 0 : N spanwise boxes distributed evenly
         int = 0 : use lchord
@@ -2473,9 +2473,9 @@ class CAERO7(BaseCard):
             distance along the flow direction from node 1 to node 2; (typically x, root chord)
         x43 : float
             distance along the flow direction from node 4 to node 3; (typically x, tip chord)
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
             int : coordinate system
-            CORDx : Coordinate object (xref)
+            Coord : Coordinate object (xref)
         nspan : int; default=0
             int > 0 : N spanwise boxes distributed evenly
             int = 0 : use lchord

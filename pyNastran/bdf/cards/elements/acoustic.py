@@ -11,7 +11,7 @@ All superelements are defined in this file.  This includes:
 
 """
 from __future__ import annotations
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from pyNastran.bdf.cards.base_card import BaseCard, Element, Property
 from pyNastran.bdf.field_writer_8 import print_card_8
@@ -375,7 +375,7 @@ class PAABSF(Property):
     @classmethod
     def _init_from_empty(cls):
         pid = 1
-        return PAABSF(pid, tzreid=None, tzimid=None,
+        return PAABSF(pid, tzreid=0, tzimid=0,
                       s=1.0, a=1.0, b=0.0, k=0.0, rhoc=1.0,
                       comment='')
 
@@ -584,14 +584,20 @@ class ACPLNW(BaseCard):
 
     @classmethod
     def _init_from_empty(cls):
-        infor = 1
-        fset = 1.0
-        sset = 1.
-        return ACMODL(infor, fset, sset)
+        sid = 1
+        form = 'cat'
+        scale = 1.0
+        real = 1.0
+        imag = 1.
+        cid1 = 1
+        cid2 = 0
+        xyz = [0., 0., 0.]
+        nxyz = [0., 0., 0.]
+        return ACPLNW(sid, form, scale, real, imag, cid1, xyz, cid2, nxyz)
 
     def __init__(self, sid: int, form: str, scale: float,
-                 real: Union[int, float],
-                 imag: Union[int, float],
+                 real: int | float,
+                 imag: int | float,
                  cid1: int, xyz: list[float],
                  cid2: int, nxyz: list[float], comment: str=''):
         """
@@ -682,10 +688,11 @@ class AMLREG(BaseCard):
 
     @classmethod
     def _init_from_empty(cls):
-        infor = 1
-        fset = 1.0
-        sset = 1.
-        return AMLREG(infor, fset, sset)
+        rid = 1
+        sid = 1
+        name = 'amlreg'
+        infid = [1]
+        return AMLREG(rid, sid, name, infid)
 
     def __init__(self, rid: int, sid: int, name: str,
                  infid: list[int],
@@ -886,9 +893,9 @@ class ACMODL(Element):
 
     @classmethod
     def _init_from_empty(cls):
-        infor = 1
-        fset = 1.0
-        sset = 1.
+        infor = 'ELEMENT'
+        fset = 1
+        sset = 1
         return ACMODL(infor, fset, sset)
 
     def __init__(self, infor: str, fset: int, sset: int,
@@ -1001,6 +1008,8 @@ class ACMODL(Element):
         ----------
         card : BDFCard()
             a BDFCard object
+        nastran_version : str
+            msc/nx
         comment : str; default=''
             a comment for the card
         """
@@ -1093,12 +1102,14 @@ class PMIC(Property):
         self.comment = comment
 
     @classmethod
-    def add_card(self, card: BDFCard, comment: str=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         pid = integer(card, 1, 'property_id')
         return PMIC(pid, comment=comment)
 
     def cross_reference(self, model: BDF) -> None:
         pass
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        return self.cross_reference(model)
     def uncross_reference(self) -> None:
         return
 
@@ -1179,7 +1190,7 @@ class MATPOR(BaseCard):
         self.L2 = L2
 
     @classmethod
-    def add_craggs(self, mid: int,
+    def add_craggs(cls, mid: int,
                    rho: float, c: float, resistivity: float,
                    porosity: float, tortuosity: float,
                    comment: str=''):
@@ -1196,7 +1207,7 @@ class MATPOR(BaseCard):
                       density=0.0, comment=comment)
 
     @classmethod
-    def add_delmiki(self, mid: int,
+    def add_delmiki(cls, mid: int,
                     rho: float, c: float, resistivity: float,
                     porosity: float, frame: str,
                     density: float=0.0, comment: str=''):
@@ -1305,4 +1316,3 @@ class MATPOR(BaseCard):
     def write_card(self, size=8, is_double=False) -> str:
         fields = self.raw_fields()
         return print_card_8(fields)
-

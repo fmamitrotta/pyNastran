@@ -1,4 +1,4 @@
-from numpy import arange, array, dot, zeros, unique, searchsorted, transpose
+from numpy import arange, array, zeros, unique, searchsorted
 from numpy.linalg import norm  # type: ignore
 
 from pyNastran.dev.bdf_vectorized.cards.elements.spring.spring_element import SpringElement
@@ -119,7 +119,7 @@ class CELAS3(SpringElement):
             (n2, 1),
         ]
         dofs = n_ijv
-        return (k, dofs, n_ijv)
+        return k, dofs, n_ijv
 
     def displacement_stress(self, model, positions, q, dofs,
                             ni, o1, e1, f1):

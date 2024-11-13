@@ -19,14 +19,10 @@ from pathlib import PurePath
 import traceback
 from collections import defaultdict
 from typing import (
-    Sequence, Optional, Union, Any, TYPE_CHECKING)
+    Sequence, Optional, Any, TYPE_CHECKING)
 from pickle import load, dump, dumps  # type: ignore
 
 import numpy as np  # type: ignore
-in1d = np.in1d
-#in1d = np.in1d if hasattr(np, 'in1d') else getattr(np, 'in')
-#if not hasattr(np, 'in'):  # pragma: no cover
-    #np.in = np.in1d
 from cpylog import get_logger2, __version__ as CPYLOG_VERSION
 
 from pyNastran.bdf.bdf import (LOAD, _bool, _check_replicated_cards,
@@ -142,7 +138,7 @@ from pyNastran.bdf.cards.constraints import (SPC, SPCADD, SPCAX, SPC1, SPCOFF, S
 from pyNastran.bdf.cards.coordinate_systems import (CORD1R, CORD1C, CORD1S,
                                                     CORD2R, CORD2C, CORD2S, #CORD3G,
                                                     transform_coords_vectorized,
-                                                    CORDx)
+                                                    Coord)
 #from pyNastran.bdf.cards.msgmesh import CGEN, GMCORD, GMLOAD
 from pyNastran.bdf.cards.deqatn import DEQATN
 from pyNastran.bdf.cards.dynamic import (
@@ -531,7 +527,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
     #: required for sphinx bug
     #: http://stackoverflow.com/questions/11208997/autoclass-and-instance-attributes
     #__slots__ = ['_is_dynamic_syntax']
-    def __init__(self, debug: Union[str, bool, None], bool=True,
+    def __init__(self, debug: str | bool | None,
                  log: Optional[SimpleLogger]=None,
                  mode: str='msc') -> None:
         """
@@ -1135,7 +1131,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             disable_set = set(cards)
         self.cards_to_read = self.cards_to_read.difference(disable_set)
 
-    def enable_cards(self, cards: Union[list[str], set[str]]) -> None:
+    def enable_cards(self, cards: list[str] | set[str]) -> None:
         """
         Method for setting the cards that will be processed
 
@@ -1237,6 +1233,8 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
                          log=self.log, debug=self.debug)
         main_lines = obj.get_main_lines(self.bdf_filename)
         all_lines, ilines = obj.lines_to_deck_lines(main_lines, make_ilines=make_ilines)
+        if not make_ilines:
+            ilines = None
         self._set_pybdf_attributes(obj, save_file_structure=False)
         return all_lines, ilines
 
@@ -1795,7 +1793,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             self.sol_method = None
 
     def update_card(self, card_name: str, icard: int, ifield: int,
-                    value: Union[int, float, str]) -> None:
+                    value: int | float | str) -> None:
         """
         Updates a Nastran card based on standard Nastran optimization names
 
@@ -1856,7 +1854,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         obj.update_field(ifield, value)
         return obj
 
-    def set_dynamic_syntax(self, dict_of_vars: dict[str, Union[int, float, str]]) -> None:
+    def set_dynamic_syntax(self, dict_of_vars: dict[str, int | float | str]) -> None:
         """
         Uses the OpenMDAO syntax of %varName in an embedded BDF to
         update the values for an optimization study.
@@ -2286,7 +2284,6 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             'MAT10' : (MAT10, add_methods._add_structural_material_object),
             'MAT11' : (MAT11, add_methods._add_structural_material_object),
             'MAT3D' : (MAT3D, add_methods._add_structural_material_object),
-            'MATEV' : (MATEV, add_methods._add_structural_material_object),
             'EQUIV' : (EQUIV, add_methods._add_structural_material_object),
             'MATG' : (MATG, add_methods._add_structural_material_object),
 
@@ -2572,9 +2569,6 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             #'CYJOIN' : (CYJOIN, self._add_cyjoin_object),
         }
         self._card_parser_prepare = {
-            'PLOTEL': self._prepare_plotel,
-            'CBAR' : self._prepare_cbar,
-            'CBEAM' : self._prepare_cbeam,
             'CTETRA' : self._prepare_ctetra,
             'CPENTA' : self._prepare_cpenta,
             'CHEXA' : self._prepare_chexa,
@@ -2587,7 +2581,6 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
 
             'PMASS' : self._prepare_pmass,
             'CMASS4' : self._prepare_cmass4,
-            'CDAMP4' : self._prepare_cdamp4,
             'DEFORM' : self._prepare_deform,  # enforced displacement
 
             'DTI' : self._prepare_dti,
@@ -2608,7 +2601,6 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             'PDAMP' : self._prepare_pdamp,
 
             'TEMPAX' : self._prepare_tempax,
-            'TEMPD' : self._prepare_tempd,
             'TEMPBC' : self._prepare_tempbc,
             'CONVM' : self._prepare_convm,
             'CONV' : self._prepare_conv,
@@ -3444,7 +3436,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             #raise RuntimeError(card_obj)
             self.reject_cards.append(card_obj)
 
-    def get_bdf_stats(self, return_type: str='string') -> Union[str, list[str]]:
+    def get_bdf_stats(self, return_type: str='string') -> str | list[str]:
         """
         Print statistics for the BDF
 
@@ -3571,13 +3563,13 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
             if cd in [0, -1]:
                 continue
             nids = np.array(nids)
-            icd_transform[cd] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cd] = np.where(np.isin(nids_all, nids))[0]
 
         for cp, nids in sorted(nids_cp_transform.items()):
             if cp in [-1]:
                 continue
             nids = np.array(nids)
-            icp_transform[cp] = np.where(in1d(nids_all, nids))[0]
+            icp_transform[cp] = np.where(np.isin(nids_all, nids))[0]
         return icd_transform, icp_transform, xyz_cp, nid_cp_cd
 
     def get_xyz_in_coord_array(self, cid: int=0,
@@ -3912,7 +3904,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         nids_all = np.array(sorted(self.point_ids))
         for cid in sorted(nids_transform.keys()):
             nids = np.array(nids_transform[cid])
-            icd_transform[cid] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cid] = np.where(np.isin(nids_all, nids))[0]
         return nids_all, nids_transform, icd_transform
 
     def increase_card_count(self, card_name: str, count_num: int=1) -> None:
@@ -4231,7 +4223,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
                 #return False
         #return True
 
-    def _parse_primary_file_header(self, bdf_filename: Union[str, StringIO]) -> None:
+    def _parse_primary_file_header(self, bdf_filename: str | StringIO) -> None:
         """
         Extract encoding, nastran_format, and punch from the primary BDF.
 
@@ -4314,7 +4306,8 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
         card_parser['PARAM'] = (PARAM_NASA95, self._add_methods._add_param_object)
         self.add_param = self._add_param_nasa95
 
-    def _check_pynastran_header(self, lines: list[str], check_header: bool=True) -> None:
+    def _check_pynastran_header(self, lines: list[str],
+                                check_header: bool=True) -> None:
         """updates the $pyNastran: key=value variables"""
         if not check_header:
             return
@@ -4445,7 +4438,7 @@ class BDF_(BDFMethods, GetCard, AddCards, WriteMeshs, UnXrefMesh):
 
         return cards_out
 
-    def create_subcases(self, subcase_ids: Union[int, list[int], None]=None) -> dict[int, Subcase]:
+    def create_subcases(self, subcase_ids: int | list[int] | None=None) -> dict[int, Subcase]:
         """creates a series of subcases"""
         if subcase_ids is None:
             subcase_ids = []

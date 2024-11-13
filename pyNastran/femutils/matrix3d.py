@@ -6,18 +6,20 @@ This includes:
  - ijk = axes_stack(i, j, k, nmag)
  - C = dot_n33_n33(A, B)
  - Tt = transpose3d(T)
- - C = triple(A, T, tranpose=False)
+ - C = triple(A, T, transpose=False)
 
 """
 # pylint: disable=C0103
 from itertools import count
 import numpy as np
 
+
 def norm2d(v):
     """takes N norms of a (N,3) set of vectors"""
     mag = np.linalg.norm(v, axis=1)
     assert v.shape[0] == len(mag)
     return mag
+
 
 def normalize_vector2d(v):
     """normalzes a series of (N,3) vectors"""
@@ -26,6 +28,7 @@ def normalize_vector2d(v):
     i = v / mag[:, np.newaxis]
     return i, nmag
 
+
 def axes_stack(i, j, k, nmag):
     """stack coordinate axes in 3d"""
     i.shape = (nmag, 1, 3)
@@ -33,6 +36,7 @@ def axes_stack(i, j, k, nmag):
     k.shape = (nmag, 1, 3)
     ijk = np.hstack([i, j, k])
     return ijk
+
 
 def dot_33_n33(A, B, debug=True):
     """
@@ -69,6 +73,7 @@ def dot_33_n33(A, B, debug=True):
         assert np.all(np.allclose(C, D))
     return D
 
+
 def dot_n33_33(A, B, debug=True):
     """
     Multiplies a (3x3) matrix by a Nx3x3 matrix
@@ -90,7 +95,7 @@ def dot_n33_33(A, B, debug=True):
     assert B.shape == (3, 3), B.shape
     #C = np.matmul(B, A.T) # 3x3x4
     #C = B.dot(A)  # 3x4x3
-    C = np.tensordot(A, B, axes=(1))
+    C = np.tensordot(A, B, axes=1)
 
     #print('C (nx3x3 @ 33).shape = ', C.shape)
     if debug:
@@ -107,7 +112,8 @@ def dot_n33_33(A, B, debug=True):
         assert np.all(np.allclose(C, D))
     return C
 
-def dot_n33_n33(A, B, debug=True):
+
+def dot_n33_n33(A: np.ndarray, B: np.ndarray, debug: bool=True) -> np.ndarray:
     """
     Multiplies two matrices together
 
@@ -139,7 +145,8 @@ def dot_n33_n33(A, B, debug=True):
         #print('D:\n%s'% D)
     return D
 
-def dot_n33_n3(A, B, debug=True):
+
+def dot_n33_n3(A: np.ndarray, B: np.ndarray, debug: bool=True) -> np.ndarray:
     """
     Multiplies two N x 3 x 3 matrices together
 
@@ -165,7 +172,8 @@ def dot_n33_n3(A, B, debug=True):
         D[i, :] = Ai @ Bi
     return D
 
-def transpose3d(T):
+
+def transpose3d(T: np.ndarray) -> np.ndarray:
     """
     Returns the transpose in 3d
 
@@ -181,18 +189,18 @@ def transpose3d(T):
     """
     return np.transpose(T, axes=(0, 2, 1))
 
-def triple_n33_n33(A, T, tranpose=False, debug=True):
+def triple_n33_n33(A, T, transpose: bool=False, debug: bool=True) -> np.ndarray:
     """
     Calculates the matrix triple product  for a series of::
 
-        triple[n, :, :] = T.T @ A @ T  # tranpose=False
-        triple[n, :, :] = T @ A @ T.T  # transpose=True
+        triple[n, :, :] = T.T @ A @ T  # transpose=False
+        triple[n, :, :] = T @ A @ T.T  # transspose=True
 
     Parameters
     ----------
     A, T : (n, 3, 3)
         the set of matrices to multiply
-    tranpose : bool; default=False
+    transpose : bool; default=False
         transposes T
 
     Returns
@@ -202,14 +210,14 @@ def triple_n33_n33(A, T, tranpose=False, debug=True):
 
     """
     assert A.shape == T.shape, 'A.shape=%s T.shape=%s' % (str(A.shape), str(T.shape))
-    if tranpose:
+    if transpose:
         C = np.matmul(transpose3d(T), np.matmul(A, T))
     else:
         C = np.matmul(T, np.matmul(A, transpose3d(T)))
 
     if debug:
         D = np.full(A.shape, np.nan)
-        if tranpose:
+        if transpose:
             for i, Ai, Ti in zip(count(), A, T):
                 Dia = Ti.T @ Ai @ Ti
                 D[i, :, :] = Dia
@@ -217,21 +225,21 @@ def triple_n33_n33(A, T, tranpose=False, debug=True):
             for i, Ai, Ti in zip(count(), A, T):
                 Dib = Ti @ Ai @ Ti.T
                 D[i, :, :] = Dib
-        assert np.all(np.allclose(C, D)), 'tranpose=%s' % tranpose
+        assert np.all(np.allclose(C, D)), f'transpose={transpose}'
     return C
 
-def triple_n33_33(A, T, tranpose: bool=False, debug: bool=True):
+def triple_n33_33(A, T, transpose: bool=False, debug: bool=True) -> np.ndarray:
     """
     Calculates the matrix triple product  for a series of::
 
-        triple[n, :, :] = T.T @ A @ T  # tranpose=False
+        triple[n, :, :] = T.T @ A @ T  # transpose=False
         triple[n, :, :] = T @ A @ T.T  # transpose=True
 
     Parameters
     ----------
     A, T : (n, 3, 3)
         the set of matrices to multiply
-    tranpose : bool; default=False
+    transpose : bool; default=False
         transposes T
 
     Returns
@@ -241,14 +249,14 @@ def triple_n33_33(A, T, tranpose: bool=False, debug: bool=True):
 
     """
     assert list(A.shape)[1:] == list(T.shape), 'A.shape=%s T.shape=%s' % (str(A.shape), str(T.shape))
-    if tranpose:
+    if transpose:
         C = np.matmul(T.T, np.matmul(A, T))
     else:
         C = np.matmul(T, np.matmul(A, T.T))
 
     if debug:
         D = np.full(A.shape, np.nan)
-        if tranpose:
+        if transpose:
             for i, Ai in zip(count(), A):
                 Dia = T.T @ Ai @ T
                 D[i, :, :] = Dia
@@ -256,5 +264,5 @@ def triple_n33_33(A, T, tranpose: bool=False, debug: bool=True):
             for i, Ai, Ti in zip(count(), A, T):
                 Dib = T @ Ai @ T.T
                 D[i, :, :] = Dib
-        assert np.all(np.allclose(C, D)), 'tranpose=%s' % tranpose
+        assert np.all(np.allclose(C, D)), 'transpose=%s' % transpose
     return C

@@ -9,7 +9,7 @@ This file defines functions related to the result updating that are VTK specific
 from __future__ import annotations
 import sys
 from collections import namedtuple
-from typing import Union, Callable, Optional, Any, TYPE_CHECKING
+from typing import Callable, Optional, Any, TYPE_CHECKING
 
 import numpy as np
 from numpy.linalg import norm  # type: ignore
@@ -820,8 +820,8 @@ class GuiQtCommon(GuiAttributes):
 
     def cycle_results_explicit(self, case=None,
                                explicit: bool=True,
-                               min_value: Optional[Union[int, float]]=None,
-                               max_value: Optional[Union[int, float]]=None,
+                               min_value: Optional[int | float]=None,
+                               max_value: Optional[int | float]=None,
                                show_msg: bool=True,
                                update: bool=True) -> int:
         """
@@ -920,8 +920,8 @@ class GuiQtCommon(GuiAttributes):
                   explicit: bool=False,
                   cycle: bool=False,
                   skip_click_check: bool=False,
-                  min_value: Optional[Union[int, float]]=None,
-                  max_value: Optional[Union[int, float]]=None,
+                  min_value: Optional[int | float]=None,
+                  max_value: Optional[int | float]=None,
                   is_legend_shown: Optional[bool]=None,
                   show_msg: bool=True,
                   update: bool=True) -> Optional[int]:
@@ -1859,7 +1859,7 @@ class GuiQtCommon(GuiAttributes):
             the nodes that are brought along with a deflection
 
         """
-        self.alt_grids[name] = vtkUnstructuredGrid()
+        copied_grid = vtkUnstructuredGrid()
         if name_duplicate_from == 'main':
             grid_copy_from = self.grid
             representation = 'toggle'
@@ -1867,7 +1867,8 @@ class GuiQtCommon(GuiAttributes):
             grid_copy_from = self.alt_grids[name_duplicate_from]
             props = self.geometry_properties[name_duplicate_from]
             representation = props.representation
-        self.alt_grids[name].DeepCopy(grid_copy_from)
+        copied_grid.DeepCopy(grid_copy_from)
+        self.alt_grids[name] = copied_grid
 
         #representation : str
             #main - change with main mesh

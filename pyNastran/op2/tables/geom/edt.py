@@ -191,7 +191,7 @@ class EDT:
             eid, eid1, eid2, option_bytes, w1, aero_grid, d1, d2, x1, x2, x3, cid = out
             option = reshape_bytes_block_size(option_bytes, size=self.size)
             x = [x1, x2, x3]
-            spline_blend = op2.add_sblnd1(eid, eid1, eid2, option_bytes, w1, aero_grid, d1, d2, x, cid)
+            spline_blend = op2.add_sblnd1(eid, eid1, eid2, option, w1, aero_grid, d1, d2, x, cid)
             str(spline_blend)
             n += ntotal
         return n
@@ -304,7 +304,14 @@ class EDT:
         return n
 
     def read_mkaero2(self, data: bytes, n: int) -> int:
-        mkaero2x
+        op2 = self.op2
+        mks = np.frombuffer(data[n:], dtype=op2.fdtype8)
+        npairs = len(mks) // 2
+        mks = mks.reshape(npairs, 2)
+        machs = mks[:, 0].tolist()
+        ks = mks[:, 0].tolist()
+        op2.add_mkaero1(machs, ks)
+        return len(data)
 
     def read_csschd(self, data: bytes, n: int) -> int:
         """
@@ -1446,7 +1453,8 @@ class EDT:
             #ctype: good
             #area_op: good
             #sk_neps/olvpang;  Default=60.0
-            inter_bytes, infor_bytes, fset, sset, normal, method_bytes, olvpang, search_unit_bytes, intol, area_op, sk_neps, intord, ctype_bytes = out
+            (inter_bytes, infor_bytes, fset, sset, normal, method_bytes, olvpang,
+             search_unit_bytes, intol, area_op, sk_neps, intord, ctype_bytes) = out
             inter = reshape_bytes_block_size(inter_bytes, self.size)
             infor = reshape_bytes_block_size(infor_bytes, self.size)
             method = reshape_bytes_block_size(method_bytes, self.size)
@@ -1708,7 +1716,7 @@ class EDT:
                 desc = 'RBEin'
             elif desc_int == 6:
                 desc = 'RBEex'
-            else:
+            else:  # pragma: no cover
                 raise NotImplementedError(desc_int)
 
             assert min(elements) > 0, elements
@@ -1937,7 +1945,28 @@ class EDT:
 
     def read_spline3(self, data: bytes, n: int) -> int:
         """reads the SPLINE3 card"""
+        """
+        SPLINE3 (4901, 49, 173)
+
+        Word Name Type Description
+        1 EID          I Element identification number
+        2 CAERO        I Identification number of the macro-element on which
+                         the element to be interpolated lies
+        3 BOXID        I Identification number of the aerodynamic element
+        4 COMP         I The component of motion to be interpolated
+        5 USAGE(2) CHAR4 Spline usage flag to determine whether this spline applies
+                         to the force transformation, displacement transformation, or both:
+                         FORCE, DISP, or BOTH
+        7 G            I Identification number of the independent grid point
+        8 C            I Component number in the displacement coordinate system
+        9 A           RS Coefficient of the constraint relationship
+        Words 7 thru 9 repeat until -1 occurs
+        """
         spline3
+        #structi = Struct(op2._endian + b'4i 8s 2if')
+
+        #for unused_i in range(ncards):
+        #    edata = data[n:n + ntotal]
         #n = self._read_spline2_nx(data, n)
         return n
 
@@ -1961,7 +1990,7 @@ class EDT:
         #n = self._read_spline4_nx(data, n)
         #return n
 
-    def _read_spline4_nx_44(self, spline: SPLINE4, data: bytes, n: int) -> tuple[int, SPLINE4]:
+    def _read_spline4_nx_44(self, spline: SPLINE4, data: bytes, n: int) -> tuple[int, list[SPLINE4]]:
         """
         MSC 2018.2
 
@@ -1976,7 +2005,7 @@ class EDT:
         10 NELEM        I Number of elements for FPS on x-axis
         11 MELEM        I Number of elements for FPS on y-axis
         12 FTYPE        I Radial interpolation function for METHOD=RIS  (not in NX)
-        13 RCORE       RS Radius of radial interpolation function      (not in NX)
+        13 RCORE       RS Radius of radial interpolation function       (not in NX)
 
         """
         op2: OP2Geom = self.op2
@@ -2005,7 +2034,7 @@ class EDT:
         op2.to_nx(' because SPLINE4-NX was found')
         return n, splines
 
-    def _read_spline4_msc_52(self, spline: SPLINE4, data: bytes, n: int) -> tuple[int, SPLINE4]:
+    def _read_spline4_msc_52(self, spline: SPLINE4, data: bytes, n: int) -> tuple[int, list[SPLINE4]]:
         """
         MSC 2018.2
 
@@ -2099,8 +2128,8 @@ class EDT:
         assert ndatai % ntotal == 0, ndatai % ntotal
         if self.size == 4:
             structi = Struct(op2._endian + b'4i 2f i 3f 8s8s fif')
-        else:
-            asdf
+        else:  # pragma: no cover
+            raise RuntimeError(self.size)
             #structi = Struct(op2._endian + b'5q 2d q 2d 16s')
 
         splines = []
@@ -2121,6 +2150,8 @@ class EDT:
             dtor = dtorzy
             if ftype_int == 2:
                 ftype = 'WF2'
+            else:  # pragma: no cover
+                raise RuntimeError(ftype_int)
             spline = SPLINE5(
                 eid, caero, aelist, setg, thx, thy,
                 dz=dz, dtor=dtor, cid=cid,
@@ -2163,8 +2194,8 @@ class EDT:
         assert ndatai % ntotal == 0, ndatai % ntotal
         if self.size == 4:
             structi = Struct(op2._endian + b'4i 2f i 3f 8s8s f')
-        else:
-            asdf
+        else:  # pragma: no cover
+            raise RuntimeError(self.size)
             #structi = Struct(op2._endian + b'5q 2d q 2d 16s')
 
         splines = []
@@ -2341,7 +2372,7 @@ class EDT:
         ntotal0 = 16 * self.size
         ntotal1 = 6 * self.size
         ntotal2 = 2 * self.size
-        monpnts = []
+        #monpnts = []
         while n < len(data):
             edata = data[n:n+ntotal0]
             n += ntotal0
@@ -2391,7 +2422,7 @@ class EDT:
             op2._add_methods._add_monpnt_object(monpnt)
             str(monpnt)
             #print(monpnt)
-            monpnts.append(monpnt)
+            #monpnts.append(monpnt)
         return n
 
     def read_monpnt2_msc(self, data: bytes, n: int) -> int:
@@ -2411,7 +2442,7 @@ class EDT:
         ncards = ndatai // ntotal
         assert ndatai % ntotal == 0
         structi = Struct(op2._endian + b'8s 56s 8s8s8s i')  # msc
-        monpnts = []
+        #monpnts = []
         for unused_i in range(ncards):
             edata = data[n:n + ntotal]
             out = structi.unpack(edata)
@@ -2426,7 +2457,7 @@ class EDT:
             str(monpnt)
             #print(monpnt)
             n += ntotal
-            monpnts.append(monpnt)
+            #monpnts.append(monpnt)
         #op2.to_nx(' because MONPNT3-NX was found')
         return n # , monpnt1s
 
@@ -2497,7 +2528,7 @@ class EDT:
             xyz = [x, y, z]
             try:
                 xflag_str = xflag_map[xflag]
-            except Exception:
+            except Exception:  # pragma: no cover
                 raise RuntimeError((name, label, xflag))
             monpnt = MONPNT3(name, label, axes, grid_set, elem_set, xyz,
                               cp=cp, cd=cd, xflag=xflag_str, comment='')
@@ -2558,6 +2589,7 @@ class EDT:
           ints    = (b'NSGRDS4 ', 20, b'PEXTS4  ', 0,   b'SPBLNDX ', -858993459)
           floats  = (b'NSGRDS4 ', 20, b'PEXTS4  ', 0.0, b'SPBLNDX ', -107374184.0)
           MDLPRM, nsgrds4, 20, pexts4, 50., spblndx, 3.1
+        TODO: no idea why this doesn't make sense...
         """
         op2: OP2Geom = self.op2
         ntotal = 12 * self.factor # 4 * 3
@@ -2571,9 +2603,10 @@ class EDT:
         MDLPRM_FLOAT_KEYS_1 = {
             'DBCTOLE', 'DELELAS', 'DELFAST', 'DELMASS', 'DELSEAM', 'DELWELD',
             'PEXTS4', 'PIVTHRSH', 'SPBLNDX'}
-        float_names = {('-%8s' % name).encode('ascii') for name in MDLPRM_FLOAT_KEYS_1}
+        float_names = {('%-8s' % name).encode('ascii') for name in MDLPRM_FLOAT_KEYS_1}
         for unused_i in range(ncards):
             edata = data[n:n + ntotal]
+            #op2.show_data(edata, types='ifs', endian='<')
             out = structi.unpack(edata)
             name_bytes, value = out
             if name_bytes in float_names:
@@ -2583,7 +2616,7 @@ class EDT:
             if name == 'SHEARP':
                 if value == 2:
                     value = 'HARDER'
-                else:
+                else:  # pragma: no cover
                     raise NotImplementedError((name, value))
             elif name == 'OFFDEF':
                 if value == 8:
@@ -2594,14 +2627,19 @@ class EDT:
                     value = 'NOMASS'
                 elif value in [128, 192]:
                     value = 'LROFF'
-                else:
+                else:  # pragma: no cover
                     raise NotImplementedError((name, value))
+            elif name == 'PEXTS4':
+                assert value == 0.0, (name, value)
 
             data_dict[name] = value
             n += ntotal
 
         if 'SPBLNDX' in data_dict:
-            raise RuntimeError(f'SPBLNDX exists and has the wrong value...{data_dict}')
+            if value == -107374184.0:
+                value = None
+            else:
+                raise RuntimeError(f'SPBLNDX exists and has the wrong value...{data_dict}')
 
         if op2.mdlprm is not None:
             return n
@@ -2731,19 +2769,6 @@ class EDT:
                             #omax=fmax,
                             #validate=True)
         return len(data)
-        #ntotal = 12 # 4 * 8
-        #ndatai = len(data) - n
-        #ncards = ndatai // ntotal
-        #assert ndatai % ntotal == 0
-        #structi = Struct(op2._endian + b'i 8s')
-        #for unused_i in range(ncards):
-            #edata = data[n:n + ntotal]
-            #out = structi.unpack(edata)
-            #aestat_id, label = out
-            #label = label.rstrip().decode('latin1')
-            #op2.add_aestat(aestat_id, label)
-            #n += ntotal
-        #return n
 
     def read_trim(self, data: bytes, n: int) -> int:
         """

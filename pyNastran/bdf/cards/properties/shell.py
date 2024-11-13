@@ -15,7 +15,7 @@ from __future__ import annotations
 import copy
 from itertools import count, zip_longest
 import warnings
-from typing import Union, Optional, Any, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 import numpy as np
 
 from pyNastran.utils.numpy_utils import integer_types, float_types, zip_strict
@@ -80,7 +80,7 @@ class CompositeShellProperty(Property):
         rhos = [mat_ref.get_density() for mat_ref in self.mids_ref]
         return self.get_mass_per_area_structure(rhos)
 
-    def Thickness(self, iply: Union[int, str]='all', tflag: int=1, tscales=None):
+    def Thickness(self, iply: int | str='all', tflag: int=1, tscales=None):
         return self.get_thickness(iply)
 
     def Nsm(self) -> float:
@@ -268,7 +268,7 @@ class CompositeShellProperty(Property):
         mid = self.Mid(iply) #self.mids[iply]
         return mid
 
-    def get_thickness(self, iply: Union[int, str]='all') -> float:
+    def get_thickness(self, iply: int | str='all') -> float:
         """
         Gets the thickness of the :math:`i^{th}` ply.
 
@@ -377,7 +377,7 @@ class CompositeShellProperty(Property):
             mid = self.mids[iply]
         return mid
 
-    def Material(self, iply: int) -> Union[MAT1, MAT8, MAT9]:
+    def Material(self, iply: int) -> MAT1 | MAT8 | MAT9:
         """
         Gets the material of the :math:`i^{th}` ply (not the ID unless
         it is not cross-referenced).
@@ -690,8 +690,8 @@ class PCOMP(CompositeShellProperty):
         1: 'pid', 2: 'z0', 3:'nsm', 4:'sb', 5:'ft', 6:'tref', 7: 'ge', 8:'lam',
     }
     _properties = ['_field_map', 'plies', 'nplies', 'material_ids']
-    def update_by_pname_fid(self, pname_fid: Union[str, int],
-                            value: Union[int, float, str]) -> None:
+    def update_by_pname_fid(self, pname_fid: str | int,
+                            value: int | float | str) -> None:
         if isinstance(pname_fid, int):
             self._update_field_helper(pname_fid, value)
         elif pname_fid == 'Z0':
@@ -1038,7 +1038,7 @@ class PCOMP(CompositeShellProperty):
             souts.append(sout)
             try:
                 ft = map_failure_theory_int(ft_int)
-            except NotImplementedError:
+            except NotImplementedError:  # pragma: no cover
                 raise RuntimeError(f'unsupported ft.  pid={pid} ft={ft_int!r}.'
                                f'\nPCOMP = {data}')
         return PCOMP(pid, mids, thicknesses, thetas, souts,
@@ -1250,7 +1250,7 @@ class PCOMP(CompositeShellProperty):
         return Ex, Ey, Gxy, nu_xy
 
     def get_Qbar_matrix(self,
-                        mid_ref: Union[MAT1, MAT8],
+                        mid_ref: MAT1 | MAT8,
                         theta: float=0.) -> np.ndarray:
         """theta must be in radians"""
         assert isinstance(theta, float_types), theta
@@ -1379,7 +1379,7 @@ class PCOMPG(CompositeShellProperty):
         #8 : 'tst', #'T' : 't',
     }
     _properties = ['_field_map', 'plies', 'nplies', 'material_ids']
-    def update_by_pname_fid(self, pname_fid: Union[str, int], value) -> None:
+    def update_by_pname_fid(self, pname_fid: str | int, value) -> None:
         if isinstance(pname_fid, int):
             self._update_field_helper(pname_fid, value)
         else:
@@ -1755,9 +1755,10 @@ class PLPLANE(Property):
     def _init_from_empty(cls):
         pid = 1
         mid = 1
-        return PLPLANE(pid, mid, cid=0, stress_strain_output_location='GRID', comment='')
+        return PLPLANE(pid, mid, cid=0)
 
-    def __init__(self, pid, mid, cid=0, stress_strain_output_location='GRID', comment=''):
+    def __init__(self, pid: int, mid: int, cid: int=0,
+                 stress_strain_output_location: str='GRID', comment: str=''):
         """
         Creates a PLPLANE card, which defines the properties of a fully
         nonlinear (i.e., large strain and large rotation) hyperelastic
@@ -1789,7 +1790,7 @@ class PLPLANE(Property):
         self.cid_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a PLPLANE card from ``BDF.add_card(...)``
 
@@ -1822,6 +1823,20 @@ class PLPLANE(Property):
         msg = ', which is required by PLPLANE pid=%s' % self.pid
         self.mid_ref = model.HyperelasticMaterial(self.mid, msg=msg)
         self.cid_ref = model.Coord(self.cid, msg=msg)
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by PLPLANE pid=%s' % self.pid
+        self.mid_ref = model.HyperelasticMaterial(self.mid, msg=msg)
+        self.cid_ref = model.safe_coord(self.cid, self.pid, xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -1930,6 +1945,19 @@ class PPLANE(Property):
         """
         msg = ', which is required by PPLANE pid=%s' % self.pid
         self.mid_ref = model.Material(self.mid, msg)
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by PPLANE pid=%s' % self.pid
+        self.mid_ref = model.safe_material(self.mid, self.pid, xref_errors, msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -2103,6 +2131,20 @@ class PSHEAR(Property):
         """
         msg = ', which is required by PSHEAR pid=%s' % self.pid
         self.mid_ref = model.Material(self.mid, msg)
+
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by PSHEAR pid=%s' % self.pid
+        self.mid_ref = model.safe_material(self.mid, self.pid, xref_errors, msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""

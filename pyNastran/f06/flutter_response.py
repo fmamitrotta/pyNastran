@@ -1,6 +1,6 @@
 from __future__ import annotations
 from itertools import count
-from typing import Union, Iterable, Optional, Any, TYPE_CHECKING
+from typing import Iterable, Optional, Any, TYPE_CHECKING
 
 import numpy as np
 
@@ -83,9 +83,20 @@ class FlutterResponse:
                 subcase_id: int=1, cref: float=1.0,
                 is_xysym: bool=False, is_xzsym: bool=False):
         """
-        cref : chord
-           Reference length for reduced frequency
-           used to compute b (reference semi-chord)
+        Parameters
+        ----------
+        method : str
+            expected PKNL
+        subcase_id : int
+            self explanatory
+        cref : chord; default=1.0
+            Reference length for reduced frequency
+            used to compute b (reference semi-chord); found per the AERO card
+        is_xysym : bool; default=False
+            is the model symmetric about the xy plane?
+        is_xzsym : bool; default=False
+            is the model symmetric about the xz plane?
+
         """
         b = cref / 2.0
         configuration = 'AEROSG2D' #  TODO: what is this?
@@ -120,8 +131,11 @@ class FlutterResponse:
         eigr = omegas * damps / 2
         eigc = omegas
 
+        one_over_kfreq = np.full(kfreqs.shape, np.nan, dtype=kfreqs.dtype)
+        ikfreq = np.where(kfreqs != 0)
+        one_over_kfreq[ikfreq] = 1 / kfreqs[ikfreq]
         results[:, :, 0] = kfreqs
-        results[:, :, 1] = 1 / kfreqs
+        results[:, :, 1] = one_over_kfreq
         results[:, :, 7] = eigr  # real part of eigenvalue
         results[:, :, 8] = eigc  # complex part of eigenvalue
         results[:, :, [2, 3, 4, 5, 6]] = fdata[:, :, [0, 1, 2, 3, 4]]
@@ -147,27 +161,32 @@ class FlutterResponse:
         resp = FlutterResponse(
             subcase_id, configuration, xysym, xzsym, mach, density_ratio,
             method, modes, results, f06_units=f06_units, out_units=out_units)
-        if 0: # pragma: no cover
-            resp.plot_root_locus(modes=None, fig=None, axes=None, xlim=None, ylim=None, show=False,
+        if 0:  # pragma: no cover
+            resp.plot_root_locus(modes=None, fig=None, axes=None, xlim=None, ylim=None,
+                                 ncol=ncol, show=False,
                                  clear=False, close=False, legend=True, png_filename=None)
             resp.plot_vg_vf(fig=None, damp_axes=None, freq_axes=None, modes=None, plot_type='eas',
-                            clear=False, close=False, legend=True, xlim=None,
+                             legend=True, xlim=None,
                             ylim_damping=None, ylim_freq=None, vd_limit=None,
-                            damping_limit=None, nopoints=False, noline=False, png_filename=None, show=False)
+                            damping_limit=None, nopoints=False, noline=False,
+                            clear=False, close=False,
+                            ncol=ncol, png_filename=None, show=False)
             resp.plot_kfreq_damping(modes=None, plot_type='tas', fig=None, damp_axes=None, freq_axes=None,
-                                    xlim=None, show=False, clear=False, close=False, legend=True, png_filename=None,
+                                    xlim=None, ncol=ncol, legend=True,
+                                    show=False, clear=False, close=False, png_filename=None,
                                     ylim_damping=None, ylim_kfreq=None, vd_limit=None, damping_limit=None,
                                     nopoints=False, noline=False)
-            resp.plot_kfreq_damping2(modes=None, fig=None, xlim=None, ylim=None, show=True,
-                                     clear=False, close=False, legend=True, png_filename=None)
+            resp.plot_kfreq_damping2(modes=None, fig=None, xlim=None, ylim=None,
+                                     show=True, clear=False, close=False,
+                                     ncol=ncol, legend=True, png_filename=None)
         return resp
 
     def __init__(self, subcase: int, configuration: str,
                  xysym: str, xzsym: str,
                  mach: float, density_ratio: float, method: str,
                  modes: list[int], results: Any,
-                 f06_units: Union[None, str, dict[str, str]]=None,
-                 out_units: Union[None, str, dict[str, str]]=None,
+                 f06_units: None | str | dict[str, str]=None,
+                 out_units: None | str | dict[str, str]=None,
                  make_alt: bool=False) -> None:
         """
         Parameters
@@ -193,7 +212,7 @@ class FlutterResponse:
         All allowable fields are shown below.
 
         f06_units : dict[str] = str (default=None -> no units conversion)
-            The units to to read from the F06.
+            The units to read from the F06.
             PK method:
                 f06_units = {'velocity' : 'in/s'}
                 The velocity units are the units for the FLFACT card in the BDF
@@ -238,7 +257,6 @@ class FlutterResponse:
                 assert key in out_units, 'key=%r not in out_units=%s' % (key, out_units)
             for key in f06_units:
                 assert key in required_keys, 'key=%r not in required_keys=%s' % (key, required_keys)
-
 
         self.subcase = subcase
         self.configuration = configuration
@@ -297,7 +315,7 @@ class FlutterResponse:
         # g - green
         # m - magenta
         # y - yellow
-        #colors = ['b', 'c', 'g', 'k', 'm', 'r'] #, 'y']
+        #colors = ['b', 'c', 'g', 'k', 'm', 'r'] #, 'y'
         # D - wide diamond
         # h - hexagon
         # * - star
@@ -313,11 +331,11 @@ class FlutterResponse:
             #for color in colors:
                 #symbol_list.append('%s-%s' % (shape, color))
         self.noline = False
-        self._symbols = []  # type: list[str]
-        self._colors = []  # type: list[str]
+        self._symbols: list[str] = []
+        self._colors: list[str] = []
         self.generate_symbols()
 
-    def set_pknl_results(self, results):
+    def set_pknl_results(self, results: np.ndarray):
         density_units_in = self.f06_units['density']
 
         # in/s
@@ -367,11 +385,17 @@ class FlutterResponse:
         results2[:, :, self.ivelocity] = vel
         self.results = results2
 
-    def generate_symbols(self, colors=None, symbols=None):
+    def generate_symbols(self, colors=None, symbols=None, imethod: int=0):
         """
         This symbol list is taken from a series of "good" colors (e.g. not yellow)
         and easily distinguishable shapes.  Far more combinations that is necessary
         is defined.
+
+        Parameters
+        ----------
+        imethod: int; default=0
+            imethod=0: loop over symbols and then colors
+            imethod=1: loop over colors and then symbols
 
         """
         # rgbkm - max of 35 combinations
@@ -379,12 +403,26 @@ class FlutterResponse:
         if colors is None:
             #colors = ['r', 'g', 'b', 'k', 'm'] # 5
             colors = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9'] # 10
+
         if symbols is None:
             symbols = ['o', '*', 'x', 'v', '>', '<', '^'] # 7
-        for symbol in symbols:
+        if imethod == 0:
+            for symbol in symbols:
+                for color in colors:
+                    self._symbols.append(symbol)
+                    self._colors.append(color)
+        else:
+            xmin = 0.0
+            xmax = 0.8
+            nmodes = len(self.modes)
+            colormap_name = 'viridis'
+            x = np.linspace(xmin, xmax, num=nmodes)[::-1]
+            colormap = plt.get_cmap(colormap_name)
+            colors = colormap(x)
             for color in colors:
-                self._symbols.append(symbol)
-                self._colors.append(color)
+                for symbol in symbols:
+                    self._symbols.append(symbol)
+                    self._colors.append(color)
 
     def set_plot_options(self, noline: bool=False) -> None:
         self.noline = noline
@@ -405,7 +443,7 @@ class FlutterResponse:
             factor = convert_density(1., unit_f06, unit_out)
         elif name in ['pressure', 'dynamic_pressure']:
             factor = convert_pressure(1., unit_f06, unit_out)
-        else:
+        else:  # pragma: no cover
             raise NotImplementedError(name)
 
         if self.out_units is not None:
@@ -417,6 +455,7 @@ class FlutterResponse:
     def plot_vg(self, fig=None, modes=None,
                 plot_type='tas',
                 xlim=None, ylim_damping=None,
+                ncol: int=0,
                 clear=False, legend=True,
                 png_filename=None, show=True, **kwargs):
         """
@@ -425,11 +464,12 @@ class FlutterResponse:
         See ``plot_root_locus`` for arguments
         """
         ix, xlabel = self._plot_type_to_ix_xlabel(plot_type)
-        ylabel = 'Damping'
+        ylabel = 'Viscous Damping'
         iy = self.idamping
         scatter = True
         self._plot_x_y(ix, iy, xlabel, ylabel, scatter,
                        modes=modes, fig=fig, xlim=xlim, ylim=ylim_damping,
+                       ncol=ncol,
                        show=show, clear=clear, legend=legend,
                        png_filename=png_filename,
                        **kwargs)
@@ -445,7 +485,9 @@ class FlutterResponse:
     def plot_root_locus(self, modes=None,
                         fig=None, axes=None,
                         xlim=None, ylim=None,
-                        show=True, clear=False, close=False, legend=True,
+                        ncol: int=0,
+                        show: bool=True, clear: bool=False,
+                        close: bool=False, legend: bool=True,
                         png_filename=None,
                         **kwargs):
         """
@@ -455,10 +497,10 @@ class FlutterResponse:
         ----------
         modes : list[int] / int ndarray; (default=None -> all)
             the modes; typically 1 to N
-        fig : plt.figure
-            figure object
-        axes : plt.axes
-            axes object
+        fig : plt.Figure
+            the figure object
+        axes : plt.Axes
+            the axes object
         xlim : list[float/None, float/None]
             the x plot limits
         ylim : list[float/None, float/None]
@@ -484,21 +526,27 @@ class FlutterResponse:
             0.0 - fully transparent
 
         """
-        xlabel = 'Eigenvalue (Real)'
-        ylabel = 'Eigenvalue (Imaginary)'
+        xlabel = r'Eigenvalue (Real); $\omega \zeta$'
+        ylabel = r'Eigenvalue (Imaginary); $\omega$'
         ix = self.ieigr
         iy = self.ieigi
         scatter = True
         self._plot_x_y(ix, iy, xlabel, ylabel, scatter,
                        modes=modes, fig=fig, axes=axes, xlim=xlim, ylim=ylim,
+                       ncol=ncol,
                        show=show, clear=clear, close=close, legend=legend,
                        png_filename=png_filename,
                        **kwargs)
 
-    def _plot_x_y(self, ix, iy, xlabel, ylabel, scatter, modes=None,
+    def _plot_x_y(self, ix: int, iy: int,
+                  xlabel: str, ylabel: str,
+                  scatter: bool,
+                  modes=None,
                   fig=None, axes=None,
                   xlim=None, ylim=None,
-                  show=True, clear=False, close=False, legend=True,
+                  ncol: int=0,
+                  show: bool=True, clear: bool=False,
+                  close: bool=False, legend: bool=True,
                   png_filename=None,
                   **kwargs):
         """builds the plot"""
@@ -507,6 +555,8 @@ class FlutterResponse:
             kwargs = {}
 
         modes, imodes = _get_modes_imodes(self.modes, modes)
+        nmodes = len(modes)
+        ncol = _update_ncol(nmodes, ncol)
 
         if fig is None:
             fig = plt.figure()
@@ -524,8 +574,9 @@ class FlutterResponse:
 
             iplot = np.where(freq != np.nan)
             #iplot = np.where(freq > 0.0)
-            axes.plot(xs[iplot], ys[iplot], color=color, marker=symbol, label='Mode %i' % mode,
-                      linestyle=linestyle, markersize=0)
+            line = axes.plot(xs[iplot], ys[iplot],
+                             color=color, marker=symbol, label=f'Mode {mode:d}',
+                             linestyle=linestyle, markersize=0)
 
             if scatter:
                 scatteri = np.linspace(.75, 50., len(xs))
@@ -534,6 +585,7 @@ class FlutterResponse:
                 axes.scatter(xs[iplot], ys[iplot], s=scatteri, color=color, marker=symbol)
 
         axes.grid(True)
+        #axes.set_xlabel(xlabel  + '; _plot_x_y')
         axes.set_xlabel(xlabel)
         axes.set_ylabel(ylabel)
         if xlim:
@@ -546,6 +598,7 @@ class FlutterResponse:
             title += '\n%s' % png_filename
         fig.suptitle(title)
         if legend:
+            # bbox_to_anchor=(1.125, 1.), ncol=ncol,
             axes.legend(**kwargs)
 
         if show:
@@ -561,8 +614,10 @@ class FlutterResponse:
     def _plot_x_y2(self, ix, iy1, iy2, xlabel, ylabel1, ylabel2, scatter, modes=None,
                    fig=None, axes1=None, axes2=None,
                    xlim=None, ylim1=None, ylim2=None,
-                   nopoints=False, noline=False,
-                   show=True, clear=False, close=False, legend=True,
+                   nopoints: bool=False, noline: bool=False,
+                   ncol: int=0,
+                   show: bool=True, clear: bool=False,
+                   close: bool=False, legend: bool=True,
                    png_filename=None,
                    **kwargs):
         """
@@ -579,6 +634,8 @@ class FlutterResponse:
             kwargs = {}
 
         modes, imodes = _get_modes_imodes(self.modes, modes)
+        nmodes = len(modes)
+        ncol = _update_ncol(nmodes, ncol)
 
         if fig is None:
             fig = plt.figure()
@@ -596,7 +653,7 @@ class FlutterResponse:
         symbols, colors = self._get_symbols_colors_from_modes(modes)
 
         linestyle = 'None' if noline else '-'
-        if nopoints: # and noline is False:
+        if nopoints:  # and noline is False:
             scatter = False
 
         markersize = None
@@ -646,13 +703,14 @@ class FlutterResponse:
 
         axes1.grid(True)
         axes1.set_xlabel(xlabel)
+        #axes1.set_xlabel(xlabel + '; _plot_x_y2')
         axes1.set_ylabel(ylabel1)
 
         axes2.grid(True)
         axes2.set_xlabel(xlabel)
         axes2.set_ylabel(ylabel2)
 
-        title = 'Subcase %i' % self.subcase
+        title = f'Subcase {self.subcase:d}'
         if png_filename:
             title += '\n%s' % png_filename
         fig.suptitle(title)
@@ -663,7 +721,9 @@ class FlutterResponse:
                     continue
                 legend_kwargs[key] = value
 
-            axes1.legend(handles=legend_elements, **legend_kwargs)
+            axes1.legend(handles=legend_elements, **legend_kwargs)              # TODO: switch to figure...
+            #axes1.legend(handles=legend_elements, ncol=ncol, **legend_kwargs)  # TODO: switch to figure...
+            #fig.legend(handles=legend_elements, ncol=ncol, **legend_kwargs)
 
         if show:
             plt.show()
@@ -693,8 +753,8 @@ class FlutterResponse:
         assert vd_limit is None or isinstance(vd_limit, float_types), vd_limit
         assert damping_limit is None or isinstance(damping_limit, float_types), damping_limit
 
-        ylabel1 = 'Damping'
-        ylabel2 = 'KFreq [rad]'
+        ylabel1 = r'Viscous Damping; $g = 2 \gamma $'
+        ylabel2 = r'KFreq [rad]; $ \omega c / (2 V)$'
 
         ix, xlabel = self._plot_type_to_ix_xlabel(plot_type)
         iy1 = self.idamping
@@ -713,7 +773,8 @@ class FlutterResponse:
     def plot_kfreq_damping2(self, modes=None,
                             fig=None,
                             xlim=None, ylim=None,
-                            show=True, clear=False, close=False, legend=True,
+                            show: bool=True, clear: bool=False,
+                            close: bool=False, legend: bool=True,
                             png_filename=None,
                             **kwargs):
         """
@@ -722,9 +783,9 @@ class FlutterResponse:
         See ``plot_root_locus`` for arguments
 
         """
-        xlabel = 'KFreq [rad]'
-        ylabel1 = 'Damping'
-        ylabel2 = 'Frequency'
+        xlabel = r'KFreq [rad]; $ \omega c / (2 V)$'
+        ylabel1 = r'Viscous Damping; $g = 2 \gamma $'
+        ylabel2 = 'Frequency [Hz]'
         ix = self.ikfreq
         iy1 = self.idamping
         iy2 = self.ifreq
@@ -738,6 +799,7 @@ class FlutterResponse:
 
     def fix(self):
         """attempts to fix the mode switching"""
+        return
         #print(self.names)
 
         # results[imode, ipoint, iresult]
@@ -748,7 +810,7 @@ class FlutterResponse:
         return
 
         #-----------------------------------------------------------------------
-        # 2. sort the results based on velocity so we're going low to high
+        # 2. sort the results based on velocity, so we're going low to high
         #nmodes, npoints = self.results.shape[:2]
 
         #for imode in range(nmodes):
@@ -765,7 +827,7 @@ class FlutterResponse:
         # 4. find the critical mode
         # 5. ???
 
-    def _get_symbols_colors_from_modes(self, modes) -> tuple[list[str], list[str]]:
+    def _get_symbols_colors_from_modes(self, modes: np.ndarray) -> tuple[list[str], list[str]]:
         """
         We need to make sure we have a symbol and color for each mode,
         even if we repeat them.
@@ -774,34 +836,38 @@ class FlutterResponse:
         and just duplicate colors N times.
         """
         nmodes = len(modes)
-        colors = self._colors
-        ncolors = len(colors)
-        if ncolors < nmodes:
-            kcolor = int(np.ceil(nmodes / ncolors))
-            colors = self._colors * kcolor
-
-        symbols = self._symbols
-        nsymbols = len(symbols)
-        if nsymbols < nmodes:
-            ksymbol = int(np.ceil(nmodes / nsymbols))
-            symbols = self._symbols * ksymbol
+        symbols, colors = _symbols_colors_from_nlines(self._colors, self._symbols, nmodes)
         return symbols, colors
 
     def plot_vg_vf(self, fig=None, damp_axes=None, freq_axes=None, modes=None,
                    plot_type: str='tas',
-                   clear=False, close=False, legend=True,
+                   clear: bool=False, close: bool=False, legend: bool=True,
                    xlim=None, ylim_damping=None, ylim_freq=None,
                    vd_limit=None, damping_limit=None,
-                   nopoints=False, noline=False, png_filename=None, show=None):
+                   nopoints: bool=False, noline: bool=False,
+                   ncol: int=0,
+                   png_filename=None, show: bool=False):
         """
         Make a V-g and V-f plot
 
         Parameters
         ----------
+        fig : plt.Figure; default=None
+            the fig object
+        damp_axes : plt.Axes; default=None
+            the ax object
+        freq_axes : plt.Axes; default=None
+            the ax object
+        fig : plt.Figure; default=None
+            the fig object
         modes : list[int] / int ndarray; (default=None -> all)
             the modes; typically 1 to N
+        plot_type : str; default='tas'
+           tas, eas, alt, kfreq, 1/kfreq, freq, damp, eigr, eigi, q, mach
         legend : bool; default=True
             should the legend be shown
+        show : bool; default=None???
+            show/don't show the plot
 
         """
         assert vd_limit is None or isinstance(vd_limit, float_types), vd_limit
@@ -821,8 +887,7 @@ class FlutterResponse:
             symbols = ['None'] * len(symbols)
         linestyle = 'None' if noline else '-'
 
-
-        #plot_type = ['tas', 'eas', 'alt', 'kfreq', '1/kfreq', 'freq', 'damp', 'eigr', 'eigi', 'q', 'mach', 'alt']
+        #plot_type = ['tas', 'eas', 'alt', 'kfreq', '1/kfreq', 'freq', 'damp', 'eigr', 'eigi', 'q', 'mach']
         ix, xlabel = self._plot_type_to_ix_xlabel(plot_type)
 
         for i, imode, mode in zip(count(), imodes, modes):
@@ -846,7 +911,7 @@ class FlutterResponse:
 
         damp_axes.set_xlabel(xlabel)
         freq_axes.set_xlabel(xlabel)
-        damp_axes.set_ylabel('Damping')
+        damp_axes.set_ylabel(r'Viscous Damping; $g = 2 \gamma $')
         freq_axes.set_ybound(lower=0.)
 
         damp_axes.grid(True)
@@ -873,8 +938,11 @@ class FlutterResponse:
         _add_damping_limit(plot_type, damp_axes, damping_limit)
         _add_vd_limit(plot_type, damp_axes, freq_axes, vd_limit)
 
+        nmodes = len(modes)
+        ncol = _update_ncol(nmodes, ncol)
         if legend:
-            damp_axes.legend(fontsize=10, bbox_to_anchor=(1.125, 1.), loc=2)
+            damp_axes.legend(fontsize=10, bbox_to_anchor=(1.125, 1.), loc=2, ncol=ncol)
+            #damp_axes.legend(fontsize=10, bbox_to_anchor=(1.125, 1.), loc=2, ncol=ncol)
             #fig.subplots_adjust(hspace=0.25)
             #fig.subplots_adjust(hspace=.5)
             #plt.legend()
@@ -890,6 +958,54 @@ class FlutterResponse:
             fig.clear()
         if close:
             plt.close()
+
+    def export_to_csv(self, csv_filename: str, modes: Optional[list[int]]=None) -> None:
+        """
+        Exports a ZONA .veas file
+
+        Parameters
+        ----------
+        veas_filename : str
+            the filename to write
+        modes : list[int] / int ndarray; (default=None -> all)
+            the modes; typically 1 to N
+
+        *.VEAS
+
+        ' DAMPING & FREQUENCY X-Y PLOT FILE OF PLTVG SETID=     714 FOR FLUTTER/ASE ID=     714 NMODE=   12'
+        '  IPOINT,  VEL_1,       VEL_2,       RHO_1,       RHO_2, ...'
+        '  1,       0.0000E+00,  0.0000E+00,  0.0000E+00,  0.0000E+00'
+        '  2,       4.9374E-01, -1.6398E-03, -5.4768E-04, -2.3136E-04'
+        """
+        imodes = self._imodes(modes)
+        assert len(imodes) > 0, imodes
+        headers = ['ipoint']
+        for name in self.names:
+            headersi = [f'{name}_imode={imode}' for imode in imodes]
+            headers += headersi
+        #print(headers)
+
+        nspeed = self.results.shape[1]
+        ipoint = np.arange(1, nspeed+1, 1, dtype='int32')
+
+        csv_filename2 = _apply_subcase_to_filename(csv_filename, self.subcase)
+        with open(csv_filename2, 'w') as csv_file:
+            csv_file.write(f'# subcase = {self.subcase}\n')
+            for key, unit in self.out_units.items():
+                csv_file.write(f'# {key} = {unit}\n')
+            csv_file.write('# ' + ','.join(headers) + '\n')
+
+            results = [ipoint]
+            for iresult, name in enumerate(self.names):
+                for imode in imodes:
+                    result = self.results[imode, :, iresult]
+                    results.append(result)
+            results_array = np.column_stack(results)
+            np.savetxt(csv_file, results_array, delimiter=',')
+
+            #for i in range(nspeeds):
+            #    damping = self.results[:, i, self.idamping]
+            #    asdf
 
     def export_to_veas(self, veas_filename: str, modes: Optional[list[int]]=None) -> None:
         """
@@ -920,25 +1036,34 @@ class FlutterResponse:
             omega_modes.append(wmode)
 
         headers = ['EQUIVALENT V'] + damping_modes + ['EQUIVALENT V'] + omega_modes
-        with open(veas_filename, 'w') as veas_file:
+        veas_filename2 = _apply_subcase_to_filename(veas_filename, self.subcase)
+        with open(veas_filename2, 'w') as veas_file:
             veas_file.write(' DAMPING & FREQUENCY X-Y PLOT FILE OF PLTVG '
-                            'SETID=       1 FOR FLUTTER/ASE ID=       1 NMODE=  %3i\n' % nmodes)
+                            f'SETID=       1 FOR FLUTTER/ASE ID=       1 NMODE= {nmodes:4d}\n')
             veas_file.write(''.join(headers) + '\n')
             nspeeds = self.results.shape[1]
             for i in range(nspeeds):
                 damping = self.results[:, i, self.idamping]
                 eas = self.results[0, i, self.ieas]
-                omega = self.results[:, i, self.ifreq] # in Hz (what WHZ means)
+                omega = self.results[:, i, self.ifreq]  # in Hz (what WHZ means)
 
                 values = [eas] + damping.tolist() + [eas] + omega.tolist()
                 str_values = (' %11.4E' % value for value in values)
                 veas_file.write(''.join(str_values) + '\n')
 
-    def _imodes(self, modes):
+    def _imodes(self, modes: Optional[np.ndarray, slice[int] |
+                                      tuple[int] | list[int]]) -> np.ndarray:
         """gets the imodes from the modes"""
         if modes is None:
             nmodes = self.results.shape[0]
             imodes = range(nmodes)
+        elif isinstance(modes, slice):
+            nmodes = self.results.shape[0]
+            all_modes = np.arange(0, nmodes, dtype='int32')
+            imodes = all_modes[modes]
+        elif isinstance(modes, (list, tuple)):
+            modes = np.array(modes, dtype='int32')
+            imodes = modes - 1
         else:
             imodes = modes - 1
         return imodes
@@ -956,7 +1081,8 @@ class FlutterResponse:
                       modes: Optional[list[int]]=None,
                       page_stamp: Optional[str]=None,
                       page_num: int=1) -> int:
-        with open(f06_filename, 'w') as f06_file:
+        f06_filename2 = _apply_subcase_to_filename(f06_filename, self.subcase)
+        with open(f06_filename2, 'w') as f06_file:
             page_num = self.export_to_f06_file(
                 f06_file, modes=modes,
                 page_stamp=page_stamp, page_num=page_num)
@@ -1068,7 +1194,8 @@ class FlutterResponse:
                 msg += 'mode, V, damp, freq: (damping ratio=%s)\n%s\n' % (damping_ratio, msgi)
 
         ## TODO: doesn't always have data...
-        with open(zona_filename, 'w') as zona_file:
+        zona_filename2 = _apply_subcase_to_filename(zona_filename, self.subcase)
+        with open(zona_filename2, 'w') as zona_file:
             zona_file.write(msg)
         return msg
 
@@ -1078,26 +1205,26 @@ class FlutterResponse:
         if plot_type == 'tas':
             ix = self.ivelocity
             velocity_units = self.out_units['velocity']
-            xlabel = 'Velocity [%s]' % velocity_units
+            xlabel = f'Velocity [{velocity_units}]'
         elif plot_type == 'eas':
             ix = self.ieas
             velocity_units = self.out_units['eas']
-            xlabel = 'Equivalent Airspeed [%s]' % velocity_units
+            xlabel = f'Equivalent Airspeed [{velocity_units}]'
         elif plot_type == 'alt':
             ix = self.ialt
             alt_units = self.out_units['altitude']
-            xlabel = 'Altitude [%s]' % alt_units
+            xlabel = f'Altitude [{alt_units}]'
         elif plot_type == 'kfreq':
             ix = self.ikfreq
-            xlabel = 'Reduced Frequency [rad]'
+            xlabel = r'Reduced Frequency [rad]; $\omega c / (2V) $'
         elif plot_type == 'rho':
             ix = self.idensity
             density_units = self.out_units['density']
-            xlabel = 'Density [%s]' % density_units
+            xlabel = f'Density [{density_units}]'
         elif plot_type == 'q':
             ix = self.iq
             pressure_unit = self.out_units['dynamic_pressure']
-            xlabel = 'Dynamic Pressure [%s]' % pressure_unit
+            xlabel = f'Dynamic Pressure [{pressure_unit}]'
         elif plot_type == 'mach':
             ix = self.imach
             xlabel = 'Mach'
@@ -1106,23 +1233,23 @@ class FlutterResponse:
             xlabel = 'Frequency [Hz]'
         elif plot_type in ['1/kfreq', 'ikfreq']:
             ix = self.ikfreq_inv
-            xlabel = '1/KFreq [1/rad]'
+            xlabel = r'1/KFreq [1/rad]; $2V / (\omega c) $'
         elif plot_type == 'eigr':
             ix = self.ieigr
-            xlabel = 'Eigenvalue (Real)'
-        elif plot_type == 'eigr':
+            xlabel = r'Eigenvalue (Real); $\omega \gamma$'
+        elif plot_type == 'eigi':
             ix = self.ieigi
-            xlabel = 'Eigenvalue (Imaginary)'
+            xlabel = r'Eigenvalue (Imaginary); $\omega$'
         elif plot_type in ['damp', 'damping']:
             ix = self.idamping
-            xlabel = 'Damping'
-        else:
+            xlabel = r'Viscous Damping; $g = 2 \gamma $'
+        else:  # pramga: no cover
             raise NotImplementedError("plot_type=%r not in ['tas', 'eas', 'alt', 'kfreq', "
                                       "'1/kfreq', 'freq', 'damp', 'eigr', 'eigi', 'q', 'mach', 'alt']")
         return ix, xlabel
 
-    def object_attributes(self, mode='public', keys_to_skip=None,
-                          filter_properties=False):
+    def object_attributes(self, mode: str='public', keys_to_skip=None,
+                          filter_properties: bool=False):
         """
         List the names of attributes of a class as strings. Returns public
         attributes as default.
@@ -1149,7 +1276,7 @@ class FlutterResponse:
         return object_attributes(self, mode=mode, keys_to_skip=keys_to_skip,
                                  filter_properties=filter_properties)
 
-    def object_methods(self, mode='public', keys_to_skip=None):
+    def object_methods(self, mode: str='public', keys_to_skip=None):
         """
         List the names of methods of a class as strings. Returns public methods
         as default.
@@ -1189,7 +1316,7 @@ def _get_modes_imodes(all_modes, modes):
         if step is None:
             step = 1
         modes = np.unique(range(start, stop, step))
-    elif len(modes) == 0:
+    elif len(modes) == 0:  # pragma: no cover
         raise RuntimeError('modes = %s' % modes)
     else:
         assert 0 not in modes, modes
@@ -1199,13 +1326,19 @@ def _get_modes_imodes(all_modes, modes):
     if modes.max() > all_modes.max():
         imodes = np.where(modes <= all_modes.max())
         modes = modes[imodes]
-    if len(modes) == 0:
+    if len(modes) == 0:  # pragma: no cover
         raise RuntimeError('No modes to plot...')
     imodes = np.searchsorted(all_modes, modes)
     return modes, imodes
 
-def _asarray(results):
+
+def _asarray(results, allow_fix_kfreq: bool=True):
     """casts the results array"""
+    allow_fix_kfreq = False
+    if not allow_fix_kfreq:
+        results = np.asarray(results, dtype='float64')
+        return results
+
     try:
         results = np.asarray(results, dtype='float64')
     except Exception:
@@ -1227,7 +1360,7 @@ def _asarray(results):
                     else:
                         try:
                             row_entry2 = float(row_entry)
-                        except Exception:
+                        except Exception:  # pragma: no cover
                             raise ValueError(f'i={i} row_entry={row_entry!r}')
                     row2.append(row_entry2)
                 mode_result2.append(row2)
@@ -1249,6 +1382,7 @@ def _asarray(results):
                 results[imode, inan, 0] = 1. / results[imode, inan, 1]
     return results
 
+
 def _add_damping_limit(plot_type: str,
                       damp_axes: Axes,
                       damping_limit: Optional[float],
@@ -1258,9 +1392,10 @@ def _add_damping_limit(plot_type: str,
     #damp_label = f'Damping={damping_limit*100:.1f}'
     #plt.axhline(y=1.0, color="black", linestyle="--")
     damp_axes.axhline(y=0., color='k', linestyle='--', linewidth=linewidth,
-                      label=f'Damping=0%')
+                      label=f'Viscous Damping=0%')
     damp_axes.axhline(y=damping_limit, color='k', linestyle='-', linewidth=linewidth,
-                      label=f'Abs Damping={damping_limit*100:.1f}%')
+                      label=f'Abs Viscous Damping={damping_limit*100:.1f}%')
+
 
 def _add_vd_limit(plot_type: str,
                   damp_axes: Axes, freq_axes: Axes,
@@ -1283,35 +1418,92 @@ def _add_vd_limit(plot_type: str,
     freq_axes.axvline(x=vd_limit_115, color='k', linestyle='-',
                       linewidth=linewidth)
 
-def get_flutter_units(units: Optional[Union[str, dict[str, str]]]) -> Optional[Union[str, dict[str, str]]]:
+
+def get_flutter_units(units: Optional[str | dict[str, str]]) -> Optional[str | dict[str, str]]:
     """gets the units"""
     if units is None:
         units = 'english_in'
-        #units = {'velocity' : 'in/s', 'density' : 'slug/ft^3',
-                 #'altitude' : 'ft', 'dynamic_pressure' : 'psf', 'eas':'ft/s'}
+        #units = {
+            #'velocity' : 'in/s', 'density' : 'slug/ft^3',
+            #'altitude' : 'ft', 'dynamic_pressure' : 'psf', 'eas':'ft/s'}
 
     if isinstance(units, str):
         units = units.lower()
         # https://www.dynasupport.com/howtos/general/consistent-units
         # mm, Mg, s / si_ton
         # mm, Mg, s
-        #units = {'velocity' : 'mm/s', 'density' : 'Mg/mm^3',
-                 #'altitude' : 'm', 'dynamic_pressure' : 'MPa', 'eas':'m/s'}
+        #units = {
+            #'velocity' : 'mm/s', 'density' : 'Mg/mm^3',
+            #'altitude' : 'm', 'dynamic_pressure' : 'MPa', 'eas':'m/s'}
+
+        # units should be consistent
+        # what's going on with altitude having inconsistent units?
         if units == 'si':
-            units = {'velocity' : 'm/s', 'density' : 'kg/m^3',
-                     'altitude' : 'm', 'dynamic_pressure' : 'Pa', 'eas':'m/s'}
+            units = {'velocity': 'm/s', 'density': 'kg/m^3',
+                     'altitude': 'm', 'dynamic_pressure': 'Pa', 'eas': 'm/s'}
+        elif units == 'si_mm':
+            units = {'velocity': 'mm/s', 'density': 'Mg/mm^3',
+                     'altitude': 'm', 'dynamic_pressure': 'MPa', 'eas': 'mm/s'}
+        #elif units == 'si_cmgs':
+            #units = {'velocity': 'cm/s', 'density': 'g/cm^3',
+                     #'altitude': 'm', 'dynamic_pressure': 'Pa', 'eas': 'cm/s'}
         elif units == 'english_in':
-            units = {'velocity' : 'in/s', 'density' : 'slinch/in^3',
-                     'altitude' : 'ft', 'dynamic_pressure' : 'psi', 'eas':'in/s'}
+            units = {'velocity': 'in/s', 'density': 'slinch/in^3',
+                     'altitude': 'ft', 'dynamic_pressure': 'psi', 'eas': 'in/s'}
         elif units == 'english_ft':
-            units = {'velocity' : 'ft/s', 'density' : 'slug/ft^3',
-                     'altitude' : 'ft', 'dynamic_pressure' : 'psf', 'eas':'ft/s'}
+            units = {'velocity': 'ft/s', 'density': 'slug/ft^3',
+                     'altitude': 'ft', 'dynamic_pressure': 'psf', 'eas': 'ft/s'}
         elif units == 'english_kt':
-            units = {'velocity' : 'knots', 'density' : 'slug/ft^3',
-                     'altitude' : 'ft', 'dynamic_pressure' : 'psf', 'eas':'knots'}
-        else:
-            raise NotImplementedError('units=%r must be in [si, english_in, '
-                                      'english_ft, english_kt]' % units)
-    else:
-        assert isinstance(units, dict), 'units=%r' % (units)
+            units = {'velocity': 'knots', 'density': 'slug/ft^3',
+                     'altitude': 'ft', 'dynamic_pressure': 'psf', 'eas': 'knots'}
+        else:  # pragma: no cover
+            raise NotImplementedError(f'units={units!r} must be in [si, si_mm, '
+                                      'english_in, english_ft, english_kt]')
+    else:  # pragma: no cover
+        assert isinstance(units, dict), f'units={units!r}'
     return units
+
+def _apply_subcase_to_filename(filename: str, subcase: int) -> str:
+    """helper for filename management"""
+    filename_out = filename
+    if '%' in filename:
+        filename_out = filename % subcase
+    return filename_out
+
+def _update_ncol(nmodes: int, ncol: int=0) -> int:
+    """Updates ncol to be a valid number"""
+    if ncol > 0:
+        return ncol
+    nmodes_per_column = 40
+    ncol = nmodes // nmodes_per_column
+    if nmodes % nmodes_per_column > 0:
+        ncol += 1
+    ncol = min(ncol, nmodes)
+    return ncol
+
+
+def _symbols_colors_from_nlines(colors: list[str], symbols: list[str],
+                                nlines: int) -> tuple[list[str], list[str]]:
+    """
+    Repeats colors/symbols if there are too many lines
+
+    colors = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6',
+              'C7', 'C8', 'C9', 'C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C0', 'C1', 'C2', 'C3',
+              'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C0',
+              'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7',
+              'C8', 'C9']
+    symbols = ['o', 'o', 'o', 'o', 'o', 'o', 'o', 'o', 'o', 'o', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*',
+               'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'v', 'v', 'v', 'v', 'v', 'v', 'v', 'v', 'v', 'v',
+               '>', '>', '>', '>', '>', '>', '>', '>', '>', '>', '<', '<', '<', '<', '<', '<', '<', '<', '<', '<',
+               '^', '^', '^', '^', '^', '^', '^', '^', '^', '^']
+    """
+    ncolors = len(colors)
+    nsymbols = len(symbols)
+    if ncolors < nlines:
+        kcolor = int(np.ceil(nlines / ncolors))
+        colors = colors * kcolor
+
+    if nsymbols < nlines:
+        ksymbol = int(np.ceil(nlines / nsymbols))
+        symbols = symbols * ksymbol
+    return symbols, colors

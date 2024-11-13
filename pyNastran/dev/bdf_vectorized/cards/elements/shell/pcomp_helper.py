@@ -187,7 +187,7 @@ class CompositeShellProperty(ShellProperty, DeprecatedCompositeShellProperty):
         nplies = len(self.plies)
         if iply >= nplies:
             if iply < self.nplies:
-                iply = iply - nplies
+                iply -= nplies
             else:
                 raise IndexError('invalid value for iply=%r' % iply)
         elif iply < 0:
@@ -712,7 +712,7 @@ class PCOMPi(CompositeShellProperty):
             souts.append(sout)
         try:
             ft = map_failure_theory_int(ft)
-        except NotImplementedError:
+        except NotImplementedError:  # pragma: no cover
             raise RuntimeError('unsupported ft.  pid=%s ft=%r.'
                                '\nPCOMP = %s' % (pid, ft, data))
         return PCOMPi(pid, mids, thicknesses, thetas, souts,

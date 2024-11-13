@@ -48,6 +48,7 @@ from pyNastran.op2.tables.oes_stressStrain.real.oes_composite_plates_strength_ra
 from pyNastran.op2.tables.oes_stressStrain.real.oes_gap import NonlinearGapStressArray
 from pyNastran.op2.tables.oes_stressStrain.real.oes_plates import RealPlateStressArray, RealPlateStrainArray
 from pyNastran.op2.tables.oes_stressStrain.real.oes_plate_strain import RealCPLSTRNPlateStressArray, RealCPLSTRNPlateStrainArray
+from pyNastran.op2.tables.oes_stressStrain.real.oes_plate_strain_nx import RealCPLSTRNPlateStressNXArray, RealCPLSTRNPlateStrainNXArray
 from pyNastran.op2.tables.oes_stressStrain.real.oes_rods import RealRodStressArray, RealRodStrainArray
 from pyNastran.op2.tables.oes_stressStrain.real.oes_shear import RealShearStrainArray, RealShearStressArray
 from pyNastran.op2.tables.oes_stressStrain.real.oes_solids import RealSolidStrainArray, RealSolidStressArray
@@ -75,6 +76,7 @@ from pyNastran.op2.tables.oes_stressStrain.complex.oes_triax import ComplexTriax
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_rods import ComplexRodStressArray, ComplexRodStrainArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_shear import ComplexShearStressArray, ComplexShearStrainArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_solids import ComplexSolidStressArray, ComplexSolidStrainArray
+from pyNastran.op2.tables.oes_stressStrain.complex.oes_solids_vm import ComplexSolidStressVMArray, ComplexSolidStrainVMArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_springs import ComplexSpringStressArray, ComplexSpringStrainArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_bend import ComplexBendStressArray, ComplexBendStrainArray
 
@@ -85,6 +87,7 @@ from pyNastran.op2.tables.oes_stressStrain.random.oes_bend import RandomBendStre
 from pyNastran.op2.tables.oes_stressStrain.random.oes_plates import RandomPlateStressArray, RandomPlateStrainArray
 from pyNastran.op2.tables.oes_stressStrain.random.oes_plates_vm import RandomPlateVMStressArray, RandomPlateVMStrainArray
 from pyNastran.op2.tables.oes_stressStrain.random.oes_solids import RandomSolidStressArray, RandomSolidStrainArray
+from pyNastran.op2.tables.oes_stressStrain.random.oes_solids_vm import RandomSolidVMStressArray, RandomSolidVMStrainArray
 from pyNastran.op2.tables.oes_stressStrain.random.oes_shear import RandomShearStressArray, RandomShearStrainArray
 from pyNastran.op2.tables.oes_stressStrain.random.oes_composite_plates import (
     RandomCompositePlateStressArray, RandomCompositePlateStrainArray,
@@ -95,6 +98,9 @@ from pyNastran.op2.tables.oes_stressStrain.oes_nonlinear_bush import RealNonline
 from pyNastran.op2.tables.oes_stressStrain.oes_hyperelastic import (
     HyperelasticQuadArray)
 from pyNastran.op2.tables.oes_stressStrain.oes_nonlinear import RealNonlinearPlateArray, RealNonlinearSolidArray
+from pyNastran.op2.tables.oes_stressStrain.cplstn import (
+    oes_cplstn3_real_6, oes_cplstn4_real_32, oes_cplstn6_real_26,
+)
 from pyNastran.op2.tables.oes_stressStrain.utils import (
     oes_cbar_complex_19,
     oes_cbar100_real_10,
@@ -354,32 +360,32 @@ class OES(OP2Common2):
 
         op2._setup_op2_subcase('STRESS/STRAIN')
         elements_to_read = [
-            1, 3, 10, # CROD, CTUBE, CTUBE
-            11, 12, 13, # CELAS1, CELAS2, CELAS3,
-            2, 4, 34, 33, 74, # CBEAM, CSHEAR, CBAR, CQUAD4, CTRIA3,
-            75, 64, 70, 82, 144, # CTRIA6, CQUAD8, CTRIAR, CQUADR, CQUAD4
-            69, # CBEND
-            67, 68, 95, 102, #  #CHEXA, CPENTA, QUAD4-comp, CBUSH
-            39, #CTETRA
-            86, # GAPNL
-            88, # TRIA3-nonlinear
-            89, # ROD-nonlinear
-            90, # QUAD4-nonlinear
-            91, # PENTANL
-            93, # HEXANL
-            97, # CTRIA3-C
-            96, # QUAD8-nonlinear
-            98, # TRIA6-nonlinear
-            100, # CBAR-100
-            228, # CQUADR
-            232, # CQUADR-composite
-            243, # CQUADX4
-            189, # VUQUAD
-            190, # VUTRIA
-            191, # VUBEAM
-            256, # CPYRAM
-            227, # CTRIAR
-            275, # CPLSTS3
+            1, 3, 10,  # CROD, CTUBE, CTUBE
+            11, 12, 13,  # CELAS1, CELAS2, CELAS3,
+            2, 4, 34, 33, 74,  # CBEAM, CSHEAR, CBAR, CQUAD4, CTRIA3,
+            75, 64, 70, 82, 144,  # CTRIA6, CQUAD8, CTRIAR, CQUADR, CQUAD4
+            69,  # CBEND
+            67, 68, 95, 102,  # #CHEXA, CPENTA, QUAD4-comp, CBUSH
+            39,  #CTETRA
+            86,  # GAPNL
+            88,  # TRIA3-nonlinear
+            89,  # ROD-nonlinear
+            90,  # QUAD4-nonlinear
+            91,  # PENTANL
+            93,  # HEXANL
+            97,  # CTRIA3-C
+            96,  # QUAD8-nonlinear
+            98,  # TRIA6-nonlinear
+            100,  # CBAR-100
+            228,  # CQUADR
+            232,  # CQUADR-composite
+            243,  # CQUADX4
+            189,  # VUQUAD
+            190,  # VUTRIA
+            191,  # VUBEAM
+            256,  # CPYRAM
+            227,  # CTRIAR
+            275,  # CPLSTS3
         ]
         if op2.element_type in elements_to_read:
             n = self._read_oes_4_sort(data, ndata)
@@ -568,7 +574,8 @@ class OES(OP2Common2):
         #if op2.is_debug_file:
             #op2.binary_debug.write('  element_name = %r\n' % op2.element_name)
         #print "element_name =", op2.element_name
-        assert op2.is_strain is True, op2.code_information()
+        if not op2.is_optistruct:
+            assert op2.is_strain is True, op2.code_information()
         op2.data_code['is_stress_flag'] = False
         op2.data_code['is_strain_flag'] = True
 
@@ -592,19 +599,19 @@ class OES(OP2Common2):
         op2.data_code['is_strain_flag'] = True
 
         op2._setup_op2_subcase('STRESS/STRAIN')
-        if op2.element_type in [1, 3, 10, # CROD, CTUBE, CTUBE
-                                 11, 12, 13, # CELAS1, CELAS2, CELAS3,
-                                 2, 4, 34, 33, 74, # CBEAM, CSHEAR, CBAR, CQUAD4, CTRIA3,
-                                 75, 64, 70, 82, 144, # CTRIA6, CQUAD8, CTRIAR, CQUADR, CQUAD4
-                                 69, # CBEND
-                                 67, 68, 95, 102,#CHEXA, CPENTA, QUAD4-comp, CBUSH
-                                 96, # QUAD8-nonlinear
-                                 98, # TRIA6-nonlinear
-                                 39, #CTETRA
-                                 228, #CQUADR
-                                 232, #CQUADR-composite
-                                 233, #CTRIAR-composite
-                                 97]:  # CTRIA3-C
+        if op2.element_type in [1, 3, 10,  # CROD, CTUBE, CTUBE
+                                11, 12, 13,  # CELAS1, CELAS2, CELAS3,
+                                2, 4, 34, 33, 74,  # CBEAM, CSHEAR, CBAR, CQUAD4, CTRIA3,
+                                75, 64, 70, 82, 144,  # CTRIA6, CQUAD8, CTRIAR, CQUADR, CQUAD4
+                                69,  # CBEND
+                                67, 68, 95, 102,  #CHEXA, CPENTA, QUAD4-comp, CBUSH
+                                96,  # QUAD8-nonlinear
+                                98,  # TRIA6-nonlinear
+                                39,  #CTETRA
+                                228,  #CQUADR
+                                232,  #CQUADR-composite
+                                233,  #CTRIAR-composite
+                                97]:  # CTRIA3-C
             n = self._read_ostr_4_sort(data, ndata)
         else:
             msg = op2.code_information()
@@ -742,152 +749,152 @@ class OES(OP2Common2):
             (4, 3, 5, b'OESVM1') : ('cshear_stress', ComplexShearStressArray),
             #(4, 3, 3) : ('cshear_stress', RandomShearStressArray),
 
-            (11, 1, 2, b'OES1X1') : ('celas1_stress', RealSpringStressArray), # real
-            (11, 2, 3, b'OES1X') : ('celas1_stress', ComplexSpringStressArray), # real/imag
-            (11, 3, 3, b'OES1X') : ('celas1_stress', ComplexSpringStressArray), # mag/phase
-            (11, 2, 3, b'OESVM1') : ('celas1_stress', ComplexSpringStressArray), # mag/phase
-            (11, 3, 3, b'OESVM1') : ('celas1_stress', ComplexSpringStressArray), # mag/phase
+            (11, 1, 2, b'OES1X1'): ('celas1_stress', RealSpringStressArray), # real
+            (11, 2, 3, b'OES1X'): ('celas1_stress', ComplexSpringStressArray), # real/imag
+            (11, 3, 3, b'OES1X'): ('celas1_stress', ComplexSpringStressArray), # mag/phase
+            (11, 2, 3, b'OESVM1'): ('celas1_stress', ComplexSpringStressArray), # mag/phase
+            (11, 3, 3, b'OESVM1'): ('celas1_stress', ComplexSpringStressArray), # mag/phase
 
-            (12, 1, 2, b'OES1X1') : ('celas2_stress', RealSpringStressArray),
-            (12, 1, 2, b'OES1X') : ('celas2_stress', RealSpringStressArray),
-            (12, 1, 2, b'OES1') : ('celas2_stress', RealSpringStressArray),
-            (12, 2, 3, b'OES1X') : ('celas2_stress', ComplexSpringStressArray),
-            (12, 3, 3, b'OES1X') : ('celas2_stress', ComplexSpringStressArray),
-            (12, 2, 3, b'OESVM1') : ('celas2_stress', ComplexSpringStressArray),
-            (12, 3, 3, b'OESVM1') : ('celas2_stress', ComplexSpringStressArray),
+            (12, 1, 2, b'OES1X1'): ('celas2_stress', RealSpringStressArray),
+            (12, 1, 2, b'OES1X'): ('celas2_stress', RealSpringStressArray),
+            (12, 1, 2, b'OES1'): ('celas2_stress', RealSpringStressArray),
+            (12, 2, 3, b'OES1X'): ('celas2_stress', ComplexSpringStressArray),
+            (12, 3, 3, b'OES1X'): ('celas2_stress', ComplexSpringStressArray),
+            (12, 2, 3, b'OESVM1'): ('celas2_stress', ComplexSpringStressArray),
+            (12, 3, 3, b'OESVM1'): ('celas2_stress', ComplexSpringStressArray),
 
-            (13, 1, 2, b'OES1X1') : ('celas3_stress', RealSpringStressArray),
+            (13, 1, 2, b'OES1X1'): ('celas3_stress', RealSpringStressArray),
             #(13, 2, 3) : ('celas3_stress', ComplexSpringStressArray),
             #(13, 3, 3) : ('celas3_stress', ComplexSpringStressArray),
-            (13, 2, 3, b'OES1X') : ('celas3_stress', ComplexSpringStressArray),
-            (13, 2, 3, b'OESVM1') : ('celas3_stress', ComplexSpringStressArray),
-            (13, 3, 3, b'OESVM1') : ('celas3_stress', ComplexSpringStressArray),
+            (13, 2, 3, b'OES1X'): ('celas3_stress', ComplexSpringStressArray),
+            (13, 2, 3, b'OESVM1'): ('celas3_stress', ComplexSpringStressArray),
+            (13, 3, 3, b'OESVM1'): ('celas3_stress', ComplexSpringStressArray),
 
             (14, 1, 2) : ('celas4_stress', RealSpringStressArray),
             (14, 2, 3) : ('celas4_stress', ComplexSpringStressArray),
             (14, 3, 3) : ('celas4_stress', ComplexSpringStressArray),
 
-            (34, 1, 16, b'OES1X1') : ('cbar_stress', RealBarStressArray),
-            (34, 1, 16, b'OES1X') : ('cbar_stress', RealBarStressArray),
-            (34, 1, 16, b'OES1') : ('cbar_stress', RealBarStressArray),
-            (34, 2, 19, b'OES1X') : ('cbar_stress', ComplexBarStressArray),
-            (34, 1, 10, b'OESNO1') : ('cbar_stress', ComplexBarStressArray),
-            (34, 2, 10, b'OESXRMS1') : ('cbar_stress', ComplexBarStressArray),
+            (34, 1, 16, b'OES1X1'): ('cbar_stress', RealBarStressArray),
+            (34, 1, 16, b'OES1X'): ('cbar_stress', RealBarStressArray),
+            (34, 1, 16, b'OES1'): ('cbar_stress', RealBarStressArray),
+            (34, 2, 19, b'OES1X'): ('cbar_stress', ComplexBarStressArray),
+            (34, 1, 10, b'OESNO1'): ('cbar_stress', ComplexBarStressArray),
+            (34, 2, 10, b'OESXRMS1'): ('cbar_stress', ComplexBarStressArray),
 
-            (34, 1, 10, b'OESRMS2') : ('cbar_stress', RandomBarStressArray),
+            (34, 1, 10, b'OESRMS2'): ('cbar_stress', RandomBarStressArray),
 
-            (34, 2, 10, b'OESPSD2') : ('cbar_stress', RandomBarStressArray),
-            (34, 2, 10, b'OESRMS2') : ('cbar_stress', RandomBarStressArray),
-            (34, 2, 10, b'OESNO2') : ('cbar_stress', RandomBarStressArray),
-            (34, 2, 10, b'OESATO2') : ('cbar_stress', RandomBarStressArray),
-            (34, 2, 10, b'OESCRM2') : ('cbar_stress', RandomBarStressArray),
+            (34, 2, 10, b'OESPSD2'): ('cbar_stress', RandomBarStressArray),
+            (34, 2, 10, b'OESRMS2'): ('cbar_stress', RandomBarStressArray),
+            (34, 2, 10, b'OESNO2'): ('cbar_stress', RandomBarStressArray),
+            (34, 2, 10, b'OESATO2'): ('cbar_stress', RandomBarStressArray),
+            (34, 2, 10, b'OESCRM2'): ('cbar_stress', RandomBarStressArray),
 
             # Missing stress_mapper key for OES1 table #501
             # see cbarao_random_x_mini.op2 for an example with OES1 and OES1X...
             # it looks to be an error in MSC [2008-2012)
-            (34, 2, 19, b'OES1') : ('cbar_stress', ComplexBarStressArray),
-            (34, 3, 19, b'OES1X') : ('cbar_stress', ComplexBarStressArray),
-            (34, 3, 19, b'OESVM1') : ('cbar_stress', ComplexBarStressArray),
+            (34, 2, 19, b'OES1'): ('cbar_stress', ComplexBarStressArray),
+            (34, 3, 19, b'OES1X'): ('cbar_stress', ComplexBarStressArray),
+            (34, 3, 19, b'OESVM1'): ('cbar_stress', ComplexBarStressArray),
             #(34, 1, 19) : ('cbar_stress', RandomBarStressArray),
-            (100, 1, 10, b'OES1X1') : ('cbar_stress_10nodes', RealBar10NodesStressArray),
-            (100, 1, 10, b'OES1X') : ('cbar_stress_10nodes', RealBar10NodesStressArray),
+            (100, 1, 10, b'OES1X1'): ('cbar_stress_10nodes', RealBar10NodesStressArray),
+            (100, 1, 10, b'OES1X'): ('cbar_stress_10nodes', RealBar10NodesStressArray),
 
             # solids
-            (39, 1, 109, b'OES1X1') : ('ctetra_stress', RealSolidStressArray), # real
-            (39, 1, 109, b'OES1X') : ('ctetra_stress', RealSolidStressArray), # real
-            (39, 1, 109, b'OES1') : ('ctetra_stress', RealSolidStressArray), # real
-            (39, 3, 74, b'OESVM1') : ('ctetra_stress', ComplexSolidStressArray), # mag/phase
+            (39, 1, 109, b'OES1X1'): ('ctetra_stress', RealSolidStressArray), # real
+            (39, 1, 109, b'OES1X'): ('ctetra_stress', RealSolidStressArray), # real
+            (39, 1, 109, b'OES1'): ('ctetra_stress', RealSolidStressArray), # real
+            (39, 3, 74, b'OESVM1'): ('ctetra_stress', ComplexSolidStressArray), # mag/phase
 
-            (67, 1, 193, b'OES1X1') : ('chexa_stress', RealSolidStressArray),
-            (67, 1, 193, b'OES1X') : ('chexa_stress', RealSolidStressArray),
-            (67, 1, 193, b'OES1') : ('chexa_stress', RealSolidStressArray),
-            (67, 1, 193, b'RASCONS') : ('chexa_stress', RealSolidStressArray),
+            (67, 1, 193, b'OES1X1'): ('chexa_stress', RealSolidStressArray),
+            (67, 1, 193, b'OES1X'): ('chexa_stress', RealSolidStressArray),
+            (67, 1, 193, b'OES1'): ('chexa_stress', RealSolidStressArray),
+            (67, 1, 193, b'RASCONS'): ('chexa_stress', RealSolidStressArray),
 
-            (68, 1, 151, b'OES1X1') : ('cpenta_stress', RealSolidStressArray),
-            (68, 1, 151, b'OES1X') : ('cpenta_stress', RealSolidStressArray),
-            (68, 1, 151, b'OES1') : ('cpenta_stress', RealSolidStressArray),
-            (68, 3, 102, b'OESVM1') : ('cpenta_stress', ComplexSolidStressArray),
+            (68, 1, 151, b'OES1X1'): ('cpenta_stress', RealSolidStressArray),
+            (68, 1, 151, b'OES1X'): ('cpenta_stress', RealSolidStressArray),
+            (68, 1, 151, b'OES1'): ('cpenta_stress', RealSolidStressArray),
+            (68, 3, 102, b'OESVM1'): ('cpenta_stress', ComplexSolidStressArray),
 
-            (39, 2, 69, b'OES1X') : ('ctetra_stress', ComplexSolidStressArray), # real/imag
-            (39, 2, 69, b'OES1') : ('ctetra_stress', ComplexSolidStressArray),
-            (39, 2, 74, b'OESVM1') : ('ctetra_stress', 'NA'), # real/imag
+            (39, 2, 69, b'OES1X'): ('ctetra_stress', ComplexSolidStressArray), # real/imag
+            (39, 2, 69, b'OES1'): ('ctetra_stress', ComplexSolidStressArray),
+            (39, 2, 74, b'OESVM1'): ('ctetra_stress', 'NA'), # real/imag
             #(39, 3, 69) : ('ctetra_stress', ComplexSolidStressArray), # mag/phase
 
-            (67, 2, 121, b'OES1X') : ('chexa_stress', ComplexSolidStressArray),
-            (67, 3, 121, b'OES1X') : ('chexa_stress', ComplexSolidStressArray),
-            (67, 3, 130, b'OESVM1') : ('chexa_stress', ComplexSolidStressArray),
-            (67, 2, 121, b'OES1') : ('chexa_stress', ComplexSolidStressArray),
-            (67, 3, 121, b'OES1') : ('chexa_stress', ComplexSolidStressArray),
+            (67, 2, 121, b'OES1X'): ('chexa_stress', ComplexSolidStressArray),
+            (67, 3, 121, b'OES1X'): ('chexa_stress', ComplexSolidStressArray),
+            (67, 3, 130, b'OESVM1'): ('chexa_stress', ComplexSolidStressArray),
+            (67, 2, 121, b'OES1'): ('chexa_stress', ComplexSolidStressArray),
+            (67, 3, 121, b'OES1'): ('chexa_stress', ComplexSolidStressArray),
 
-            (68, 2, 95, b'OES1X') : ('cpenta_stress', ComplexSolidStressArray),
-            (68, 3, 95, b'OES1X') : ('cpenta_stress', ComplexSolidStressArray),
-            (68, 2, 95, b'OES1') : ('cpenta_stress', ComplexSolidStressArray),
+            (68, 2, 95, b'OES1X'): ('cpenta_stress', ComplexSolidStressArray),
+            (68, 3, 95, b'OES1X'): ('cpenta_stress', ComplexSolidStressArray),
+            (68, 2, 95, b'OES1'): ('cpenta_stress', ComplexSolidStressArray),
 
-            (33, 1, 17, b'OES1X1') :  ('cquad4_stress', RealPlateStressArray),
-            (33, 1, 17, b'OES1X') :  ('cquad4_stress', RealPlateStressArray),
-            (33, 1, 17, b'OES1') :  ('cquad4_stress', RealPlateStressArray),
-            (33, 2, 15, b'OES1X') :  ('cquad4_stress', ComplexPlateStressArray),
-            (33, 3, 15, b'OES1X') :  ('cquad4_stress', ComplexPlateStressArray),
+            (33, 1, 17, b'OES1X1'):  ('cquad4_stress', RealPlateStressArray),
+            (33, 1, 17, b'OES1X'):  ('cquad4_stress', RealPlateStressArray),
+            (33, 1, 17, b'OES1'):  ('cquad4_stress', RealPlateStressArray),
+            (33, 2, 15, b'OES1X'):  ('cquad4_stress', ComplexPlateStressArray),
+            (33, 3, 15, b'OES1X'):  ('cquad4_stress', ComplexPlateStressArray),
             #(33, 3, 0) :  ('cquad4_stress', RandomPlateStressArray),
-            (33, 1, 9, b'OESNO1') : ('cquad4_stress', ComplexPlateStressArray),
-            (33, 2, 11, b'OESXRMS1') : ('cquad4_stress', ComplexPlateStressArray),
+            (33, 1, 9, b'OESNO1'): ('cquad4_stress', ComplexPlateStressArray),
+            (33, 2, 11, b'OESXRMS1'): ('cquad4_stress', ComplexPlateStressArray),
 
-            (33, 2, 9, b'OESATO2') : ('cquad4_stress', 'NA'),
-            (33, 2, 9, b'OESCRM2') : ('cquad4_stress', 'NA'),
-            (33, 2, 9, b'OESPSD2') : ('cquad4_stress', 'NA'),
-            (33, 2, 9, b'OESNO2') : ('cquad4_stress', 'NA'),
+            (33, 2, 9, b'OESATO2'): ('cquad4_stress', 'NA'),
+            (33, 2, 9, b'OESCRM2'): ('cquad4_stress', 'NA'),
+            (33, 2, 9, b'OESPSD2'): ('cquad4_stress', 'NA'),
+            (33, 2, 9, b'OESNO2'): ('cquad4_stress', 'NA'),
 
-            (33, 1, 9, b'OESRMS2') : ('cquad4_stress', 'NA'),
-            (33, 2, 9, b'OESRMS2') : ('cquad4_stress', 'NA'),
+            (33, 1, 9, b'OESRMS2'): ('cquad4_stress', 'NA'),
+            (33, 2, 9, b'OESRMS2'): ('cquad4_stress', 'NA'),
 
 
-            (74, 1, 17, b'OES1X1') : ('ctria3_stress', RealPlateStrainArray),
-            (74, 1, 17, b'OES1X') : ('ctria3_stress', RealPlateStrainArray),
-            (74, 1, 17, b'OES1') : ('ctria3_stress', RealPlateStrainArray),
-            (74, 2, 15, b'OES1X') : ('ctria3_stress', ComplexPlateStrainArray),
-            (74, 3, 15, b'OES1X') : ('ctria3_stress', ComplexPlateStrainArray),
-            (74, 2, 11, b'OESXRMS1') : ('ctria3_stress', ComplexPlateStrainArray),
-            (74, 1, 9, b'OESNO1') : ('ctria3_stress', ComplexPlateStrainArray),
-            (74, 2, 17, b'OESVM1') : ('ctria3_stress', 'NA'),
-            (74, 3, 17, b'OESVM1') : ('ctria3_stress', 'NA'),
+            (74, 1, 17, b'OES1X1'): ('ctria3_stress', RealPlateStrainArray),
+            (74, 1, 17, b'OES1X'): ('ctria3_stress', RealPlateStrainArray),
+            (74, 1, 17, b'OES1'): ('ctria3_stress', RealPlateStrainArray),
+            (74, 2, 15, b'OES1X'): ('ctria3_stress', ComplexPlateStrainArray),
+            (74, 3, 15, b'OES1X'): ('ctria3_stress', ComplexPlateStrainArray),
+            (74, 2, 11, b'OESXRMS1'): ('ctria3_stress', ComplexPlateStrainArray),
+            (74, 1, 9, b'OESNO1'): ('ctria3_stress', ComplexPlateStrainArray),
+            (74, 2, 17, b'OESVM1'): ('ctria3_stress', 'NA'),
+            (74, 3, 17, b'OESVM1'): ('ctria3_stress', 'NA'),
 
-            (74, 1, 9, b'OESRMS2') : ('ctria3_stress', 'NA'),
+            (74, 1, 9, b'OESRMS2'): ('ctria3_stress', 'NA'),
 
             #(74, 1, 9) : ('ctria3_stress', RandomPlateStressArray),
 
-            (82, 1, 87, b'OES1X1') : ('cquadr_stress', RealPlateStressArray),
-            (82, 1, 87, b'OES1X') : ('cquadr_stress', RealPlateStressArray),
-            (82, 2, 77, b'OES1X') : ('cquadr_stress', ComplexPlateStressArray),
+            (82, 1, 87, b'OES1X1'): ('cquadr_stress', RealPlateStressArray),
+            (82, 1, 87, b'OES1X'): ('cquadr_stress', RealPlateStressArray),
+            (82, 2, 77, b'OES1X'): ('cquadr_stress', ComplexPlateStressArray),
             (82, 3, 77, b'OES1X') : ('cquadr_stress', ComplexPlateStressArray),
 
             (64, 1, 87, b'OES1X1') : ('cquad8_stress', RealPlateStressArray), # real
-            (64, 1, 87, b'OES1X') : ('cquad8_stress', RealPlateStressArray),
-            (64, 1, 87, b'OES1') : ('cquad8_stress', RealPlateStressArray),
-            (64, 2, 77, b'OES1') : ('cquad8_stress', ComplexPlateStressArray), # real/imag
-            (64, 3, 77, b'OES1') : ('cquad8_stress', ComplexPlateStressArray), # mag/phase
-            (64, 2, 77, b'OES1X') : ('cquad8_stress', ComplexPlateStressArray), # real/imag
-            (64, 3, 77, b'OES1X') : ('cquad8_stress', ComplexPlateStressArray), # mag/phase
-            (64, 2, 87, b'OESVM1') : ('cquad8_stress', ComplexPlateStressArray), # real/imag
-            (64, 3, 87, b'OESVM1') : ('cquad8_stress', ComplexPlateStressArray), # mag/phase
+            (64, 1, 87, b'OES1X'): ('cquad8_stress', RealPlateStressArray),
+            (64, 1, 87, b'OES1'): ('cquad8_stress', RealPlateStressArray),
+            (64, 2, 77, b'OES1'): ('cquad8_stress', ComplexPlateStressArray), # real/imag
+            (64, 3, 77, b'OES1'): ('cquad8_stress', ComplexPlateStressArray), # mag/phase
+            (64, 2, 77, b'OES1X'): ('cquad8_stress', ComplexPlateStressArray), # real/imag
+            (64, 3, 77, b'OES1X'): ('cquad8_stress', ComplexPlateStressArray), # mag/phase
+            (64, 2, 87, b'OESVM1'): ('cquad8_stress', ComplexPlateStressArray), # real/imag
+            (64, 3, 87, b'OESVM1'): ('cquad8_stress', ComplexPlateStressArray), # mag/phase
 
-            (70, 1, 70, b'OES1X1') : ('ctriar_stress', RealPlateStressArray),
-            (70, 1, 70, b'OES1X') : ('ctriar_stress', RealPlateStressArray),
-            (70, 2, 62, b'OES1X') : ('ctriar_stress', ComplexPlateStressArray),
-            (70, 3, 62, b'OES1X') : ('ctriar_stress', ComplexPlateStressArray),
+            (70, 1, 70, b'OES1X1'): ('ctriar_stress', RealPlateStressArray),
+            (70, 1, 70, b'OES1X'): ('ctriar_stress', RealPlateStressArray),
+            (70, 2, 62, b'OES1X'): ('ctriar_stress', ComplexPlateStressArray),
+            (70, 3, 62, b'OES1X'): ('ctriar_stress', ComplexPlateStressArray),
 
-            (75, 1, 70, b'OES1X1') : ('ctria6_stress', RealPlateStressArray),
-            (75, 2, 62, b'OES1X') : ('ctria6_stress', ComplexPlateStressArray),
-            (75, 3, 62, b'OES1X') : ('ctria6_stress', ComplexPlateStressArray),
-            (75, 2, 70, b'OESVM1') : ('ctria6_stress', ComplexPlateStressArray),
-            (75, 3, 70, b'OESVM1') : ('ctria6_stress', ComplexPlateStressArray),
+            (75, 1, 70, b'OES1X1'): ('ctria6_stress', RealPlateStressArray),
+            (75, 2, 62, b'OES1X'): ('ctria6_stress', ComplexPlateStressArray),
+            (75, 3, 62, b'OES1X'): ('ctria6_stress', ComplexPlateStressArray),
+            (75, 2, 70, b'OESVM1'): ('ctria6_stress', ComplexPlateStressArray),
+            (75, 3, 70, b'OESVM1'): ('ctria6_stress', ComplexPlateStressArray),
 
-            (144, 1, 87, b'OES1X1') : ('cquad4_stress', RealPlateStressArray),
-            (144, 1, 87, b'OES1') : ('cquad4_stress', RealPlateStressArray),
-            (144, 1, 87, b'RASCONS') : ('cquad4_stress', RealPlateStressArray),
+            (144, 1, 87, b'OES1X1'): ('cquad4_stress', RealPlateStressArray),
+            (144, 1, 87, b'OES1'): ('cquad4_stress', RealPlateStressArray),
+            (144, 1, 87, b'RASCONS'): ('cquad4_stress', RealPlateStressArray),
 
-            (144, 2, 77, b'OES1X') : ('cquad4_stress', ComplexPlateStressArray),
-            (144, 3, 77, b'OES1X') : ('cquad4_stress', ComplexPlateStressArray),
-            (144, 3, 87, b'OESVM1') : ('cquad4_stress', ComplexPlateStressArray),
+            (144, 2, 77, b'OES1X'): ('cquad4_stress', ComplexPlateStressArray),
+            (144, 3, 77, b'OES1X'): ('cquad4_stress', ComplexPlateStressArray),
+            (144, 3, 87, b'OESVM1'): ('cquad4_stress', ComplexPlateStressArray),
             #(144, 3, 77) : ('cquad4_stress', ComplexPlateStressArray),
             #(64, 1, 47) : ('cquad8_stress', RandomPlateStressArray), # random
             #(70, 1, 39) : ('ctriar_stress', RandomPlateStressArray),
@@ -895,134 +902,134 @@ class OES(OP2Common2):
             #(82, 1, 47) : ('cquadr_stress', RandomPlateStressArray),
             #(144, 1, 47) : ('cquad4_stress', RandomPlateStressArray),
 
-            (88, 1, 13, b'OESNLXR') : ('nonlinear_ctria3_stress', RealNonlinearPlateArray), # real
-            (88, 1, 25, b'OESNL1X') : ('nonlinear_ctria3_stress', RealNonlinearPlateArray), # real?
-            (88, 1, 25, b'OESNLXR') : ('nonlinear_ctria3_stress', RealNonlinearPlateArray), # real?
+            (88, 1, 13, b'OESNLXR'): ('nonlinear_ctria3_stress', RealNonlinearPlateArray), # real
+            (88, 1, 25, b'OESNL1X'): ('nonlinear_ctria3_stress', RealNonlinearPlateArray), # real?
+            (88, 1, 25, b'OESNLXR'): ('nonlinear_ctria3_stress', RealNonlinearPlateArray), # real?
 
-            (90, 1, 13, b'OESNLXR') : ('nonlinear_cquad4_stress', RealNonlinearPlateArray),
-            (90, 1, 25, b'OESNL1X') : ('nonlinear_cquad4_stress', RealNonlinearPlateArray),
-            (90, 1, 25, b'OESNLXR') : ('nonlinear_cquad4_stress', RealNonlinearPlateArray),
-            (90, 1, 25, b'OESNLXD') : ('nonlinear_cquad4_stress', RealNonlinearPlateArray),
+            (90, 1, 13, b'OESNLXR'): ('nonlinear_cquad4_stress', RealNonlinearPlateArray),
+            (90, 1, 25, b'OESNL1X'): ('nonlinear_cquad4_stress', RealNonlinearPlateArray),
+            (90, 1, 25, b'OESNLXR'): ('nonlinear_cquad4_stress', RealNonlinearPlateArray),
+            (90, 1, 25, b'OESNLXD'): ('nonlinear_cquad4_stress', RealNonlinearPlateArray),
 
-            (95, 1, 11, b'OES1C') : ('cquad4_composite_stress', RealCompositePlateStressArray), # real
-            (95, 1, 11, b'OESCP') : ('cquad4_composite_stress', RealCompositePlateStressArray), # real
-            (95, 1, 9, b'OESRT') : ('cquad4_composite_stress', 'RandomCompositePlateStressArray'), # real
-            (95, 2, 11, b'OESCP') : ('cquad4_composite_stress', RealCompositePlateStressArray), # real?
-            (95, 2, 11, b'OESRT') : ('cquad4_composite_stress', RealCompositePlateStressArray), # real?
+            (95, 1, 11, b'OES1C'): ('cquad4_composite_stress', RealCompositePlateStressArray), # real
+            (95, 1, 11, b'OESCP'): ('cquad4_composite_stress', RealCompositePlateStressArray), # real
+            (95, 1, 9, b'OESRT'): ('cquad4_composite_stress', 'RandomCompositePlateStressArray'), # real
+            (95, 2, 11, b'OESCP'): ('cquad4_composite_stress', RealCompositePlateStressArray), # real?
+            (95, 2, 11, b'OESRT'): ('cquad4_composite_stress', RealCompositePlateStressArray), # real?
             #(95, 2, 9) : ('cquad4_composite_stress', ComplexCompositePlateStressArray), # real/imag
             #(95, 3, 9) : ('cquad4_composite_stress', ComplexCompositePlateStressArray), # mag/phase
 
             #(96, 1, 9) : ('cquad8_composite_stress', 'RandomCompositePlateStressArray'),
-            (96, 1, 11, b'OES1C') : ('cquad8_composite_stress', RealCompositePlateStressArray),
+            (96, 1, 11, b'OES1C'): ('cquad8_composite_stress', RealCompositePlateStressArray),
             #(96, 1, 11) : ('cquad8_composite_stress', RealCompositePlateStressArray),
             #(96, 2, 9) : ('cquad8_composite_stress', ComplexCompositePlateStressArray),
             #(96, 3, 9) : ('cquad8_composite_stress', ComplexCompositePlateStressArray),
 
-            (97, 1, 9, b'OESRT') : ('ctria3_composite_stress', 'RandomCompositePlateStressArray'),
-            (97, 1, 11, b'OES1C') : ('ctria3_composite_stress', RealCompositePlateStressArray),
-            (97, 1, 11, b'OESCP') : ('ctria3_composite_stress', RealCompositePlateStressArray),
-            (97, 2, 11, b'OESCP') : ('ctria3_composite_stress', RealCompositePlateStressArray),
+            (97, 1, 9, b'OESRT'): ('ctria3_composite_stress', 'RandomCompositePlateStressArray'),
+            (97, 1, 11, b'OES1C'): ('ctria3_composite_stress', RealCompositePlateStressArray),
+            (97, 1, 11, b'OESCP'): ('ctria3_composite_stress', RealCompositePlateStressArray),
+            (97, 2, 11, b'OESCP'): ('ctria3_composite_stress', RealCompositePlateStressArray),
             #(97, 2, 9) : ('ctria3_composite_stress', ComplexCompositePlateStressArray),
             #(97, 3, 9) : ('ctria3_composite_stress', ComplexCompositePlateStressArray),
 
-            (98, 1, 9, b'OESRT') : ('ctria6_composite_stress', 'RandomCompositePlateStressArray'),
-            (98, 1, 11, b'OES1C') : ('ctria6_composite_stress', RealCompositePlateStressArray),
+            (98, 1, 9, b'OESRT'): ('ctria6_composite_stress', 'RandomCompositePlateStressArray'),
+            (98, 1, 11, b'OES1C'): ('ctria6_composite_stress', RealCompositePlateStressArray),
             #(98, 1, 11) : ('ctria6_composite_stress', RealCompositePlateStressArray),
             #(98, 2, 9) : ('ctria6_composite_stress', ComplexCompositePlateStressArray),
             #(98, 3, 9) : ('ctria6_composite_stress', ComplexCompositePlateStressArray),
 
-            (53, 1, 33, b'OES1X1') : ('ctriax_stress', RealTriaxStressArray),
-            (53, 1, 33, b'OES1X') : ('ctriax_stress', RealTriaxStressArray),
-            (53, 2, 37, b'OES1X') : ('ctriax_stress', ComplexTriaxStressArray),
+            (53, 1, 33, b'OES1X1'): ('ctriax_stress', RealTriaxStressArray),
+            (53, 1, 33, b'OES1X'): ('ctriax_stress', RealTriaxStressArray),
+            (53, 2, 37, b'OES1X'): ('ctriax_stress', ComplexTriaxStressArray),
             #(53, 3, 37) : ('ctriax_stress', ComplexTriaxStressArray),
 
-            (102, 1, 7, b'OES1X1') : ('cbush_stress', RealBushStressArray),
-            (102, 1, 7, b'OES1X') : ('cbush_stress', RealBushStressArray),
-            (102, 1, 7, b'OES1') : ('cbush_stress', RealBushStressArray),
-            (102, 2, 13, b'OES1X') : ('cbush_stress', ComplexCBushStressArray),
-            (102, 3, 13, b'OES1X') : ('cbush_stress', ComplexCBushStressArray),
-            (102, 2, 13, b'OESVM1') : ('cbush_stress', 'NA'),
+            (102, 1, 7, b'OES1X1'): ('cbush_stress', RealBushStressArray),
+            (102, 1, 7, b'OES1X'): ('cbush_stress', RealBushStressArray),
+            (102, 1, 7, b'OES1'): ('cbush_stress', RealBushStressArray),
+            (102, 2, 13, b'OES1X'): ('cbush_stress', ComplexCBushStressArray),
+            (102, 3, 13, b'OES1X'): ('cbush_stress', ComplexCBushStressArray),
+            (102, 2, 13, b'OESVM1'): ('cbush_stress', 'NA'),
             (102, 2, 13, b'OES1'): ('cbush_stress', ComplexCBushStressArray),
 
-            (40, 1, 8, b'OES1X1') : ('cbush1d_stress_strain', RealBushStressArray),
-            (40, 1, 8, b'OESNLXD') : ('cbush1d_stress_strain', RealBushStressArray),
+            (40, 1, 8, b'OES1X1'): ('cbush1d_stress_strain', RealBushStressArray),
+            (40, 1, 8, b'OESNLXD'): ('cbush1d_stress_strain', RealBushStressArray),
             #(40, 2, 9) : ('cbush1d_stress_strain', ComplexCBushStressArray),
             #(40, 3, 9) : ('cbush1d_stress_strain', ComplexCBushStressArray),
 
-            (87, 1, 7, b'OESNL1X') : ('nonlinear_ctube_stress', RealNonlinearRodArray),
-            (87, 1, 7, b'OESNLXR') : ('nonlinear_ctube_stress', RealNonlinearRodArray),
-            (89, 1, 7, b'OESNL1X') : ('nonlinear_crod_stress', RealNonlinearRodArray),
-            (89, 1, 7, b'OESNLXD') : ('nonlinear_crod_stress', RealNonlinearRodArray),
-            (89, 1, 7, b'OESNLXR') : ('nonlinear_crod_stress', RealNonlinearRodArray),
-            (92, 1, 7, b'OESNL1X') : ('nonlinear_conrod_stress', RealNonlinearRodArray),
-            (92, 1, 7, b'OESNLXD') : ('nonlinear_conrod_stress', RealNonlinearRodArray),
-            (92, 1, 7, b'OESNLXR') : ('nonlinear_conrod_stress', RealNonlinearRodArray),
+            (87, 1, 7, b'OESNL1X'): ('nonlinear_ctube_stress', RealNonlinearRodArray),
+            (87, 1, 7, b'OESNLXR'): ('nonlinear_ctube_stress', RealNonlinearRodArray),
+            (89, 1, 7, b'OESNL1X'): ('nonlinear_crod_stress', RealNonlinearRodArray),
+            (89, 1, 7, b'OESNLXD'): ('nonlinear_crod_stress', RealNonlinearRodArray),
+            (89, 1, 7, b'OESNLXR'): ('nonlinear_crod_stress', RealNonlinearRodArray),
+            (92, 1, 7, b'OESNL1X'): ('nonlinear_conrod_stress', RealNonlinearRodArray),
+            (92, 1, 7, b'OESNLXD'): ('nonlinear_conrod_stress', RealNonlinearRodArray),
+            (92, 1, 7, b'OESNLXR'): ('nonlinear_conrod_stress', RealNonlinearRodArray),
 
-            (224, 1, 3, b'OESNLXD') : ('nonlinear_celas1_stress', RealNonlinearSpringStressArray),
-            (224, 1, 3, b'OESNLXR') : ('nonlinear_celas1_stress', RealNonlinearSpringStressArray),
-            (225, 1, 3, b'OESNLXR') : ('nonlinear_celas3_stress', RealNonlinearSpringStressArray),
+            (224, 1, 3, b'OESNLXD'): ('nonlinear_celas1_stress', RealNonlinearSpringStressArray),
+            (224, 1, 3, b'OESNLXR'): ('nonlinear_celas1_stress', RealNonlinearSpringStressArray),
+            (225, 1, 3, b'OESNLXR'): ('nonlinear_celas3_stress', RealNonlinearSpringStressArray),
 
-            (35, 1, 18, b'OES1X1') : ('NA', 'NA'), # CCONEAX
-            (35, 1, 18, b'OES1') : ('NA', 'NA'), # CCONEAX
+            (35, 1, 18, b'OES1X1'): ('NA', 'NA'), # CCONEAX
+            (35, 1, 18, b'OES1'): ('NA', 'NA'), # CCONEAX
 
-            (60, 1, 10, b'OES1X') : ('NA', 'NA'), # DUM8/CCRAC2D
-            (61, 1, 10, b'OES1X') : ('NA', 'NA'), # DUM8/CCRAC3D
+            (60, 1, 10, b'OES1X'): ('NA', 'NA'), # DUM8/CCRAC2D
+            (61, 1, 10, b'OES1X'): ('NA', 'NA'), # DUM8/CCRAC3D
 
-            (69, 1, 21, b'OES1X1') : ('NA', 'NA'), # CBEND
-            (69, 2, 21, b'OES1X') : ('NA', 'NA'), # CBEND
-            (69, 3, 21, b'OES1X') : ('NA', 'NA'), # CBEND
+            (69, 1, 21, b'OES1X1'): ('NA', 'NA'), # CBEND
+            (69, 2, 21, b'OES1X'): ('NA', 'NA'), # CBEND
+            (69, 3, 21, b'OES1X'): ('NA', 'NA'), # CBEND
 
-            (86, 1, 11, b'OESNL1X') : ('nonlinear_cgap_stress', NonlinearGapStressArray),
-            (86, 1, 11, b'OESNLXR') : ('nonlinear_cgap_stress', NonlinearGapStressArray),
-            (86, 1, 11, b'OESNLXD') : ('nonlinear_cgap_stress', NonlinearGapStressArray),
-            (94, 1, 51, b'OESNL1X') : ('nonlinear_cbeam_stress', RealNonlinearBeamStressArray),
-            (94, 1, 51, b'OESNLXR') : ('nonlinear_cbeam_stress', RealNonlinearBeamStressArray),
+            (86, 1, 11, b'OESNL1X'): ('nonlinear_cgap_stress', NonlinearGapStressArray),
+            (86, 1, 11, b'OESNLXR'): ('nonlinear_cgap_stress', NonlinearGapStressArray),
+            (86, 1, 11, b'OESNLXD'): ('nonlinear_cgap_stress', NonlinearGapStressArray),
+            (94, 1, 51, b'OESNL1X'): ('nonlinear_cbeam_stress', RealNonlinearBeamStressArray),
+            (94, 1, 51, b'OESNLXR'): ('nonlinear_cbeam_stress', RealNonlinearBeamStressArray),
 
-            (85, 1, 82, b'OESNLXR') : ('NA', 'NA'),  # TETRANL
-            (91, 1, 114, b'OESNLXD') : ('NA', 'NA'),  # PENTANL
-            (91, 1, 114, b'OESNLXR') : ('NA', 'NA'),  # PENTANL
-            (93, 1, 146, b'OESNL1X') : ('NA', 'NA'),  # HEXANL
-            (93, 1, 146, b'OESNLXD') : ('NA', 'NA'),  # HEXANL
-            (93, 1, 146, b'OESNLXR') : ('NA', 'NA'),  # HEXANL
+            (85, 1, 82, b'OESNLXR'): ('NA', 'NA'),  # TETRANL
+            (91, 1, 114, b'OESNLXD'): ('NA', 'NA'),  # PENTANL
+            (91, 1, 114, b'OESNLXR'): ('NA', 'NA'),  # PENTANL
+            (93, 1, 146, b'OESNL1X'): ('NA', 'NA'),  # HEXANL
+            (93, 1, 146, b'OESNLXD'): ('NA', 'NA'),  # HEXANL
+            (93, 1, 146, b'OESNLXR'): ('NA', 'NA'),  # HEXANL
 
             # 101-AABSF
-            (101, 2, 4, b'OES1X') : ('NA', 'NA'),
+            (101, 2, 4, b'OES1X'): ('NA', 'NA'),
 
             # 140-HEXA8FD
-            (140, 1, 162, b'OES1X1') : ('NA', 'NA'),
+            (140, 1, 162, b'OES1X1'): ('NA', 'NA'),
             #201-QUAD4FD
-            (201, 1, 46, b'OESNLXD') : ('NA', 'NA'),
-            (201, 1, 46, b'OESNLXR') : ('NA', 'NA'),
+            (201, 1, 46, b'OESNLXD'): ('NA', 'NA'),
+            (201, 1, 46, b'OESNLXR'): ('NA', 'NA'),
 
             # 145-VUHEXA  (8 nodes)
-            (145, 1, 98, b'OES1X1') : ('NA', 'NA'),
-            (145, 2, 106, b'OES1X') : ('NA', 'NA'),
-            (145, 3, 106, b'OES1X') : ('NA', 'NA'),
+            (145, 1, 98, b'OES1X1'): ('NA', 'NA'),
+            (145, 2, 106, b'OES1X'): ('NA', 'NA'),
+            (145, 3, 106, b'OES1X'): ('NA', 'NA'),
             # 146-VUPENTA (6 nodes)
             (146, 1, 74, b'OES1X1') : ('NA', 'NA'),
-            (146, 2, 80, b'OES1X') : ('NA', 'NA'),
-            (146, 3, 80, b'OES1X') : ('NA', 'NA'),
+            (146, 2, 80, b'OES1X'): ('NA', 'NA'),
+            (146, 3, 80, b'OES1X'): ('NA', 'NA'),
             # 147-VUTETRA (4 nodes)
-            (147, 1, 50, b'OES1X1') : ('NA', 'NA'),
-            (147, 2, 54, b'OES1X') : ('NA', 'NA'),
-            (147, 3, 54, b'OES1X') : ('NA', 'NA'),
+            (147, 1, 50, b'OES1X1'): ('NA', 'NA'),
+            (147, 2, 54, b'OES1X'): ('NA', 'NA'),
+            (147, 3, 54, b'OES1X'): ('NA', 'NA'),
 
             # 139-QUAD4FD
             # self.hyperelastic_cquad4_strain, HyperelasticQuad
-            (139, 1, 30, b'OES1X1') : ('NA', 'NA'),
+            (139, 1, 30, b'OES1X1'): ('NA', 'NA'),
 
             # 189-VUQUAD
-            (189, 1, 74, b'OES1X1') : ('NA', 'NA'),
-            (189, 2, 114, b'OES1X') : ('NA', 'NA'),
+            (189, 1, 74, b'OES1X1'): ('NA', 'NA'),
+            (189, 2, 114, b'OES1X'): ('NA', 'NA'),
 
             # 47-AXIF2
-            (47, 2, 9, b'OES1X') : ('axif2', 'NA'),
+            (47, 2, 9, b'OES1X'): ('axif2', 'NA'),
             # 48-AXIF3
-            (48, 2, 19, b'OES1X') : ('axif3', 'NA'),
+            (48, 2, 19, b'OES1X'): ('axif3', 'NA'),
             # 190-VUTRIA
-            (190, 1, 57, b'OES1X1') : ('NA', 'NA'),
-            (190, 2, 87, b'OES1X') : ('NA', 'NA'),
-            (190, 3, 87, b'OES1X') : ('NA', 'NA'),
+            (190, 1, 57, b'OES1X1'): ('NA', 'NA'),
+            (190, 2, 87, b'OES1X'): ('NA', 'NA'),
+            (190, 3, 87, b'OES1X'): ('NA', 'NA'),
 
             # 191-VUBEAM
             #(191, 1, 60, b'OES1X1') : ('vubeam', 'NA'),
@@ -1030,145 +1037,145 @@ class OES(OP2Common2):
             #(191, 3, 80, b'OES1X') : ('vubeam', 'NA'),
 
             # 203-SLIF1D?
-            (203, 1, 14, b'OESNLBR') : ('slif1d', 'NA'),
+            (203, 1, 14, b'OESNLBR'): ('slif1d', 'NA'),
             # 50-SLOT3
-            (50, 2, 11, b'OES1X') : ('slot3', 'NA'),
+            (50, 2, 11, b'OES1X'): ('slot3', 'NA'),
             # 51-SLOT4
-            (51, 2, 13, b'OES1X') : ('slot4', 'NA'),
+            (51, 2, 13, b'OES1X'): ('slot4', 'NA'),
 
             # 160-PENTA6FD
-            (160, 1, 122, b'OES1X1') : ('cpenta', 'NA'),
+            (160, 1, 122, b'OES1X1'): ('cpenta', 'NA'),
             # 161-TETRA4FD
-            (161, 1, 22, b'OES1X1') : ('ctetra', 'NA'),
+            (161, 1, 22, b'OES1X1'): ('ctetra', 'NA'),
             # 162-TRIA3FD
-            (162, 1, 9, b'OES1X1') : ('ctria', 'NA'),
+            (162, 1, 9, b'OES1X1'): ('ctria', 'NA'),
             # 163-HEXAFD
-            (163, 1, 542, b'OES1X1') : ('chexa', 'NA'),
+            (163, 1, 542, b'OES1X1'): ('chexa', 'NA'),
             # 164-QUADFD
-            (164, 1, 65, b'OES1X1') : ('cquad', 'NA'),
+            (164, 1, 65, b'OES1X1'): ('cquad', 'NA'),
             # 165-PENTAFD
-            (165, 1, 422, b'OES1X1') : ('cpenta', 'NA'),
+            (165, 1, 422, b'OES1X1'): ('cpenta', 'NA'),
             # 166-TETRAFD
-            (166, 1, 102, b'OES1X1') : ('ctetra', 'NA'),
+            (166, 1, 102, b'OES1X1'): ('ctetra', 'NA'),
             # 167-TRIAFD
-            (167, 1, 23, b'OES1X1') : ('NA', 'NA'),
+            (167, 1, 23, b'OES1X1'): ('NA', 'NA'),
             # 168-TRIAX3FD
-            (168, 1, 9, b'OES1X1') : ('ctriax3', 'NA'),
+            (168, 1, 9, b'OES1X1'): ('ctriax3', 'NA'),
             # 169-TRIAXFD
-            (169, 1, 23, b'OES1X1') : ('ctriax', 'NA'),
+            (169, 1, 23, b'OES1X1'): ('ctriax', 'NA'),
             # 170-QUADX4FD
-            (170, 1, 30, b'OES1X1') : ('cquadx4fd', 'NA'),
+            (170, 1, 30, b'OES1X1'): ('cquadx4fd', 'NA'),
             # 171-QUADXFD
-            (171, 1, 65, b'OES1X1') : ('cquadx', 'NA'),
+            (171, 1, 65, b'OES1X1'): ('cquadx', 'NA'),
             # 172-QUADRNL
-            (172, 1, 25, b'OESNLXR') : ('cquadrnl', 'NA'),
+            (172, 1, 25, b'OESNLXR'): ('cquadrnl', 'NA'),
             # 202-HEXA8FD
-            (202, 1, 122, b'OESNLXD') : ('chexa', 'NA'),
-            (202, 1, 122, b'OESNLXR') : ('chexa', 'NA'),
+            (202, 1, 122, b'OESNLXD'): ('chexa', 'NA'),
+            (202, 1, 122, b'OESNLXR'): ('chexa', 'NA'),
             # 204-PENTA6FD
-            (204, 1, 92, b'OESNLXR') : ('cpenta', 'NA'),
+            (204, 1, 92, b'OESNLXR'): ('cpenta', 'NA'),
             # 211-TRIAFD
-            (211, 1, 35, b'OESNLXR') : ('ctria3', 'NA'),
+            (211, 1, 35, b'OESNLXR'): ('ctria3', 'NA'),
             # 213-TRIAXFD
-            (213, 1, 35, b'OESNLXR') : ('ctriax', 'NA'),
+            (213, 1, 35, b'OESNLXR'): ('ctriax', 'NA'),
             # 214-QUADX4FD
-            (214, 1, 46, b'OESNLXR') : ('cquadx4', 'NA'),
+            (214, 1, 46, b'OESNLXR'): ('cquadx4', 'NA'),
             # 216-TETRA4FD
-            (216, 1, 62, b'OESNLXD') : ('NA', 'NA'),
-            (216, 1, 62, b'OESNLXR') : ('NA', 'NA'),
+            (216, 1, 62, b'OESNLXD'): ('NA', 'NA'),
+            (216, 1, 62, b'OESNLXR'): ('NA', 'NA'),
             # 217-TRIA3FD
             (217, 1, 35, b'OESNLXR') : ('ctria3', 'NA'),
             # 218-HEXAFD
-            (218, 1, 122, b'OESNLXR') : ('chexa', 'NA'),
+            (218, 1, 122, b'OESNLXR'): ('chexa', 'NA'),
             # 219-QUADFD
-            (219, 1, 46, b'OESNLXR') : ('cquad', 'NA'),
+            (219, 1, 46, b'OESNLXR'): ('cquad', 'NA'),
             # 220-PENTAFD
-            (220, 1, 92, b'OESNLXR') : ('cpenta', 'NA'),
+            (220, 1, 92, b'OESNLXR'): ('cpenta', 'NA'),
             # 221-TETRAFD
-            (221, 1, 62, b'OESNLXR') : ('tetrafd', 'NA'),
+            (221, 1, 62, b'OESNLXR'): ('tetrafd', 'NA'),
             # 222-TRIAX3FD
-            (222, 1, 35, b'OESNLXR') : ('ctriax3fd', 'NA'),
+            (222, 1, 35, b'OESNLXR'): ('ctriax3fd', 'NA'),
             # 223-CQUADXFD
-            (223, 1, 46, b'OESNLXR') : ('cquadx', 'NA'),
+            (223, 1, 46, b'OESNLXR'): ('cquadx', 'NA'),
             # 226-BUSH
-            (226, 1, 19, b'OESNLXD') : ('cbush', 'NA'),
-            (226, 1, 19, b'OESNLXR') : ('cbush', 'NA'),
+            (226, 1, 19, b'OESNLXD'): ('cbush', 'NA'),
+            (226, 1, 19, b'OESNLXR'): ('cbush', 'NA'),
             # 227-CTRIAR
-            (227, 1, 17, b'OES1X1') : ('ctriar', 'NA'),
-            (227, 1, 17, b'OES1X') : ('ctriar', 'NA'),
+            (227, 1, 17, b'OES1X1'): ('ctriar', 'NA'),
+            (227, 1, 17, b'OES1X'): ('ctriar', 'NA'),
             # 228-CQUADR
-            (228, 1, 17, b'OES1X1') : ('cquadr', 'NA'),
-            (228, 1, 17, b'OES1X') : ('cquadr', 'NA'),
+            (228, 1, 17, b'OES1X1'): ('cquadr', 'NA'),
+            (228, 1, 17, b'OES1X'): ('cquadr', 'NA'),
             # 232-QUADRLC
-            (232, 1, 11, b'OES1C') : ('cquadr', 'NA'),
-            (232, 1, 11, b'OESCP') : ('cquadr', 'NA'),
-            (232, 2, 13, b'OESVM1C') : ('cquadr', 'NA'),  # freq nx
-            (232, 3, 13, b'OESVM1C') : ('cquadr', 'NA'),  # freq nx
+            (232, 1, 11, b'OES1C'): ('cquadr', 'NA'),
+            (232, 1, 11, b'OESCP'): ('cquadr', 'NA'),
+            (232, 2, 13, b'OESVM1C'): ('cquadr', 'NA'),  # freq nx
+            (232, 3, 13, b'OESVM1C'): ('cquadr', 'NA'),  # freq nx
             #(234, 1, 11) : ('cquadr', 'NA'), # bad?
             # 233-TRIARLC
-            (233, 1, 11, b'OES1C') : ('ctriar', 'NA'),
-            (233, 2, 13, b'OESVM1C') : ('ctriar', 'NA'),  # freq nx
-            (233, 3, 13, b'OESVM1C') : ('ctriar', 'NA'),  # freq nx
+            (233, 1, 11, b'OES1C'): ('ctriar', 'NA'),
+            (233, 2, 13, b'OESVM1C'): ('ctriar', 'NA'),  # freq nx
+            (233, 3, 13, b'OESVM1C'): ('ctriar', 'NA'),  # freq nx
             # 235-CQUADR
-            (235, 1, 17, b'OES1X1') : ('NA', 'NA'),
-            (235, 2, 15, b'OES1X') : ('NA', 'NA'),
+            (235, 1, 17, b'OES1X1'): ('NA', 'NA'),
+            (235, 2, 15, b'OES1X'): ('NA', 'NA'),
 
             # 242-CTRAX
             # 244-CTRAX6
-            (242, 1, 34, b'OES1X1') : ('ctrax', 'NA'),
-            (244, 1, 34, b'OES1X1') : ('ctrax6', 'NA'),
+            (242, 1, 34, b'OES1X1'): ('ctrax', 'NA'),
+            (244, 1, 34, b'OES1X1'): ('ctrax6', 'NA'),
 
             # 243-CQUADX4
             # 245-CQUADX8
-            (243, 1, 42, b'OES1X1') : ('cquadx4', 'NA'),
-            (245, 1, 42, b'OES1X1') : ('cquadx8', 'NA'),
+            (243, 1, 42, b'OES1X1'): ('cquadx4', 'NA'),
+            (245, 1, 42, b'OES1X1'): ('cquadx8', 'NA'),
 
             #256-CPYRAM
-            (255, 1, 130, b'OES1X1') : ('cpyram', 'NA'),
-            (255, 2, 82, b'OES1X') : ('cpyram', 'NA'),
-            (256, 1, 98, b'OESNLXD') : ('cpyram', 'NA'),
+            (255, 1, 130, b'OES1X1'): ('cpyram', 'NA'),
+            (255, 2, 82, b'OES1X'): ('cpyram', 'NA'),
+            (256, 1, 98, b'OESNLXD'): ('cpyram', 'NA'),
 
             # 271-CPLSTN3
             # 272-CPLSTN4
-            (271, 1, 6, b'OES1X1') : ('cplstn3', 'NA'),
-            (271, 1, 6, b'OES1X') : ('cplstn3', 'NA'),
+            (271, 1, 6, b'OES1X1'): ('cplstn3', 'NA'),
+            (271, 1, 6, b'OES1X'): ('cplstn3', 'NA'),
             (272, 1, 32, b'OES1X1') : ('cplstn4', 'NA'),
-            (272, 1, 32, b'OES1X') : ('cplstn4', 'NA'),
-            (273, 1, 26, b'OES1X1') : ('cplstn6', 'NA'),
-            (273, 1, 26, b'OES1X') : ('cplstn6', 'NA'),
-            (274, 1, 32, b'OES1X1') : ('cplstn3', 'NA'),
-            (274, 1, 32, b'OES1X') : ('cplstn3', 'NA'),
+            (272, 1, 32, b'OES1X'): ('cplstn4', 'NA'),
+            (273, 1, 26, b'OES1X1'): ('cplstn6', 'NA'),
+            (273, 1, 26, b'OES1X'): ('cplstn6', 'NA'),
+            (274, 1, 32, b'OES1X1'): ('cplstn3', 'NA'),
+            (274, 1, 32, b'OES1X'): ('cplstn3', 'NA'),
 
             # 275-CPLSTS3
             # 277-CPLSTS6
-            (275, 1, 6, b'OES1X1') : ('cplsts3', 'NA'),
-            (276, 1, 32, b'OES1X1') : ('cplsts4', 'NA'),
-            (277, 1, 26, b'OES1X1') : ('cplsts6', 'NA'),
-            (278, 1, 32, b'OES1X1') : ('cplsts8', 'NA'),
+            (275, 1, 6, b'OES1X1'): ('cplsts3', 'NA'),
+            (276, 1, 32, b'OES1X1'): ('cplsts4', 'NA'),
+            (277, 1, 26, b'OES1X1'): ('cplsts6', 'NA'),
+            (278, 1, 32, b'OES1X1'): ('cplsts8', 'NA'),
 
-            (1, 2, 5, 'OESVM1') : ('crod', 'NA'),
-            (10, 2, 5, 'OESVM1') : ('conrod', 'NA'),
-            (10, 2, 5, 'OES1X') : ('conrod', 'NA'),
+            (1, 2, 5, 'OESVM1'): ('crod', 'NA'),
+            (10, 2, 5, 'OESVM1'): ('conrod', 'NA'),
+            (10, 2, 5, 'OES1X'): ('conrod', 'NA'),
 
-            (11, 2, 3, 'OESVM1') : ('celas1', 'NA'),
-            (12, 2, 3, 'OESVM1') : ('celas2', 'NA'),
+            (11, 2, 3, 'OESVM1'): ('celas1', 'NA'),
+            (12, 2, 3, 'OESVM1'): ('celas2', 'NA'),
 
-            (2, 2, 111, b'OESVM1') : ('cbeam', 'NA'),
-            (34, 2, 19, b'OESVM1') : ('cbar', 'NA'),
+            (2, 2, 111, b'OESVM1'): ('cbeam', 'NA'),
+            (34, 2, 19, b'OESVM1'): ('cbar', 'NA'),
 
-            (4, 2, 5, 'OESVM1') : ('cshear', 'NA'),
-            (4, 2, 5, 'OES1X') : ('cshear', 'NA'),
-            (74, 2, 17, 'OESVM1') : ('ctria3', 'NA'),
-            (144, 2, 87, b'OESVM1') : ('cquad4', 'NA'),
+            (4, 2, 5, 'OESVM1'): ('cshear', 'NA'),
+            (4, 2, 5, 'OES1X'): ('cshear', 'NA'),
+            (74, 2, 17, 'OESVM1'): ('ctria3', 'NA'),
+            (144, 2, 87, b'OESVM1'): ('cquad4', 'NA'),
 
-            (95, 2, 13, b'OESVM1C') : ('cquad4', 'NA'),
-            (95, 3, 13, b'OESVM1C') : ('cquad4', 'NA'),
-            (97, 2, 13, b'OESVM1C') : ('ctria3', 'NA'),
-            (97, 3, 13, b'OESVM1C') : ('ctria3', 'NA'),
+            (95, 2, 13, b'OESVM1C'): ('cquad4', 'NA'),
+            (95, 3, 13, b'OESVM1C'): ('cquad4', 'NA'),
+            (97, 2, 13, b'OESVM1C'): ('ctria3', 'NA'),
+            (97, 3, 13, b'OESVM1C'): ('ctria3', 'NA'),
 
-            (39, 2, 74, 'OESVM1') : ('ctetra', 'NA'),
-            (67, 2, 130, b'OESVM1') : ('chexa', 'NA'),
-            (68, 2, 102, b'OESVM1') : ('cpenta', 'NA'),
+            (39, 2, 74, 'OESVM1'): ('ctetra', 'NA'),
+            (67, 2, 130, b'OESVM1'): ('chexa', 'NA'),
+            (68, 2, 102, b'OESVM1'): ('cpenta', 'NA'),
         }
         op2 = self.op2
         key = (op2.element_type, op2.format_code, op2.num_wide, op2.table_name)
@@ -1262,9 +1269,9 @@ class OES(OP2Common2):
             op2.to_nx(f' because table_name={table_name_bytes} was found')
 
         #----------------------------------------------------------------
-        elif table_name_bytes in [b'OSTRMS1C']: #, b'OSTRMS1C']:
+        elif table_name_bytes in [b'OSTRMS1C']:  #, b'OSTRMS1C']:
             op2.format_code = 1
-            op2.sort_bits[0] = 0 # real
+            op2.sort_bits[0] = 0  # real
             prefix = 'rms.'
 
         elif table_name_bytes in [b'OESXRMS1']:
@@ -1272,7 +1279,7 @@ class OES(OP2Common2):
             self._set_as_random()
             self._set_as_sort1()
             prefix = 'rms.'
-        elif table_name_bytes in [b'OESXRMS2']: # wrong?
+        elif table_name_bytes in [b'OESXRMS2']:  # wrong?
             self._set_as_random()
             self._set_as_sort2()
             prefix = 'rms.'
@@ -1332,9 +1339,9 @@ class OES(OP2Common2):
 
         elif table_name_bytes in [b'OESPSD1', b'OSTRPSD1']:
             #op2.format_code = 1
-            op2.sort_bits[0] = 0 # real
-            op2.sort_bits[1] = 0 # sort1
-            op2.sort_bits[2] = 1 # random
+            op2.sort_bits[0] = 0  # real
+            op2.sort_bits[1] = 0  # sort1
+            op2.sort_bits[2] = 1  # random
             prefix = 'psd.'
         elif table_name_bytes in [b'OESPSD2', b'OSTRPSD2',
                                   b'OESPSD2C', b'OSTPSD2C']:
@@ -1404,10 +1411,17 @@ class OES(OP2Common2):
             prefix = 'RAPEATC.'
         elif table_name_bytes in [b'OESMC1', b'OSTRMC1']:
             prefix = 'modal_contribution.'
-        elif table_name_bytes in [b'OESC1']:
-            # NASA95
+        elif table_name_bytes in [b'OESC1']:  # NX
             prefix = 'stress.'
-        else:
+        elif table_name_bytes in [b'OSTR1PL', b'OSTR1PLC']:  # NX
+            prefix = 'plastic_strain.'
+        elif table_name_bytes in [b'OSTR1EL', b'OSTR1ELC']:  # NX
+            prefix = 'elastic_strain.'
+        elif table_name_bytes in [b'OSTR1TH', b'OSTR1THC']:  # NX
+            prefix = 'thermal_strain.'
+        elif table_name_bytes in [b'OSTR1CR', b'OSTR1CRC']:  # NX
+            prefix = 'creep_strain.'
+        else:  # pragma: no cover
             raise NotImplementedError(op2.table_name)
 
         #if op2.analysis_code == 1:
@@ -1774,7 +1788,16 @@ class OES(OP2Common2):
             # 226-BUSHNL
             n, nelements, ntotal = self._oes_cbush_nonlinear(data, ndata, dt, is_magnitude_phase,
                                                              result_type, prefix, postfix)
-        elif op2.element_type in [271, 275]:
+        elif op2.element_type in [271, 272, 273, 274]:
+            # 271 CPLSTN3
+            # 272 CPLSTN4
+            # 273 CPLSTN6
+            # 274 CPLSTN8
+            n, nelements, ntotal = self._oes_cplstn_nx(
+                data, ndata, dt, is_magnitude_phase,
+                result_type, prefix, postfix)
+
+        elif op2.element_type in [275]: # 271,
             #271 CPLSTN3 Triangle plane strain linear format (Center Only)
             #272 CPLSTN4 Quadrilateral plane strain linear format (Center and Corners)
             #273 CPLSTN6 Triangle plane strain linear format (Center and Corners)
@@ -1784,7 +1807,6 @@ class OES(OP2Common2):
             #276 CPLSTS4 Quadrilateral plane stress linear format (Center and Corners)
             #277 CPLSTS6 Triangle plane stress linear format (Center and Corners)
             #278 CPLSTS8 Quadrilateral plane stress linear format (Center and Corners)
-
 
             # 271-CPLSTN3
             # 275-CPLSTS3
@@ -1797,7 +1819,6 @@ class OES(OP2Common2):
             # 278-CPLSTS8
             n, nelements, ntotal = self._oes_plate_stress_68(data, ndata, dt, is_magnitude_phase,
                                                              stress_name, prefix, postfix)
-
 
         elif op2.element_type == 35: # CON
             return ndata
@@ -1870,8 +1891,9 @@ class OES(OP2Common2):
             #floats  = (1001, -0.0007072892040014267, 0.6948937773704529, -0.6963083744049072, 0.6948915123939514, -0.6963061094284058, 6.161498617984762e-07, 0.0)
             #if data:
                 #self.show_data(data)
-            n, nelements, ntotal = self._oes_weld_118(data, ndata, dt, is_magnitude_phase,
-                                                     result_type, prefix, postfix)
+            n, nelements, ntotal = self._oes_weld_118(
+                data, ndata, dt, is_magnitude_phase,
+                result_type, prefix, postfix)
         elif op2.element_type == 126:  # FASTP
             #C:\MSC.Software\msc_nastran_runs\cf103e.op2
             # S T R E S S E S   I N   F A S T E N E R   E L E M E N T S   ( C F A S T )
@@ -1885,11 +1907,12 @@ class OES(OP2Common2):
         elif op2.is_nx and op2.element_type in [269, 270]:
             # 269-CHEXAL
             # 270-PENTAL
-            n, nelements, ntotal = self._oes_composite_solid_nx(data, ndata, dt, is_magnitude_phase,
-                                                                result_type, prefix, postfix)
+            n, nelements, ntotal = self._oes_composite_solid_nx(
+                data, ndata, dt, is_magnitude_phase,
+                result_type, prefix, postfix)
+
         elif op2.element_type in [159, 184,
-                                   200, 201, 236, 237, 242, 243, 244, 245,
-                                   272, 273, 274]:
+                                  200, 201, 236, 237, 242, 243, 244, 245]:
             # 159-SEAMP
             # 184-CBEAM3
             #
@@ -1901,15 +1924,11 @@ class OES(OP2Common2):
             # 243 CQUADX4
             # 244 CTRAX6
             # 245 CQUADX8
-            #
-            # 272 CPLSTN4
-            # 273 CPLSTN6
-            # 274 CPLSTN3
             log.warning(f'skipping {op2.element_name}-{op2.element_type}')
             return ndata
         elif op2.element_type in [312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323,
-                                   343, 344, 345, 346, 347, 348, 349,
-                                   350, 351, 352, 355, 356, 357, 358, 363]:
+                                  343, 344, 345, 346, 347, 348, 349,
+                                  350, 351, 352, 355, 356, 357, 358, 363]:
             #
             # 312 TRAX3
             # 313 QUADX4
@@ -2083,36 +2102,30 @@ class OES(OP2Common2):
         """
         op2 = self.op2
         n = 0
+
+        if op2.element_type == 11:
+            etype = 'celas1'
+        elif op2.element_type == 12:
+            etype = 'celas2'
+        elif op2.element_type == 13:
+            etype = 'celas3'
+        elif op2.element_type == 14:
+            etype = 'celas4'
+        else:  # pragma: no cover
+            raise RuntimeError(op2.element_type)
+
         if op2.is_stress:
             if prefix == '' and postfix == '':
                 prefix = 'stress.'
             obj_real = RealSpringStressArray
             obj_complex = ComplexSpringStressArray
-            if op2.element_type == 11:
-                result_name = prefix + 'celas1_stress' + postfix
-            elif op2.element_type == 12:
-                result_name = prefix + 'celas2_stress' + postfix
-            elif op2.element_type == 13:
-                result_name = prefix + 'celas3_stress' + postfix
-            elif op2.element_type == 14:
-                result_name = prefix + 'celas4_stress' + postfix
-            else:
-                raise RuntimeError(op2.element_type)
+            result_name = f'{prefix}{etype}_stress{postfix}'
         else:
             if prefix == '' and postfix == '':
                 prefix = 'strain.'
             obj_real = RealSpringStrainArray
             obj_complex = ComplexSpringStrainArray
-            if op2.element_type == 11:
-                result_name = prefix + 'celas1_strain' + postfix
-            elif op2.element_type == 12:
-                result_name = prefix + 'celas2_strain' + postfix
-            elif op2.element_type == 13:
-                result_name = prefix + 'celas3_strain' + postfix
-            elif op2.element_type == 14:
-                result_name = prefix + 'celas4_strain' + postfix
-            else:
-                raise RuntimeError(op2.element_type)
+            result_name = f'{prefix}{etype}_strain{postfix}'
 
         if op2._results.is_not_saved(result_name):
             return ndata, None, None
@@ -2210,32 +2223,25 @@ class OES(OP2Common2):
         """
         op2 = self.op2
         n = 0
+        if op2.element_type == 1:  # CROD
+            etype = 'crod'
+        elif op2.element_type == 3:  # CTUBE
+            etype = 'ctube'
+        elif op2.element_type == 10:  # CONROD
+            etype = 'conrod'
+        else:  # pragma: no cover
+            raise ValueError(op2.code_information())
+
         if op2.is_stress:
             obj_vector_real = RealRodStressArray
             obj_vector_complex = ComplexRodStressArray
             obj_vector_random = RandomRodStressArray
-            if op2.element_type == 1: # CROD
-                result_name = prefix + 'crod_stress' + postfix
-            elif op2.element_type == 3:  # CTUBE
-                result_name = prefix + 'ctube_stress' + postfix
-            elif op2.element_type == 10:  # CONROD
-                result_name = prefix + 'conrod_stress' + postfix
-            else:  # pragma: no cover
-                msg = op2.code_information()
-                return op2._not_implemented_or_skip(data, ndata, msg)
+            result_name = f'{prefix}{etype}_stress{postfix}'
         else:
             obj_vector_real = RealRodStrainArray
             obj_vector_complex = ComplexRodStrainArray
             obj_vector_random = RandomRodStrainArray
-            if op2.element_type == 1: # CROD
-                result_name = prefix + 'crod_strain' + postfix
-            elif op2.element_type == 3:  # CTUBE
-                result_name = prefix + 'ctube_strain' + postfix
-            elif op2.element_type == 10:  # CONROD
-                result_name = prefix + 'conrod_strain' + postfix
-            else:  # pragma: no cover
-                msg = op2.code_information()
-                return op2._not_implemented_or_skip(data, ndata, msg)
+            result_name = f'{prefix}{etype}_strain{postfix}'
 
         if op2._results.is_not_saved(result_name):
             return ndata, None, None
@@ -2586,7 +2592,7 @@ class OES(OP2Common2):
             if auto_return:
                 return nelements * ntotal, None, None
 
-            obj: Union[RealShearStressArray, RealShearStrainArray] = op2.obj
+            obj: RealShearStressArray | RealShearStrainArray = op2.obj
             assert obj is not None
             if op2.use_vector and is_vectorized and op2.sort_method == 1:
                 n = nelements * ntotal
@@ -2850,13 +2856,14 @@ class OES(OP2Common2):
             raise RuntimeError(op2.code_information())
         return n, nelements, ntotal
 
-    def _oes_csolid(self, data, ndata, dt, is_magnitude_phase,
-                    result_type, prefix, postfix):
+    def _oes_csolid(self, data, ndata: int, dt, is_magnitude_phase: bool,
+                    result_type: str, prefix: str, postfix: str):
         """
         reads stress/strain for element type:
          - 39 : CTETRA
          - 67 : CHEXA
          - 68 : CPENTA
+         - 255: CPYRAM
 
         """
         op2 = self.op2
@@ -2874,12 +2881,16 @@ class OES(OP2Common2):
             stress_strain = 'stress'
             obj_vector_real = RealSolidStressArray
             obj_vector_complex = ComplexSolidStressArray
+            obj_vector_complex_vm = ComplexSolidStressVMArray
             obj_vector_random = RandomSolidStressArray
+            obj_vector_random_vm = RandomSolidVMStressArray
         else:
             stress_strain = 'strain'
             obj_vector_real = RealSolidStrainArray
             obj_vector_complex = ComplexSolidStrainArray
+            obj_vector_complex_vm = ComplexSolidStrainVMArray
             obj_vector_random = RandomSolidStrainArray
+            obj_vector_random_vm = RandomSolidVMStrainArray
 
         if prefix == '' and postfix == '':
             prefix = stress_strain + '.'
@@ -2894,15 +2905,20 @@ class OES(OP2Common2):
 
         numwide_real = 4 + 21 * nnodes_expected
         numwide_imag = 4 + (17 - 4) * nnodes_expected
+        numwide_imag2 = 4 + 14 * nnodes_expected
         numwide_random = 4 + (11 - 4) * nnodes_expected
-        numwide_random2 = 18 + 14 * (nnodes_expected - 1)
+        numwide_random2_vm = 4 + 14 * nnodes_expected
+        numwide_random3 = 4 + 8 * nnodes_expected
         preline1 = '%s-%s' % (op2.element_name, op2.element_type)
         preline2 = ' ' * len(preline1)
 
         #print('numwide real=%s imag=%s random=%s' % (numwide_real, numwide_imag, numwide_random2))
         op2._data_factor = nnodes_expected
         log = op2.log
+        # print(op2.format_code, op2.table_name, op2.num_wide, op2.element_name)
+        # print(op2.code_information())
         if op2.format_code == 1 and op2.num_wide == numwide_real:  # real
+            op2.log.debug(f'numwide_real={numwide_real}')
             ntotal = (16 + 84 * nnodes_expected) * self.factor
             nelements = ndata // ntotal
             auto_return, is_vectorized = op2._create_oes_object4(
@@ -2986,6 +3002,7 @@ class OES(OP2Common2):
                                     preline1, preline2)
 
         elif op2.format_code in [2, 3] and op2.num_wide == numwide_imag:  # complex
+            op2.log.debug(f'numwide_imag={numwide_imag}')
             ntotal = numwide_imag * 4 * self.factor
             nelements = ndata // ntotal
             self.ntotal += nelements * nnodes_expected
@@ -3041,6 +3058,7 @@ class OES(OP2Common2):
                                        is_magnitude_phase)
 
         elif op2.format_code == 1 and op2.num_wide == numwide_random: # random
+            op2.log.debug(f'numwide_random={numwide_random}')
             if not op2.is_sort1:
                 log.debug(f'support CSolid random SORT{op2.sort_method}')
                 return ndata, None, None
@@ -3123,7 +3141,9 @@ class OES(OP2Common2):
                                       element_name, nnodes_expected,
                                       preline1, preline2)
 
-        elif op2.format_code in [2, 3] and op2.num_wide == numwide_random2:
+        elif op2.format_code in [2, 3] and op2.num_wide == numwide_random2_vm and \
+                op2.table_name in {b'OESVM1', b'OSTRVM1', b'OESVM2', b'OSTRVM2'}:
+            #op2.log.debug(f'numwide_random2={numwide_random2}')
             #raise RuntimeError(op2.code_information())
             ## a = 18
             ## b = 14
@@ -3141,38 +3161,162 @@ class OES(OP2Common2):
             #print('random2=%s' % num_wide_random)
             #print(op2.code_information())
 
-            #if op2.num_wide ==
-            if op2.read_mode == 1:
-                return ndata, None, None
-            return ndata, None, None
             #print('numwide=%s numwide_random=%s attempt2=%s subcase=%s' % (
                 #op2.num_wide, numwide_random, num_wide_random, op2.isubcase))
             ##msg = op2.code_information()
             #ntotal = 130
-            #nelements = ndata // ntotal
+            ntotal = op2.num_wide * op2.size
+            nelements = ndata // ntotal
 
+            auto_return, is_vectorized = op2._create_oes_object4(
+                nelements, result_name, slot, obj_vector_complex_vm)
+            if auto_return:
+                return nelements * ntotal, None, None
             ## cid, coord_type, nactive_pnts,
             ##      nid, oxx, oyy, ozz, txy, tyz, txz
-            #struct1 = Struct(op2._endian + b'2i 4s')
-            #struct2 = Struct(op2._endian + b'i6f')
-            #for i in range(nelements):
-                #edata = data[n:n+12]
-                #out = struct1.unpack(edata)
-                #(eid_device, cid, abcd) = out
-                #eid, dt = get_eid_dt_from_eid_device(
-                    #eid_device, op2.nonlinear_factor, op2.sort_method)
-                #if op2.is_debug_file:
-                    #op2.binary_debug.write('%s - eid=%i; %s\n' % (preline1, eid, str(out)))
-                #n += 12
-                #for inode in range(nnodes_expected):  # nodes pts, +1 for centroid (???)
-                    #out = struct2.unpack(data[n:n + 28]) # 4*7 = 28
-                    #if op2.is_debug_file:
-                        #op2.binary_debug.write('%s - %s\n' % (preline2, str(out)))
-                    #(grid_device, sxx, syy, sz, txy, tyz, txz) = out
-            #msg = 'OES-CHEXA-random-numwide=%s numwide_real=%s numwide_imag=%s numwide_random=%s' % (
-                #op2.num_wide, numwide_real, numwide_imag, numwide_random)
-            #return op2._not_implemented_or_skip(data, ndata, msg)
-        elif op2.format_code in [1, 2] and op2.num_wide == 67:  # CHEXA
+            ntotal1 = 4 * self.size # 3*4
+            ntotal2 = 14 * self.size
+            ntotali = ntotal1 + nnodes_expected * ntotal2
+            assert ntotali == ntotal, (ntotali, ntotal)
+
+            # 2 CID I Stress Coordinate System
+            # 3 CTYPE CHAR4 Coordinate System Type (BCD)
+            # 4 NODEF I Number of Active Points
+            #
+            # 5 GRID I External grid identification number (0=center)
+            # 6 SXR RS Normal in x
+            # 7 SYR RS Normal in y
+            # 8 SZR RS Normal in z
+            # 9 TXYR RS Shear in xy
+            # 10 TYZR RS Shear in yz
+            # 11 TZXR RS Shear in zx
+            # 12 SXI RS Normal in x
+            # 13 SYI RS Normal in y
+            # 14 SZI RS Normal in z
+            # 15 TXYI RS Shear in xy
+            # 16 TYZI RS Shear in yz
+            # 17 TZXI RS Shear in zx
+            # 18 VM RS von Mises
+            # Words 5 through 18 repeat 005 times
+            obj = op2.obj
+            if op2.use_vector and is_vectorized and op2.sort_method == 1:
+                n = nelements * ntotal
+                itotal = obj.ielement
+                itotali = obj.itotal + nelements
+                itotal2 = obj.itotal + nelements * nnodes_expected
+                obj._times[obj.itime] = dt
+                if obj.itime == 0:
+                    # (eid_device, cid, abcd, nnodes)
+                    ints = frombuffer(data, dtype=op2.idtype8).copy()
+                    try:
+                        ints1 = ints.reshape(nelements, numwide_random2_vm)
+                    except ValueError:
+                        msg = 'ints.shape=%s; size=%s ' % (str(ints.shape), ints.size)
+                        msg += 'nelements=%s numwide_real=%s nelements*numwide=%s' % (
+                            nelements, numwide_real, nelements * numwide_real)
+                        raise ValueError(msg)
+
+                    eids = ints1[:, 0] // 10
+                    cids = ints1[:, 1]
+                    #print(f'eids = {eids}')
+                    assert eids.min() > 0, eids.min()
+                    obj.element_node[itotal:itotal2, 0] = repeat(eids, nnodes_expected)
+                    ints2 = ints1[:, 4:].reshape(nelements * nnodes_expected, 14)
+                    grid_device = ints2[:, 0]#.reshape(nelements, nnodes_expected)
+                    #print(ints1)
+                    #print(ints2)
+                    #print(nelements, nnodes_expected, nelements*nnodes_expected)
+                    #print(f'nids = {grid_device}')
+                    #print('ints2.shape =', ints2.shape)
+
+                    #print('%s-grid_device=%s' % (op2.element_name, grid_device))
+                    unused_grid_device2 = repeat(grid_device, nnodes_expected)
+                    try:
+                        obj.element_node[itotal:itotal2, 1] = grid_device
+                    except ValueError:
+                        msg = '%s; nnodes=%s\n' % (op2.element_name, nnodes_expected)
+                        msg += 'itotal=%s itotal2=%s\n' % (itotal, itotal2)
+                        msg += 'grid_device.shape=%s; size=%s\n' % (str(grid_device.shape), grid_device.size)
+                        #msg += 'nids=%s' % nids
+                        raise ValueError(msg)
+                    obj.element_cid[itotal:itotali, 0] = eids
+                    obj.element_cid[itotal:itotali, 1] = cids
+
+                floats = frombuffer(data, dtype=op2.fdtype8).reshape(nelements, numwide_random2_vm)[:, 4:]
+                # 1    2    3    4    5    6    7 - verify...
+                #[oxx, oyy, ozz, txy, tyz, txz, ovm]
+                # sxr, syr, szr, txyr, tyzr, txzr, \
+                #     sxi, syi, szi, txyi, tyzi, txzi, ovm = out
+                isave1 = [1, 2, 3,  4,  5,  6]
+                isave2 = [7, 8, 9, 10, 11, 12]
+                floats1 = floats.reshape(nelements * nnodes_expected, 14)
+                real_imag = apply_mag_phase(floats1, is_magnitude_phase, isave1, isave2)
+                #floats2 = floats1[:, 1:] # drop grid_device
+
+                # o1/o2/o3 is not max/mid/min.  They are not consistently ordered, so we force it.
+                obj.data[obj.itime, itotal:itotal2, -1] = floats1[:, -1]
+                obj.data[obj.itime, itotal:itotal2, :-1] = real_imag
+                obj.itotal = itotal2
+                obj.ielement = itotali
+            else:
+                struct1 = Struct(op2._endian + b'2i 4s i')
+                struct2 = Struct(op2._endian + b'i 13f')
+                element_num = op2.element_type
+                element_type = op2.element_name
+                for i in range(nelements):
+                    edata = data[n:n+ntotal1]
+                    out = struct1.unpack(edata)
+                    (eid_device, cid, ctype, nodef) = out
+                    #print(eid_device, cid, ctype, nodef)
+                    eid, dt = get_eid_dt_from_eid_device(
+                        eid_device, op2.nonlinear_factor, op2.sort_method)
+                    #obj.add_sort1(eid, dt, cid)
+                    obj.add_eid_sort1(element_num, element_type, dt, eid, cid, ctype, nodef)
+
+                    if op2.is_debug_file:
+                        op2.binary_debug.write('%s - eid=%i; %s\n' % (preline1, eid, str(out)))
+                    n += ntotal1
+                    for inode in range(nnodes_expected):  # nodes pts, +1 for centroid (???)
+                        grid, *out = struct2.unpack(data[n:n + ntotal2])
+                        #print(' ', grid, out)
+                        #if op2.is_debug_file:
+                            #op2.binary_debug.write('%s - %s\n' % (preline2, str(out)))
+                        #(grid_device, sxx, syy, sz, txy, tyz, txz) = out
+                        #     ELEMENT-ID    GRID-ID    NORMAL-X       NORMAL-Y       NORMAL-Z       SHEAR-XY       SHEAR-YZ       SHEAR-ZX      VON MISES
+                        # 0                     1048   2.823925E+03  -8.389856E+03  -1.373890E+03  -3.886024E+03  -9.440013E+02  -8.069132E+02
+                        #                             -1.142355E+02   3.635427E+02   6.020642E+01   1.693545E+02   4.121148E+01   3.410083E+01   1.210361E+04
+
+                        sxr, syr, szr, txyr, tyzr, txzr, \
+                        sxi, syi, szi, txyi, tyzi, txzi, ovm = out
+                        if is_magnitude_phase:
+                            sx = polar_to_real_imag(sxr, sxi)
+                            sy = polar_to_real_imag(syr, syi)
+                            sz = polar_to_real_imag(szr, szi)
+                            txy = polar_to_real_imag(txyr, txyi)
+                            tyz = polar_to_real_imag(tyzr, tyzi)
+                            txz = polar_to_real_imag(txzr, txzi)
+                        else:
+                            sx = complex(sxr, sxi)
+                            sy = complex(syr, syi)
+                            sz = complex(szr, szi)
+                            txy = complex(txyr, txyi)
+                            tyz = complex(tyzr, tyzi)
+                            txz = complex(txzr, txzi)
+                        #del grid, sx, sy, sz, txy, tyz, txz
+                        #if eid == 1048:
+                            #print(f'grid={grid}', sx, sy, sz, txy, tyz, txz)
+                            #print(grid, out)
+                        obj.add_node_sort1(dt, eid, grid, inode, sx, sy, sz, txy, tyz, txz, ovm)
+                        n += ntotal2
+            #etype_num = f'{op2.element_name}-{op2.element_type:d};'
+            #msg = f'OES-{etype_num:<11s} complex2; table_name={op2.table_name}; numwide={op2.num_wide}'
+            #return op2._not_implemented_or_skip(data, ndata, msg), None, None
+        elif op2.format_code in [1, 2] and op2.num_wide == 67 and op2.element_name == 'CHEXA':  # CHEXA
+            op2.log.debug(f'numwide complex HEXA?')
+            # CTETRA:
+            # CPYRAM:
+            # CPENTA:
+            # CHEXA:  67
             #44 = 5 * 8 + 4  (TETRA)
             #52 = 6 * 8 + 4  (PYRAM)
             #60 = 7 * 8 + 4  (PENTA)
@@ -3184,6 +3328,7 @@ class OES(OP2Common2):
             nelements = None
             ntotal = None
         elif op2.format_code in [1, 2, 3] and op2.num_wide in [60] and op2.table_name in [b'OESXRMS1', b'OESXNO1']:  # CPENTA
+            op2.log.debug(f'numwide complex PENTA?')
             # bad
             #if op2.read_mode == 2:
                 #ints    = (68011, 0, 805.28, 6,
@@ -3227,24 +3372,96 @@ class OES(OP2Common2):
             n = op2._not_implemented_or_skip(data, ndata, msg)
             nelements = None
             ntotal = None
-        elif op2.format_code in [1, 2, 3] and op2.num_wide in [76] and op2.table_name in [b'OESXRMS1', b'OESXNO1']:  # CHEXA
+        elif op2.format_code in [1, 2, 3] and op2.num_wide == numwide_random3 and op2.table_name in [b'OESXRMS1', b'OESXNO1']:
+            op2.log.debug(f'numwide_random3={numwide_random3}')
+            # CTETRA: 44
+            # CPYRAM: 52
+            # CHEXA:  76
+            # '      FREQUENCY =  0.000000E+00'
+            # '                      S T R E S S E S   I N   H E X A H E D R O N   S O L I D   E L E M E N T S   ( H E X A )'
+            # '                                    ( ROOT MEAN SQUARE; RMSSF SCALE FACTOR =  1.00E+00 )'
+            # '0                   CORNER      --------------------------CENTER AND CORNER POINT STRESSES---------------------------'
+            # '      ELEMENT-ID   GRID-ID      NORMAL-X    NORMAL-Y    NORMAL-Z      SHEAR-XY    SHEAR-YZ    SHEAR-ZX   VON MISES'
+            # '0            6701        0GRID CS  8 GP'
+            # '0                   CENTER     6.413E+01   2.752E-01   6.413E+01     6.496E+00   6.496E+00   3.842E+01   9.359E+01'
+            # '0                    30000     5.367E+00   1.069E+01   5.367E+00     1.134E-15   1.134E-15   4.473E-15   5.321E+00'
             # C:\MSC.Software\simcenter_nastran_2019.2\tpl_post2\tr1081x.op2
-            msg = 'skipping random CHEXA; numwide=76'
-            n = op2._not_implemented_or_skip(data, ndata, msg)
-            nelements = None
-            ntotal = None
-        elif op2.format_code in [1, 2, 3] and op2.num_wide in [52] and op2.table_name in [b'OESXRMS1', b'OESXNO1']:  # CPYRAM
-            # C:\MSC.Software\simcenter_nastran_2019.2\tpl_post2\tr1081x.op2
-            msg = 'skipping random CPYRAM; numwide=52'
-            n = op2._not_implemented_or_skip(data, ndata, msg)
-            nelements = None
-            ntotal = None
-        elif op2.format_code in [1, 2, 3] and op2.num_wide in [44] and op2.table_name in [b'OESXRMS1', b'OESXNO1']:  # CTETRA
-            # C:\MSC.Software\simcenter_nastran_2019.2\tpl_post2\tr1081x.op2
-            msg = 'skipping random CTETRA; numwide=44'
-            n = op2._not_implemented_or_skip(data, ndata, msg)
-            nelements = None
-            ntotal = None
+
+            # 2 CID       I Stress Coordinate System
+            # 3 CTYPE CHAR4 Coordinate System Type (BCD)
+            # 4 NODEF     I Number of Active Points
+            # 5 GRID      I External grid identification number (0=center)
+            msg = f'skipping random {element_name}; numwide={numwide_random3}'
+
+            ntotal = op2.num_wide * 4
+            nelements = ndata // ntotal
+            assert nelements > 0, nelements
+            assert ndata % ntotal == 0, ndata
+
+            auto_return, is_vectorized = op2._create_oes_object4(
+                nelements, result_name, slot, obj_vector_random_vm)
+            if auto_return:
+                return nelements * ntotal, None, None
+            if op2.read_mode == 1:
+                return ndata, None, None
+
+            obj = op2.obj
+            if op2.use_vector and is_vectorized:  # pragma: no cover
+                is_finished = True
+                n = nelements * 4 * op2.num_wide
+                itotal = obj.ielement
+                itotali = obj.itotal + nelements
+                itotal2 = obj.itotal + nelements * nnodes_expected
+                obj._times[obj.itime] = dt
+                if obj.itime == 0:
+                    # (eid_device, cid, abcd, nnodes)
+                    ints = frombuffer(data, dtype=op2.idtype).copy()
+                    try:
+                        ints1 = ints.reshape(nelements, numwide_random3)
+                    except ValueError:
+                        msg = 'ints.shape=%s; size=%s ' % (str(ints.shape), ints.size)
+                        msg += 'nelements=%s numwide_random3=%s nelements*numwide=%s' % (
+                            nelements, numwide_random3, nelements * numwide_random3)
+                        raise ValueError(msg)
+                    eids = ints1[:, 0] // 10
+                    cids = ints1[:, 1]
+                    #nids = ints1[:, 4]
+                    assert eids.min() > 0, eids.min()
+                    obj.element_node[itotal:itotal2, 0] = repeat(eids, nnodes_expected)
+                    ints2 = ints1[:, 4:].reshape(nelements * nnodes_expected, 8)
+                    grid_device = ints2[:, 0]#.reshape(nelements, nnodes_expected)
+
+                    #print('%s-grid_device=%s' % (op2.element_name, grid_device))
+                    unused_grid_device2 = repeat(grid_device, nnodes_expected)
+                    print(f'grid_device = {grid_device.tolist()}')
+                    print(f'eids = {eids.tolist()}')
+                    print(f'cids = {cids.tolist()}')
+                    try:
+                        obj.element_node[itotal:itotal2, 1] = grid_device
+                    except ValueError:
+                        msg = '%s; nnodes=%s\n' % (op2.element_name, nnodes_expected)
+                        msg += 'itotal=%s itotal2=%s\n' % (itotal, itotal2)
+                        msg += 'grid_device.shape=%s; size=%s\n' % (str(grid_device.shape), grid_device.size)
+                        #msg += 'nids=%s' % nids
+                        raise ValueError(msg)
+                    obj.element_cid[itotal:itotali, 0] = eids
+                    obj.element_cid[itotal:itotali, 1] = cids
+
+                floats = frombuffer(data, dtype=op2.fdtype).reshape(nelements, numwide_random3)[:, 4:]
+
+                #(grid_device, oxx, oyy, ozz, txy, tyz, txz, von_mises)
+                floats1 = floats.reshape(nelements * nnodes_expected, 8)[:, 1:] # drop grid_device
+                assert floats1.shape == (nelements * nnodes_expected, 7), floats1.shape
+
+                obj.data[obj.itime, itotal:itotal2, :] = floats1
+                obj.itotal = itotal2
+                obj.ielement = itotali
+            else:
+                if is_vectorized and op2.use_vector and obj.itime == 0:  # pragma: no cover
+                    log.debug(f'vectorize CSolid random SORT{op2.sort_method}')
+                n = oes_csolid_random3(op2, data, obj, nelements,
+                                       element_name, nnodes_expected,
+                                       ntotal)
         #elif op2.format_code in [2, 3] and op2.num_wide == 76:  # imag
             # C:\MSC.Software\simcenter_nastran_2019.2\tpl_post2\tr1081x.op2
             # analysis_code = 5   Frequency
@@ -3258,8 +3475,8 @@ class OES(OP2Common2):
             #return op2._not_implemented_or_skip(data, ndata, msg), None, None
         else:  # pragma: no cover
             raise RuntimeError(op2.code_information() +
-                               '\nnumwide real=%s imag=%s random=%s' % (
-                                   numwide_real, numwide_imag, numwide_random2))
+                               f'\nnumwide real={numwide_real} imag={numwide_imag} '
+                               f'random2={numwide_random2} random3={numwide_random3}')
         return n, nelements, ntotal
 
     def _oes_csolid2(self, data, ndata, dt, is_magnitude_phase,
@@ -3810,25 +4027,25 @@ class OES(OP2Common2):
             word = 'stress'
             if op2.element_type == 163:  # CHEXA
                 nnodes_expected = 27
-                result_name = prefix + 'chexa_stress' + postfix
+                etype = 'chexa'
                 #element_name = 'CHEXA8'
                 # real=122
             elif op2.element_type == 160:  # CPENTA
                 nnodes_expected = 6
-                result_name = prefix + 'cpenta_stress' + postfix
+                etype = 'cpenta'
                 #element_name = 'CPENTA6'
             elif op2.element_type == 165:  # CPENTA
                 nnodes_expected = 21
-                result_name = prefix + 'cpenta_stress' + postfix
+                etype = 'cpenta'
                 #element_name = 'CPENTA6'
 
             elif op2.element_type == 161:  # CTETRA
                 nnodes_expected = 1
-                result_name = prefix + 'ctetra_stress' + postfix
+                etype = 'ctetra'
                 #element_name = 'CTETRA4'
             elif op2.element_type == 166:  # CTETRA
                 nnodes_expected = 5
-                result_name = prefix + 'ctetra_stress' + postfix
+                etype = 'ctetra'
                 #element_name = 'CTETRA4'
             #elif op2.element_type == 303:  # CPYRAM
                 #nnodes_expected = 5
@@ -3836,6 +4053,7 @@ class OES(OP2Common2):
                 #element_name = 'CPYRAM5'
             else:  # pragma: no cover
                 raise RuntimeError(op2.code_information())
+            result_name = f'{prefix}{etype}_stress{postfix}'
         else:
             #obj_vector_real = RealSolidStrainArray
             #obj_vector_complex = ComplexSolidStrainArray
@@ -4017,23 +4235,21 @@ class OES(OP2Common2):
             word = 'stress'
             if op2.element_type in [202, 218]:  # CHEXA
                 nnodes_expected = 8
-                result_name = prefix + 'chexa_stress_strain' + postfix
                 element_name = 'CHEXA8'
                 # real=122
             elif op2.element_type in [204, 220]:  # CPENTA
                 nnodes_expected = 6
-                result_name = prefix + 'cpenta_stress_strain' + postfix
                 element_name = 'CPENTA6'
             elif op2.element_type in [216, 221]:  # CTETRA
                 nnodes_expected = 4
-                result_name = prefix + 'ctetra_stress_strain' + postfix
                 element_name = 'CTETRA4'
             #elif op2.element_type == 303:  # CPYRAM
                 #nnodes_expected = 5
-                #result_name = prefix + 'cpyram_stress' + postfix
                 #element_name = 'CPYRAM5'
             else:  # pragma: no cover
                 raise RuntimeError(op2.code_information())
+            etype = element_name[:-1].lower()
+            result_name = f'{prefix}{etype}_stress_strain{postfix}'
         else:
             #obj_vector_real = RealSolidStrainArray
             #obj_vector_complex = ComplexSolidStrainArray
@@ -4214,22 +4430,19 @@ class OES(OP2Common2):
         if op2.element_type == 85:
             etype = 'CTETRANL'
             nnodes = 5
-            result_name = prefix + 'ctetra_stress_strain' + postfix
         elif op2.element_type == 91:
             etype = 'CPENTANL'
             nnodes = 7
-            result_name = prefix + 'cpenta_stress_strain' + postfix
         elif op2.element_type == 93:
             etype = 'CHEXANL'
             nnodes = 9
-            result_name = prefix + 'chexa_stress_strain' + postfix
         elif op2.element_type == 256:
             etype = 'CPYRAMNL'
             nnodes = 6
-            result_name = prefix + 'chexa_stress_strain' + postfix
-
         else:  # pragma: no cover
             raise RuntimeError(op2.code_information())
+        etype = etype[:-2].lower()
+        result_name = f'{prefix}{etype}_stress_strain{postfix}'
 
         numwide_real = 4 + (25 - 4) * nnodes  # real???
         numwide_random = 2 + (18 - 2) * nnodes  # imag???
@@ -4243,7 +4456,6 @@ class OES(OP2Common2):
         if op2._results.is_not_saved(result_name):
             return ndata, None, None
         op2._results._found_result(result_name)
-
         slot = op2.get_result(result_name)
 
         if op2.format_code == 1 and op2.num_wide == numwide_real:
@@ -4552,41 +4764,30 @@ class OES(OP2Common2):
         factor = self.factor
         size = self.size
         #print('_oes_cquad4_33')
+        if op2.element_type == 33:
+            etype = 'cquad4'
+        elif op2.element_type == 228:
+            etype = 'cquadr'
+            assert op2.num_wide in [17, 15], op2.code_information()
+
+        elif op2._nastran_format == 'nasa95':
+            if op2.element_type == 19:
+                etype = 'cquad1'
+            elif op2.element_type == 64:
+                etype = 'cquad4'
+            else:  # pragma: no cover
+                raise NotImplementedError(op2.code_information())
+        else:  # pragma: no cover
+            raise NotImplementedError(op2.code_information())
+
         if op2.is_stress:
             obj_vector_real = RealPlateStressArray
             obj_vector_complex = ComplexPlateStressArray
-            if op2.element_type == 33:
-                result_name = prefix + 'cquad4_stress' + postfix
-            elif op2.element_type == 228:
-                result_name = prefix + 'cquadr_stress' + postfix
-                assert op2.num_wide in [17, 15], op2.code_information()
-
-            elif op2._nastran_format == 'nasa95':
-                if op2.element_type == 19:
-                    result_name = prefix + 'cquad1_stress' + postfix
-                elif op2.element_type == 64:
-                    result_name = prefix + 'cquad4_stress' + postfix
-                else:
-                    raise NotImplementedError(op2.code_information())
-            else:
-                raise NotImplementedError(op2.code_information())
+            result_name = f'{prefix}{etype}_stress{postfix}'
         else:
             obj_vector_real = RealPlateStrainArray
             obj_vector_complex = ComplexPlateStrainArray
-            if op2.element_type == 33:
-                result_name = prefix + 'cquad4_strain' + postfix
-            elif op2.element_type == 228:
-                result_name = prefix + 'cquadr_strain' + postfix
-                assert op2.num_wide in [17, 15], op2.code_information()
-            elif op2._nastran_format == 'nasa95':
-                if op2.element_type == 19:
-                    result_name = prefix + 'cquad1_strain' + postfix
-                elif op2.element_type == 64:
-                    result_name = prefix + 'cquad4_strain' + postfix
-                else:
-                    raise NotImplementedError(op2.code_information())
-            else:
-                raise NotImplementedError(op2.code_information())
+            result_name = f'{prefix}{etype}_strain{postfix}'
 
         if op2._results.is_not_saved(result_name):
             return ndata, None, None
@@ -5776,20 +5977,19 @@ class OES(OP2Common2):
         """
         op2 = self.op2
         n = 0
+        if op2.element_type == 88:
+            etype = 'ctria3'
+            nnodes = 3
+        elif op2.element_type == 90:
+            etype = 'cquad4'
+            nnodes = 4
+        else:  # pragma: no cove
+            raise RuntimeError(op2.element_type)
+
         if op2.is_stress:
-            if op2.element_type == 88:
-                result_name = prefix + 'ctria3_stress' # + postfix  nonlinear_
-            elif op2.element_type == 90:
-                result_name = prefix + 'cquad4_stress'  + postfix # nonlinear_
-            else:
-                raise RuntimeError(op2.element_type)
+            result_name = f'{prefix}{etype}_stress{postfix}'
         else:
-            if op2.element_type == 88:
-                result_name = prefix + 'ctria3_strain' + postfix # nonlinear_
-            elif op2.element_type == 90:
-                result_name = prefix + 'cquad4_strain' + postfix # nonlinear_
-            else:
-                raise RuntimeError(op2.element_type)
+            result_name = f'{prefix}{etype}_strain{postfix}'
 
         slot = op2.get_result(result_name)
         op2._results._found_result(result_name)
@@ -5827,7 +6027,7 @@ class OES(OP2Common2):
             else:
                 if is_vectorized and op2.use_vector:  # pragma: no cover
                     log.debug('vectorize CTRIA3/CQUAD4_NL real SORT%s' % op2.sort_method)
-                n = oes_cshellnl_real_13(op2, data, obj, etype, nnodes, nelements, ntotal)
+                n = oes_cshellnl_real_13(op2, data, obj, etype, nelements, ntotal)
 
         elif op2.format_code == 1 and op2.num_wide == 25 and op2.element_type in [88, 90]:
             # TODO: vectorize
@@ -5900,7 +6100,7 @@ class OES(OP2Common2):
             raise RuntimeError(op2.code_information())
         return n, nelements, ntotal
 
-    def _oes_shells_composite(self, data, ndata, dt, is_magnitude_phase,
+    def _oes_shells_composite(self, data, ndata: int, dt, is_magnitude_phase: bool,
                               result_type: int, prefix: str, postfix: str) -> tuple[int, Any, Any]:
         """
         reads stress/strain for element type:
@@ -5912,7 +6112,7 @@ class OES(OP2Common2):
          - 233 : TRIARLC (CTRIAR-composite)
 
         """
-        op2 = self.op2  # type: OP2
+        op2: OP2 = self.op2
         table_name_bytes = op2.table_name
         assert isinstance(table_name_bytes, bytes), table_name_bytes
         n = 0
@@ -5930,7 +6130,12 @@ class OES(OP2Common2):
         except KeyError:  # pragma: no cover
             raise KeyError(op2.code_information())
 
-        if op2.is_stress:
+        if op2.is_optistruct:
+            is_stress = ('stress' in prefix)
+        else:
+            is_stress = op2.is_stress
+
+        if is_stress:
             stress_strain = 'stress'
             obj_vector_real = RealCompositePlateStressArray
             obj_vector_strength = RealCompositePlateStressStrengthRatioArray
@@ -5943,6 +6148,9 @@ class OES(OP2Common2):
             #obj_vector_complex = ComplexCompositePlateStrainArray
             #obj_vector_random = RandomCompositePlateStrainArray
             layered_cls = ComplexLayeredCompositeStrainArray
+
+        if op2._results.is_not_saved(prefix.rstrip('.')):
+            return ndata, None, None
 
         result_name = prefix + f'{element_name}_composite_{stress_strain}' + postfix
         if op2._results.is_not_saved(result_name):
@@ -5971,9 +6179,9 @@ class OES(OP2Common2):
             obj = op2.obj
             if op2.is_debug_file:
                 op2.binary_debug.write('  [cap, element1, element2, ..., cap]\n')
-                op2.binary_debug.write('  cap = %i  # assume 1 cap when there could have been multiple\n' % ndata)
+                op2.binary_debug.write(f'  cap = {ndata:d}  # assume 1 cap when there could have been multiple\n')
                 op2.binary_debug.write('  element1 = [eid_device, layer, o1, o2, t12, t1z, t2z, angle, major, minor, ovm)]\n')
-                op2.binary_debug.write('  nelements=%i; nnodes=1 # centroid\n' % nelements)
+                op2.binary_debug.write(f'  nelements={nelements:d}; nnodes=1 # centroid\n')
 
             if op2.use_vector and is_vectorized and sort_method == 1:
                 n = nelements * op2.num_wide * 4
@@ -6045,7 +6253,6 @@ class OES(OP2Common2):
             complex_obj = ComplexLayeredCompositeStressArray if op2.is_stress else ComplexLayeredCompositeStrainArray
             return nelements * ntotal, None, None
 
-
             auto_return, is_vectorized = op2._create_oes_object4(
                 nelements, result_name, slot, complex_obj)
             if auto_return:
@@ -6055,7 +6262,7 @@ class OES(OP2Common2):
             n = oes_shell_composite_complex_11(op2, data, obj,
                                                ntotal, nelements, sort_method,
                                                dt, is_magnitude_phase)
-            return nelements * ntotal, None, None
+            return n, nelements, ntotal
 
         elif table_name_bytes in {b'OESRT', b'OESRTN'}:
             n, nelements, ntotal = self._oes_shells_composite_oesrt(
@@ -6074,13 +6281,38 @@ class OES(OP2Common2):
             if auto_return:
                 return nelements * ntotal, None, None
 
-            if is_vectorized and op2.use_vector:  # pragma: no cover
-                op2.log.warning(f'vectorize COMP_SHELL complex SORT{sort_method} (numwide=13)')
-
             obj = op2.obj
-            n = oes_shell_composite_complex_13(op2, data, obj,
-                                               ntotal, nelements, sort_method,
-                                               dt, is_magnitude_phase)
+            if is_vectorized and op2.use_vector:
+                #op2.log.warning(f'vectorize COMP_SHELL complex SORT{sort_method} (numwide=13)')
+                n = len(data)
+
+                istart = obj.itotal
+                iend = istart + nelements
+                obj._times[obj.itime] = dt
+
+                if obj.itime == 0:
+                    ints = frombuffer(data, dtype=op2.idtype8).reshape(nelements, 13).copy()
+                    eids = ints[:, 0] // 10
+                    nids = ints[:, 1]
+                    obj.element_layer[istart:iend, 0] = eids
+                    obj.element_layer[istart:iend, 1] = nids
+
+                floats = frombuffer(data, dtype=op2.fdtype8).reshape(nelements, 13)
+                #[o1a, o2a, t12a, o1za, o2za, o1b, o2b, t12b, o1zb, e2zb, ovm]
+                obj.data[obj.itime, istart:iend, :] = floats[:, 2:].copy()
+                # struct1 = Struct(op2._endian + op2._analysis_code_fmt + b'i9f ff')
+                # add_sort_x = getattr(obj, 'add_sort' + str(op2.sort_method))
+                # for unused_i in range(nelements):
+                #     edata = data[n:n + ntotal]
+                #     out = struct1.unpack(edata)
+                #
+                #     (eid_device, ply_id,
+                #      o1a, o2a, t12a, o1za, o2za,
+                #      o1b, o2b, t12b, o1zb, e2zb, ovm,) = out
+            else:
+                n = oes_shell_composite_complex_13(op2, data, obj,
+                                                   ntotal, nelements, sort_method,
+                                                   dt, is_magnitude_phase)
             #return nelements * ntotal, None, None
 
         elif num_wide == 7 and (result_type == 2 or table_name_bytes == b'OSTRMS1C'): # random (no VM)
@@ -6682,30 +6914,22 @@ class OES(OP2Common2):
         op2 = self.op2
         n = 0
         #prefix = 'nonlinear_'
+        if op2.element_type == 87:
+            etype = 'ctube'
+            name = 'CTUBENL-87'
+        elif op2.element_type == 89:
+            etype = 'crod'
+            name = 'RODNL-89'
+        elif op2.element_type == 92:
+            etype = 'conrod'
+            name = 'CONRODNL-92'
+        else:  # pragma: no cover
+            raise RuntimeError(op2.code_information())
+
         if op2.is_stress:
-            if op2.element_type == 87:
-                result_name = prefix + 'ctube_stress' + postfix
-                name = 'CTUBENL-87'
-            elif op2.element_type == 89:
-                result_name = prefix + 'crod_stress' + postfix
-                name = 'RODNL-89'
-            elif op2.element_type == 92:
-                result_name = prefix + 'conrod_stress' + postfix
-                name = 'CONRODNL-92'
-            else:  # pragma: no cover
-                raise RuntimeError(op2.code_information())
+            result_name = f'{prefix}{etype}_stress{postfix}'
         else:
-            if op2.element_type == 87:
-                result_name = prefix + 'ctube_strain' + postfix
-                name = 'CTUBENL-87'
-            elif op2.element_type == 89:
-                result_name = prefix + 'crod_strain' + postfix
-                name = 'RODNL-89'
-            elif op2.element_type == 92:
-                result_name = prefix + 'conrod_strain' + postfix
-                name = 'CONRODNL-92'
-            else:  # pragma: no cover
-                raise RuntimeError(op2.code_information())
+            result_name = f'{prefix}{etype}_strain{postfix}'
 
         if op2._results.is_not_saved(result_name):
             return ndata, None, None
@@ -6773,12 +6997,16 @@ class OES(OP2Common2):
         # NonlinearSpringStress
         n = 0
         numwide_real = 3
+        if op2.element_type == 224:
+            etype = 'celas1_stress'
+        elif op2.element_type == 225:
+            etype = 'celas3_stress'
+        else:  # pragma: no cover
+            raise NotImplementedError(op2.code_information())
+
         if op2.is_stress:
-            if op2.element_type == 224:
-                result_name = prefix + 'celas1_stress' + postfix # nonlinear_
-            elif op2.element_type == 225:
-                result_name = prefix + 'celas3_stress' + postfix # nonlinear_
-        else:
+            result_name = prefix + f'{prefix}{etype}_stress{postfix}' # nonlinear_
+        else:  # pragma: no cover
             raise NotImplementedError('NonlinearSpringStrain')
 
         if op2._results.is_not_saved(result_name):
@@ -6794,7 +7022,7 @@ class OES(OP2Common2):
             if op2.is_stress:
                 auto_return, is_vectorized = op2._create_oes_object4(
                     nelements, result_name, slot, RealNonlinearSpringStressArray)
-            else:
+            else:  # pragma: no cover
                 raise NotImplementedError('NonlinearSpringStrainArray') # undefined
 
             if auto_return:
@@ -6914,6 +7142,167 @@ class OES(OP2Common2):
                     obj.add_sort1(dt, eid, fx, fy, fz, otx, oty, otz, etx, ety, etz,
                                   mx, my, mz, orx, ory, orz, erx, ery, erz)
                     n += ntotal
+        else:  # pragma: no cover
+            raise RuntimeError(op2.code_information())
+        return n, nelements, ntotal
+
+    def _oes_cplstn_nx(self, data, ndata: int, dt, is_magnitude_phase: bool,
+                       result_type: str, prefix: str, postfix: str):
+        """
+        reads stress/strain for element type:
+        - 271 CPLSTN3
+        - 272 CPLSTN4
+        - 273 CPLSTN6
+        - 274 CPLSTN8
+
+        """
+        op2 = self.op2
+        n = 0
+        if op2.is_stress:
+            stress_strain = 'stress'
+            obj_vector_real = RealCPLSTRNPlateStressNXArray
+        else:
+            stress_strain = 'strain'
+            obj_vector_real = RealCPLSTRNPlateStrainNXArray
+
+        if op2.element_type == 271:    # CPLSTN3
+            nnodes = 3
+            nnodes_cen = 1
+        elif op2.element_type == 272:    # CPLSTN4
+            nnodes = 4
+            nnodes_cen = 5
+        elif op2.element_type == 273:  # CPLSTN6
+            nnodes = 6
+            nnodes_cen = 4
+        elif op2.element_type == 274:  # CPLSTN8
+            nnodes = 8
+            nnodes_cen = 5
+        else:  # pragma: no cover
+            #raise RuntimeError(op2.element_type)
+            raise RuntimeError(op2.code_information())
+        result_name = f'{stress_strain}.cplstn{nnodes}_{stress_strain}'
+        name = f'CPLSTN{nnodes}'
+
+        if op2._results.is_not_saved(result_name):
+            return ndata, None, None
+        op2._results._found_result(result_name)
+        slot = op2.get_result(result_name)
+
+        num_wide = op2.num_wide
+        ntotal = num_wide * self.size
+        num_wide_real = 32  # CPLSTN4, CPLSTN3
+        num_wide_real = 26  # CPLSTN6
+        nelements = ndata // ntotal
+        assert ndata % ntotal == 0
+        #print(f'result_name = {result_name}')
+
+        if result_type == 0 and num_wide == 6 and nnodes == 3:  # real; CPLSTN3
+            nlayers = nelements
+            auto_return, is_vectorized = op2._create_oes_object4(
+                nlayers, result_name, slot, obj_vector_real)
+            if auto_return:
+                assert ntotal == op2.num_wide * 4
+                return nelements * ntotal, None, None
+
+            obj: RealCPLSTRNPlateStressNXArray = op2.obj
+            if op2.use_vector and is_vectorized and op2.sort_method == 1:
+                n = nelements * op2.num_wide * 4
+                istart = obj.itotal
+                iend = istart + nlayers
+                obj._times[obj.itime] = dt
+
+                if obj.itime == 0:
+                    ints1 = frombuffer(data, dtype=op2.idtype).reshape(nelements, 6).copy()
+                    eids = ints1[:, 0] // 10
+                    obj.element[istart:iend] = eids
+                    obj.element_node[istart:iend, 0] = eids
+                    obj.element_node[istart:iend, 1] = 0
+                floats = frombuffer(data, dtype=op2.fdtype).reshape(nelements, 6)[:, 1:]
+                #[oxx, oyy, ozz, txy, von_mises]
+                obj.data[obj.itime, istart:iend, :] = floats.copy()
+            else:
+                n = oes_cplstn3_real_6(
+                    op2, data, obj,
+                    nelements, ntotal, dt)
+
+        elif result_type == 0 and num_wide == 32 and nnodes in {4, 8}:  # real; CPLSTN4
+            nlayers = nelements * nnodes_cen
+            auto_return, is_vectorized = op2._create_oes_object4(
+                nlayers, result_name, slot, obj_vector_real)
+            if auto_return:
+                op2._data_factor = nnodes_cen
+                assert ntotal == op2.num_wide * 4
+                return nelements * ntotal, None, None
+
+            obj: RealCPLSTRNPlateStressNXArray = op2.obj
+            #if op2.is_debug_file:
+                #op2.binary_debug.write('  [cap, element1, element2, ..., cap]\n')
+                #op2.binary_debug.write('  cap = %i  # assume 1 cap when there could have been multiple\n' % ndata)
+                #op2.binary_debug.write('  element1 = [eid_device, layer, o1, o2, t12, t1z, t2z, angle, major, minor, ovm)]\n')
+                #op2.binary_debug.write('  nelements=%i; nnodes=1 # centroid\n' % nelements)
+
+            if op2.use_vector and is_vectorized and op2.sort_method == 1:
+                n = nelements * op2.num_wide * 4
+                iestart = obj.ielement
+                ieend = iestart + nelements
+                istart = obj.itotal
+                iend = istart + nlayers
+                obj._times[obj.itime] = dt
+
+                if obj.itime == 0:
+                    ints1 = frombuffer(data, dtype=op2.idtype).reshape(nelements, 32).copy()
+                    ints2 = ints1[:, 2:].reshape(nlayers, 6)
+                    eids = ints1[:, 0] // 10
+                    nids = ints2[:, 0]
+                    obj.element[iestart:ieend] = eids
+                    eids2 = np.vstack([eids] * nnodes_cen).T.ravel()
+                    obj.element_node[istart:iend, 0] = eids2
+                    obj.element_node[istart:iend, 1] = nids
+                floats = frombuffer(data, dtype=op2.fdtype).reshape(nelements, 32)[:, 2:]
+                floats2 = floats.reshape(nlayers, 6)
+                #[oxx, oyy, ozz, txy, von_mises]
+                obj.data[obj.itime, istart:iend, :] = floats2[:, 1:].copy()
+            else:
+                n = oes_cplstn4_real_32(
+                    op2, data, obj,
+                    nelements, ntotal, dt)
+
+        elif result_type == 0 and num_wide == 26 and nnodes == 6:  # real; CPLSTN6
+            nlayers = nelements * nnodes_cen
+            auto_return, is_vectorized = op2._create_oes_object4(
+                nlayers, result_name, slot, obj_vector_real)
+            if auto_return:
+                op2._data_factor = nnodes_cen
+                assert ntotal == op2.num_wide * 4
+                return nelements * ntotal, None, None
+
+            obj: RealCPLSTRNPlateStressNXArray = op2.obj
+            if op2.use_vector and is_vectorized and op2.sort_method == 1:
+                n = nelements * op2.num_wide * 4
+                iestart = obj.ielement
+                ieend = iestart + nelements
+                istart = obj.itotal
+                iend = istart + nlayers
+                obj._times[obj.itime] = dt
+
+                if obj.itime == 0:
+                    ints1 = frombuffer(data, dtype=op2.idtype).reshape(nelements, 26).copy()
+                    ints2 = ints1[:, 2:].reshape(nlayers, 6)
+                    eids = ints1[:, 0] // 10
+                    nids = ints2[:, 0]
+                    obj.element[iestart:ieend] = eids
+                    eids2 = np.vstack([eids] * nnodes_cen).T.ravel()
+                    obj.element_node[istart:iend, 0] = eids2
+                    obj.element_node[istart:iend, 1] = nids
+                floats = frombuffer(data, dtype=op2.fdtype).reshape(nelements, 26)[:, 2:]
+                floats2 = floats.reshape(nlayers, 6)
+                #[oxx, oyy, ozz, txy, von_mises]
+                obj.data[obj.itime, istart:iend, :] = floats2[:, 1:].copy()
+            else:
+                n = oes_cplstn6_real_26(
+                    op2, data, obj,
+                    nelements, ntotal, dt)
+
         else:  # pragma: no cover
             raise RuntimeError(op2.code_information())
         return n, nelements, ntotal
@@ -7773,9 +8162,43 @@ def oes_cgapnl_real_11(op2: OP2, data: bytes,
         n += ntotal
     return n
 
+
+def oes_csolid_random3(op2: OP2, data: bytes, obj: RandomSolidVMStressArray, nelements: int,
+                       element_name: str, nnodes_expected: int,
+                       ntotal: int) -> int:
+    # print(msg)
+    n = 0
+    assert op2.size == 4, op2.size
+    fmt = b'ii4si' + b'i7f' * nnodes_expected
+    structi = Struct(fmt)
+
+    for ielement in range(nelements):
+        datai = data[n:n + ntotal]
+        # op2.show_data(datai, types='if')
+        out = structi.unpack(datai)
+        eid_device, cid, grid, nnodes, *other = out
+        eid, dt = get_eid_dt_from_eid_device(
+            eid_device, op2.nonlinear_factor, op2.sort_method)
+        #print(eid, cid, grid, nnodes)
+        # [oxx, oyy, ozz, txy, tyz, txz, von_mises]
+        # 6 SX   RS Normal in x
+        # 7 SY   RS Normal in y
+        # 8 SZ   RS Normal in z
+        # 9 TXY  RS Shear in xy
+        # 10 TYZ RS Shear in yz
+        # 11 TZX RS Shear in zx
+        # 12 RMSVM RS RMS von Mises
+        for inode in range(nnodes_expected):
+            #print('   ', other[8 * inode], other[8 * inode + 1:8 * (inode + 1)])
+            node_id = other[8 * inode]
+            oxx, oyy, ozz, txy, tyz, txz, vm = other[8 * inode + 1:8 * (inode + 1)]
+            obj.add_node_sort1(dt, eid, inode, node_id, oxx, oyy, ozz, txy, tyz, txz, vm)
+        n += ntotal
+    return n
+
 def oes_csolidnl_real(op2: OP2, data: bytes,
                       obj: RealNonlinearSolidArray,
-                      etype, nnodes,
+                      etype: str, nnodes: int,
                       nelements: int, ntotal: int) -> int:
     n = 0
     size = op2.size
@@ -7822,7 +8245,7 @@ def oes_csolidnl_real(op2: OP2, data: bytes,
 
 def oes_cshellnl_real_13(op2: OP2, data: bytes,
                          obj: RealNonlinearPlateArray,
-                         etype,
+                         etype: str,
                          nelements: int, ntotal: int) -> int:
     n = 0
     #size = op2.size
@@ -7879,7 +8302,7 @@ def oes_cshellnl_real_25(op2: OP2, data: bytes,
 
 
 def oes_composite_solid_nx_real_center(op2: OP2, data: bytes,
-                                       obj: Union[RandomCompositePlateStressArray, RandomCompositePlateStrainArray],
+                                       obj: RandomCompositePlateStressArray | RandomCompositePlateStrainArray,
                                        nelements: int, ntotal: int) -> int:
     n = 0
     size = op2.size
@@ -7905,7 +8328,7 @@ def oes_composite_solid_nx_real_center(op2: OP2, data: bytes,
     return n
 
 def oes_composite_solid_nx_real_172(op2: OP2, data: bytes,
-                                    obj: Union[RealSolidCompositeStressArray, RealSolidCompositeStrainArray],
+                                    obj: RealSolidCompositeStressArray | RealSolidCompositeStrainArray,
                                     nelements: int, ntotal: int) -> int:
     n = 0
     #size = op2.size
@@ -8021,7 +8444,7 @@ def oes_csolid_nonlinear_hyperelastic_real(op2: OP2, data: bytes,
     return n
 
 def oes_composite_shells_nx_random_7(op2: OP2, data: bytes,
-                                     obj: Union[RandomCompositePlateStressArray, RandomCompositePlateStrainArray],
+                                     obj: RandomCompositePlateStressArray | RandomCompositePlateStrainArray,
                                      nelements: int, ntotal: int) -> int:
     n = 0
     size = op2.size
@@ -8049,7 +8472,7 @@ def oes_composite_shells_nx_random_7(op2: OP2, data: bytes,
     return n
 
 def oes_cbend_complex_21(op2: OP2, data: bytes,
-                         obj: Union[ComplexBendStressArray, ComplexBendStrainArray],
+                         obj: ComplexBendStressArray | ComplexBendStrainArray,
                          nelements: int, ntotal: int, is_magnitude_phase: bool) -> int:
     n = 0
     #size = op2.size

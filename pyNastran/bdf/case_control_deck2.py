@@ -23,7 +23,7 @@ import sys
 import copy
 from typing import Any, Optional, TYPE_CHECKING
 
-from cpylog import get_logger
+from cpylog import get_logger, SimpleLogger
 
 #from pyNastran.bdf import subcase
 from pyNastran.bdf.subcase import Subcase, update_param_name
@@ -113,7 +113,7 @@ class CaseControlDeck:
         #self.debug = True
 
         #: stores a single copy of 'BEGIN BULK' or 'BEGIN SUPER'
-        self.reject_lines = []  # type: list[str]
+        self.reject_lines: list[str] = []
         self.begin_bulk = ['BEGIN', 'BULK']
 
         # allows BEGIN BULK to be turned off
@@ -121,7 +121,7 @@ class CaseControlDeck:
         self._begin_count = 0
 
         self.lines = lines
-        self.subcases = {0: Subcase(id=0)}  # type: dict[int, Subcase]
+        self.subcases: dict[int, Subcase] = {0: Subcase(id=0)}
         try:
             self._read(self.lines)
         except Exception:
@@ -502,7 +502,7 @@ class CaseControlDeck:
         lines = _clean_lines([param])
         (j, fail_flag, key, value, options, param_type) = parse_entry(
             lines, self.log, debug=self.debug)
-        return (j, key, value, options, param_type)
+        return j, key, value, options, param_type
 
     def _read(self, lines: list[str]) -> None:
         """
@@ -517,6 +517,7 @@ class CaseControlDeck:
 
         """
         isubcase = 0
+        log = self.log
         lines = _clean_lines(lines)
         self.output_lines = []
         i = 0
@@ -531,11 +532,11 @@ class CaseControlDeck:
                 lines2.append(lines[i])
                 #comment = lines[i][72:]
             (unused_j, fail_flag, key, value, options, param_type) = _parse_entry(
-                lines2, self.log, debug=self.debug)
+                lines2, log, debug=self.debug)
             i += 1
 
             if fail_flag:
-                self.log.warning(f'skipping Case Control line {i}: {line!r}')
+                log.warning(f'skipping Case Control line {i}: {line!r}')
                 continue
 
             line_upper = line.upper()
@@ -941,9 +942,9 @@ def _parse_entry(self, lines: list[str],
             #value = obj
             #param_type = 'OBJ-type'
         #else:
-        key = value.key  # type: str
-        options = obj.set_id  # type: list[int]
-        value = obj.value  # type: int
+        key: str = value.key
+        options: list[int] = obj.set_id
+        value: int = obj.value
         param_type = 'SET-type'
 
     elif line_upper.startswith('SETS DEFINITION'):
@@ -1228,13 +1229,13 @@ def _parse_entry(self, lines: list[str],
         param_type = 'KEY-type'
         assert key.upper() == key, key
     else:
-        msg = 'generic catch all...line=%r' % line
+        msg = f'generic catch all...line={line!r}'
         key = ''
         value = line
         options = None
         param_type = 'KEY-type'
         assert key.upper() == key, key
     i += 1
-    assert key.upper() == key, 'key=%s param_type=%s' % (key, param_type)
+    assert key.upper() == key, f'key={key} param_type={param_type}'
 
-    return (i, key, value, options, param_type)
+    return i, key, value, options, param_type

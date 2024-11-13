@@ -337,7 +337,7 @@ def write_solid(model, name, eids, nelements, itable, op2_file, op2_ascii, endia
     else:  # pragma: no cover
         raise NotImplementedError(name)
     nfields = nnodes + 2
-    spack = Struct(endian + b'%ii' % (nfields))
+    spack = Struct(endian + b'%ii' % nfields)
 
     nbytes = _write_intermediate_block(name, key, nfields, nelements, op2_file, op2_ascii)
     for eid in sorted(eids):
@@ -446,7 +446,8 @@ def write_cbush(eids, spack, obj, op2_file, op2_ascii, endian):
             f = -1
             data = [eid, pid, ga, gb, 0, 0, 0,
                     f, cid, s, ocid, s1, s2, s3]
-            assert None not in data, 'CBUSH-1 %s' % (data)
+            assert None not in data, ('CBUSH-1 %s' %
+                                      (data))
             op2_file.write(spacki.pack(*data))
         elif elem.x[0] is not None:
             f = 0
@@ -905,7 +906,7 @@ def write_card(name, eids, spack, obj, op2_file, op2_ascii, endian):
     else:  # pragma: no cover
         raise NotImplementedError(name)
 
-def get_theta_from_theta_mcid(theta_mcid: Union[int, float]) -> float:
+def get_theta_from_theta_mcid(theta_mcid: int | float) -> float:
     """the theta/mcid field is stored in a strange way"""
     if isinstance(theta_mcid, integer_types):
         theta = 512. * (theta_mcid + 1)

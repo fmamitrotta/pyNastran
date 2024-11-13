@@ -631,8 +631,10 @@ class OP2(OP2_Scalar, OP2Writer):
             del self.subcase
 
         result_types = self.get_table_types()
-        skip_results = ('params', 'gpdt', 'bgpdt', 'eqexin', 'psds', 'monitor1', 'monitor3',
-                        'cstm', 'trmbu', 'trmbd')
+        skip_results = (
+            'params', 'gpdt', 'bgpdt', 'eqexin', 'psds', 'monitor1', 'monitor3',
+             'cstm', 'trmbu', 'trmbd',
+        )
         for result_type in result_types:
             if result_type in skip_results or result_type.startswith('responses.'):
                 continue
@@ -708,7 +710,7 @@ class OP2(OP2_Scalar, OP2Writer):
                     try:
                         obj.build_dataframe()
                         assert obj.data_frame is not None
-                    except MemoryError:
+                    except MemoryError:  # pragma: no cover
                         raise
                     except Exception:
                         self.log.error(obj)
@@ -726,9 +728,9 @@ class OP2(OP2_Scalar, OP2Writer):
                 #except TypeError:
                     #self.log.error(obj)
                     #self.log.error('build_dataframe is broken with a TypeError for %s' % class_name)
-                except MemoryError:
+                except MemoryError:  # pragma: no cover
                     raise
-                except NotImplementedError:
+                except NotImplementedError:  # pragma: no cover
                     self.log.warning(obj)
                     self.log.warning(f'build_dataframe is broken for {class_name}')
                     raise
@@ -1233,7 +1235,7 @@ class OP2(OP2_Scalar, OP2Writer):
         psd = self.op2_results.psd
         rms = self.op2_results.rms
         #no = self.op2_results.no
-        abs = self.op2_results.abs
+        absi = self.op2_results.abs
         nrl = self.op2_results.nrl
         srss = self.op2_results.srss
         disp_like_dicts = [
@@ -1244,25 +1246,25 @@ class OP2(OP2_Scalar, OP2Writer):
             self.displacements,
             ato.displacements, crm.displacements, psd.displacements, rms.displacements,
             #self.displacements_scaled,
-            abs.displacements, nrl.displacements, srss.displacements,
+            absi.displacements, nrl.displacements, srss.displacements,
 
             self.velocities,
             ato.velocities, crm.velocities, psd.velocities, rms.velocities,
-            abs.velocities, nrl.velocities, srss.velocities,
+            absi.velocities, nrl.velocities, srss.velocities,
 
             self.accelerations,
             ato.accelerations, crm.accelerations, psd.accelerations, rms.accelerations,
-            abs.accelerations, nrl.accelerations, srss.accelerations,
+            absi.accelerations, nrl.accelerations, srss.accelerations,
 
             self.eigenvectors,
             self.op2_results.RADCONS.eigenvectors, self.op2_results.RADEFFM.eigenvectors,
             self.op2_results.RADEATC.eigenvectors, self.op2_results.ROUGV1.eigenvectors,
 
             self.spc_forces, ato.spc_forces, crm.spc_forces, psd.spc_forces, rms.spc_forces,
-            abs.spc_forces, nrl.spc_forces, srss.spc_forces,
+            absi.spc_forces, nrl.spc_forces, srss.spc_forces,
 
             self.mpc_forces, ato.mpc_forces, crm.mpc_forces, psd.mpc_forces, rms.mpc_forces,
-            abs.mpc_forces, nrl.mpc_forces, srss.mpc_forces,
+            absi.mpc_forces, nrl.mpc_forces, srss.mpc_forces,
 
             #self.applied_loads,
             self.load_vectors,

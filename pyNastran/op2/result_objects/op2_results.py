@@ -18,7 +18,7 @@ class Results:
         self.eqexin = None
         self.gpdt = None
         self.bgpdt = None
-        self.cddata = []
+        self.cddata = {}
         self.monitor1 = None
         self.monitor3 = None
         self.responses = Responses()
@@ -48,8 +48,12 @@ class Results:
         self.force = Force()
         self.thermal_load = ThermalLoad()
         self.stress = Stress('stress')
-        self.strain = Strain()
         self.stressa = Stress('stressa')
+        self.strain = Strain('strain')
+        self.elastic_strain = Strain('elastic_strain')
+        self.plastic_strain = Strain('plastic_strain')
+        self.thermal_strain = Strain('thermal_strain')
+        self.creep_strain = Strain('creep_strain')
 
         self.strain_energy = StrainEnergy()
         self.ROUGV1 = ROUGV1()   # relative disp/vel/acc/eigenvectors
@@ -94,8 +98,12 @@ class Results:
             'thermal_load' : self.thermal_load,
             'strain_energy' : self.strain_energy,
             'stress': self.stress,
-            'strain': self.strain,
             'stressa': self.stressa,
+            'strain': self.strain,
+            'elastic_strain': self.elastic_strain,
+            'plastic_strain': self.plastic_strain,
+            'thermal_strain': self.thermal_strain,
+            'creep_strain': self.creep_strain,
             #self.ato,
             #self.psd,
             #self.rms,
@@ -118,6 +126,7 @@ class Results:
             self.responses,
             self.force, self.thermal_load,
             self.stress, self.strain,
+            self.elastic_strain, self.plastic_strain, self.thermal_strain, self.creep_strain,
             self.stressa,
             self.strain_energy,
             self.ato, self.psd, self.rms, self.no, self.crm,
@@ -152,6 +161,7 @@ class Results:
         """combines all the table_types from all objects and sub-objects"""
         base = [
             'eqexin', 'gpdt', 'bgpdt', 'psds', 'monitor1', 'monitor3',
+            'cddata',
             'separation_initial', 'separation_final',
             'contact_slide_distance', 'glue_contact_slide_distance', 'contact_displacements',
             'bolt_results',
@@ -255,10 +265,12 @@ class ModalContribution:
         self.ctetra_stress = {}
         self.cpenta_stress = {}
         self.chexa_stress = {}
+        self.cpyram_stress = {}
 
         self.ctetra_strain = {}
         self.cpenta_strain = {}
         self.chexa_strain = {}
+        self.cpyram_strain = {}
 
         self.cbar_stress = {}
         self.cbar_strain = {}
@@ -315,14 +327,14 @@ class ModalContribution:
             'cbar_stress', 'cbeam_stress',
             'ctria3_stress', 'ctriar_stress', 'ctria6_stress',
             'cquadr_stress', 'cquad4_stress', 'cquad8_stress',
-            'ctetra_stress', 'cpenta_stress', 'chexa_stress',
+            'ctetra_stress', 'cpenta_stress', 'chexa_stress', 'cpyram_stress',
 
             'celas1_strain', 'celas2_strain', 'celas3_strain', 'celas4_strain',
             'crod_strain', 'conrod_strain', 'ctube_strain',
             'cbar_strain', 'cbeam_strain',
             'ctria3_strain', 'ctriar_strain', 'ctria6_strain',
             'cquadr_strain', 'cquad4_strain', 'cquad8_strain',
-            'ctetra_strain', 'cpenta_strain', 'chexa_strain',
+            'ctetra_strain', 'cpenta_strain', 'chexa_strain', 'cpyram_strain',
 
             'cbend_stress', # 'cbend_strain', 'cbend_force',
             'cbush_stress', 'cbush_strain',
@@ -681,7 +693,8 @@ class Stress:
         return tables
 
 class Strain:
-    def __init__(self):
+    def __init__(self, word: str):
+        self.word = word
         # springs
         self.celas1_strain = {}
         self.celas2_strain = {}
@@ -788,7 +801,7 @@ class Strain:
 
         ]
         if include_class:
-            return ['strain.' + table for table in tables]
+            return [f'{self.word}.' + table for table in tables]
         return tables
 
 class StrainEnergy:

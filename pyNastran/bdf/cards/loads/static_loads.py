@@ -167,7 +167,7 @@ class LOAD(LoadCombination):
                     msg = ('%s is not supported in get_reduced_loads method'
                            % load.__class__.__name__)
                     raise NotImplementedError(msg)
-        return (scale_factors, loads)
+        return scale_factors, loads
 
     def cross_reference(self, model: BDF) -> None:
         """
@@ -180,7 +180,7 @@ class LOAD(LoadCombination):
 
         """
         load_ids2 = []
-        msg = ', which is required by LOAD=%s' % (self.sid)
+        msg = f', which is required by LOAD={self.sid:d}'
         for load_id in self.load_ids:
             if load_id == self.sid:
                 msg = 'Type=%s sid=%s load_id=%s creates a recursion error' % (
@@ -193,7 +193,7 @@ class LOAD(LoadCombination):
 
     def safe_cross_reference(self, model: BDF, xref_errors, debug=True):
         load_ids2 = []
-        msg = ', which is required by LOAD=%s' % (self.sid)
+        msg = f', which is required by LOAD={self.sid:d}'
         for load_id in self.load_ids:
             try:
                 load_id2 = model.Load(load_id, consider_load_combinations=True, msg=msg)
@@ -262,7 +262,7 @@ class CLOAD(LoadCombination):
 
         """
         load_ids2 = []
-        msg = ', which is required by CLOAD=%s' % (self.sid)
+        msg = f', which is required by CLOAD={self.sid:d}'
         for load_id in self.load_ids:
             if load_id == self.sid:
                 msg = 'Type=%s sid=%s load_id=%s creates a recursion error' % (
@@ -464,8 +464,8 @@ class GRAV(BaseCard):
         msg = ', which is required by GRAV sid=%s' % self.sid
         self.cid_ref = model.Coord(self.cid, msg=msg)
 
-    def safe_cross_reference(self, model: BDF, xref_errors, debug=True):
-        # msg = "Couldn't find CORDx=%s which is required by GRAV sid=%s" % (self.cid, self.sid)
+    def safe_cross_reference(self, model: BDF, xref_errors, debug: bool=True):
+        # msg = "Couldn't find Coord=%s which is required by GRAV sid=%s" % (self.cid, self.sid)
         msg = ', which is required by GRAV sid=%s' % self.sid
         self.cid_ref = model.safe_coord(self.cid, self.sid, xref_errors, msg=msg)
 
@@ -1481,7 +1481,7 @@ class Load2(BaseCard):
             msg += 'g3.get_position()=%s\n' % xyz3
             msg += 'g4.get_position()=%s' % xyz4
             raise FloatingPointError(msg)
-        xyz = cross(v21, v2)
+        xyz = np.cross(v21, v2)
 
         self.xyz = xyz
 
@@ -1552,7 +1552,7 @@ class Load2(BaseCard):
                 msg += 'g3.get_position()=%s\n' % xyz3
                 msg += 'g4.get_position()=%s' % xyz4
                 raise FloatingPointError(msg)
-            self.xyz = cross(v21, v43)
+            self.xyz = np.cross(v21, v43)
 
             #msgi = 'xyz1=%s xyz2=%s xyz3=%s xyz4=%s\nv21=%s v43 (or v31)=%s\nxyz=%s' % (
                 #xyz1, xyz2, xyz3, xyz4, v21, v2, self.xyz)

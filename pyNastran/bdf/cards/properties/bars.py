@@ -15,7 +15,7 @@ second moment of area on wikipedia
 """
 from __future__ import annotations
 from itertools import count
-from typing import Union, Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 from numpy import pi, array
 import numpy as np
 
@@ -25,6 +25,8 @@ from pyNastran.bdf.bdf_interface.assign_type import (
     integer, double, double_or_blank, string, string_or_blank,
     blank, integer_or_double, #integer_or_blank,
 )
+from pyNastran.bdf.bdf_interface.assign_type_force import (
+    force_double, force_double_or_blank)
 from pyNastran.utils.mathematics import integrate_unit_line, integrate_positive_unit_line
 from pyNastran.bdf import MAX_INT
 from pyNastran.bdf.field_writer_8 import print_card_8
@@ -83,7 +85,7 @@ def get_inertia_rectangular(sections):
     Ixx = Axx / A
     Iyy = Ayy / A
     Ixy = Axy / A
-    return (A, Ixx, Iyy, Ixy)
+    return A, Ixx, Iyy, Ixy
 
 
 def _IAreaL(prop, dim):
@@ -145,7 +147,7 @@ def _IAreaL(prop, dim):
         msg = 'beam_type=%r is not supported for %s class...' % (
             beam_type, prop.type)
         raise NotImplementedError(msg)
-    return (A, Iyy, Izz, Iyz)
+    return A, Iyy, Izz, Iyz
 
 class LineProperty(Property):
     def __init__(self):
@@ -569,7 +571,7 @@ def hexa_section(class_name: str, beam_type: str, dim, prop):
     wall = dim2
     wtri = dim1
     wbox = wall - 2 * wtri
-    assert wbox > 0, 'wbox=%s' % (wbox)
+    assert wbox > 0, f'wbox={wbox}'
     A = hbox * wbox + hbox * wtri
     #print('hbox=%s wbox=%s hbox*wbox=%s 2*wtri*hbox=%s A=%s' % (
         #hbox, wbox, hbox*wbox, 2*wtri*hbox, A))
@@ -1092,7 +1094,7 @@ class PBAR(LineProperty):
     }
 
     @classmethod
-    def export_to_hdf5(cls, h5_file, model, pids):
+    def export_to_hdf5(cls, h5_file, model: BDF, pids: np.ndarray):
         """exports the properties in a vectorized way"""
         #comments = []
         mids = []
@@ -1145,9 +1147,14 @@ class PBAR(LineProperty):
         h5_file.create_dataset('nsm', data=nsm)
         #h5_file.create_dataset('_comment', data=comments)
 
-    def __init__(self, pid, mid, A=0., i1=0., i2=0., i12=0., j=0., nsm=0.,
-                 c1=0., c2=0., d1=0., d2=0., e1=0., e2=0., f1=0., f2=0.,
-                 k1=1.e8, k2=1.e8, comment=''):
+    def __init__(self, pid: int, mid: int,
+                 A: float=0., i1: float=0., i2: float=0.,
+                 i12: float=0., j: float=0., nsm: float=0.,
+                 c1: float=0., c2: float=0.,
+                 d1: float=0., d2: float=0.,
+                 e1: float=0., e2: float=0.,
+                 f1: float=0., f2: float=0.,
+                 k1: float=1.e8, k2: float=1.e8, comment: str=''):
         """
         Creates a PBAR card
 
@@ -1223,7 +1230,7 @@ class PBAR(LineProperty):
             raise ValueError('J=%r must be greater than or equal to 0.0' % self.j)
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a PBAR card from ``BDF.add_card(...)``
 
@@ -1237,23 +1244,23 @@ class PBAR(LineProperty):
         """
         pid = integer(card, 1, 'pid')
         mid = integer(card, 2, 'mid')
-        A = double_or_blank(card, 3, 'A', 0.0)
-        i1 = double_or_blank(card, 4, 'I1', 0.0)
-        i2 = double_or_blank(card, 5, 'I2', 0.0)
+        A = double_or_blank(card, 3, 'A', default=0.0)
+        i1 = double_or_blank(card, 4, 'I1', default=0.0)
+        i2 = double_or_blank(card, 5, 'I2', default=0.0)
 
-        j = double_or_blank(card, 6, 'J', 0.0)
-        nsm = double_or_blank(card, 7, 'nsm', 0.0)
+        j = double_or_blank(card, 6, 'J', default=0.0)
+        nsm = double_or_blank(card, 7, 'nsm', default=0.0)
 
-        c1 = double_or_blank(card, 9, 'C1', 0.0)
-        c2 = double_or_blank(card, 10, 'C2', 0.0)
-        d1 = double_or_blank(card, 11, 'D1', 0.0)
-        d2 = double_or_blank(card, 12, 'D2', 0.0)
-        e1 = double_or_blank(card, 13, 'E1', 0.0)
-        e2 = double_or_blank(card, 14, 'E2', 0.0)
-        f1 = double_or_blank(card, 15, 'F1', 0.0)
-        f2 = double_or_blank(card, 16, 'F2', 0.0)
+        c1 = double_or_blank(card, 9, 'C1', default=0.0)
+        c2 = double_or_blank(card, 10, 'C2', default=0.0)
+        d1 = double_or_blank(card, 11, 'D1', default=0.0)
+        d2 = double_or_blank(card, 12, 'D2', default=0.0)
+        e1 = double_or_blank(card, 13, 'E1', default=0.0)
+        e2 = double_or_blank(card, 14, 'E2', default=0.0)
+        f1 = double_or_blank(card, 15, 'F1', default=0.0)
+        f2 = double_or_blank(card, 16, 'F2', default=0.0)
 
-        i12 = double_or_blank(card, 19, 'I12', 0.0)
+        i12 = double_or_blank(card, 19, 'I12', default=0.0)
 
         if A == 0.0:
             k1 = blank(card, 17, 'K1')
@@ -1264,9 +1271,60 @@ class PBAR(LineProperty):
             k2 = None
         else:
             #: default=infinite; assume 1e8
-            k1 = double_or_blank(card, 17, 'K1', 1e8)
+            k1 = double_or_blank(card, 17, 'K1', default=1e8)
             #: default=infinite; assume 1e8
-            k2 = double_or_blank(card, 18, 'K2', 1e8)
+            k2 = double_or_blank(card, 18, 'K2', default=1e8)
+
+        assert len(card) <= 20, f'len(PBAR card) = {len(card):d}\ncard={card}'
+        return PBAR(pid, mid, A, i1, i2, i12, j, nsm,
+                    c1, c2, d1, d2, e1, e2,
+                    f1, f2, k1, k2, comment=comment)
+
+    @classmethod
+    def add_card_lax(cls, card: BDFCard, comment: str=''):
+        """
+        Adds a PBAR card from ``BDF.add_card(...)``
+
+        Parameters
+        ----------
+        card : BDFCard()
+            a BDFCard object
+        comment : str; default=''
+            a comment for the card
+
+        """
+        pid = integer(card, 1, 'pid')
+        mid = integer(card, 2, 'mid')
+        A = force_double_or_blank(card, 3, 'A', default=0.0)
+        i1 = force_double_or_blank(card, 4, 'I1', default=0.0)
+        i2 = force_double_or_blank(card, 5, 'I2', default=0.0)
+
+        j = force_double_or_blank(card, 6, 'J', default=0.0)
+        nsm = force_double_or_blank(card, 7, 'nsm', default=0.0)
+
+        c1 = force_double_or_blank(card, 9, 'C1', default=0.0)
+        c2 = force_double_or_blank(card, 10, 'C2', default=0.0)
+        d1 = force_double_or_blank(card, 11, 'D1', default=0.0)
+        d2 = force_double_or_blank(card, 12, 'D2', default=0.0)
+        e1 = force_double_or_blank(card, 13, 'E1', default=0.0)
+        e2 = force_double_or_blank(card, 14, 'E2', default=0.0)
+        f1 = force_double_or_blank(card, 15, 'F1', default=0.0)
+        f2 = force_double_or_blank(card, 16, 'F2', default=0.0)
+
+        i12 = force_double_or_blank(card, 19, 'I12', default=0.0)
+
+        if A == 0.0:
+            k1 = blank(card, 17, 'K1')
+            k2 = blank(card, 18, 'K2')
+        elif i12 != 0.0:
+            # K1 / K2 are ignored
+            k1 = None
+            k2 = None
+        else:
+            #: default=infinite; assume 1e8
+            k1 = force_double_or_blank(card, 17, 'K1', default=1e8)
+            #: default=infinite; assume 1e8
+            k2 = force_double_or_blank(card, 18, 'K2', default=1e8)
 
         assert len(card) <= 20, f'len(PBAR card) = {len(card):d}\ncard={card}'
         return PBAR(pid, mid, A, i1, i2, i12, j, nsm,
@@ -1299,7 +1357,6 @@ class PBAR(LineProperty):
             k1 = None
         if k2 == 0.:
             k2 = None
-
         return PBAR(pid, mid, A=A, i1=i1, i2=i2, i12=i12, j=j, nsm=nsm,
                     c1=c1, c2=c2, d1=d1, d2=d2, e1=e1, e2=e2,
                     f1=f1, f2=f2, k1=k1, k2=k2, comment=comment)
@@ -1356,6 +1413,19 @@ class PBAR(LineProperty):
         """
         msg = ', which is required by PBAR mid=%s' % self.mid
         self.mid_ref = model.Material(self.mid, msg=msg)
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by PBAR mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.pid, xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -1595,7 +1665,7 @@ class PBARL(LineProperty):
         assert None not in self.dim
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a PBARL card from ``BDF.add_card(...)``
 
@@ -1652,6 +1722,65 @@ class PBARL(LineProperty):
         nsm = double_or_blank(card, 9 + ndim, 'nsm', default=0.0)
         return PBARL(pid, mid, Type, dim, group=group, nsm=nsm, comment=comment)
 
+
+    @classmethod
+    def add_card_lax(cls, card: BDFCard, comment: str=''):
+        """
+        Adds a PBARL card from ``BDF.add_card(...)``
+
+        Parameters
+        ----------
+        card : BDFCard()
+            a BDFCard object
+        comment : str; default=''
+            a comment for the card
+
+        """
+        pid = integer(card, 1, 'pid')
+        mid = integer(card, 2, 'mid')
+        group = string_or_blank(card, 3, 'group', default='MSCBML0')
+        Type = string(card, 4, 'Type')
+
+        try:
+            ndim = cls.valid_types[Type]
+        except KeyError:
+            keys = list(cls.valid_types.keys())
+            raise KeyError('%r is not a valid PBARL type\nallowed_types={%s}' % (
+                Type, ', '.join(sorted(keys))))
+
+        # PBARL
+        # 9. For DBOX section, the default value for DIM5 to DIM10 are
+        #    based on the following rules:
+        #     a. DIM5, DIM6, DIM7 and DIM8 have a default value of
+        #        DIM4 if not provided.
+        #     b. DIM9 and DIM10 have a default value of DIM6 if not
+        #        provided.
+        dim = []
+        if Type == 'DBOX':
+            for i in range(ndim):
+                if i in [4, 5, 6, 7]:
+                    dim4 = dim[3]
+                    dimi = force_double_or_blank(card, 9 + i, f'ndim={ndim}; dim{i+1}',
+                                                 default=dim4, end=PBARL_MSG)
+                elif i in [8, 9]:
+                    dim6 = dim[5]
+                    dimi = force_double_or_blank(card, 9 + i, f'ndim={ndim}; dim{i+1}',
+                                                 default=dim6, end=PBARL_MSG)
+                else:
+                    dimi = force_double(card, 9 + i, f'ndim={ndim}; dim{i+1}', end=PBARL_MSG)
+                dim.append(dimi)
+        else:
+            for i in range(ndim):
+                dimi = force_double(card, 9 + i, f'ndim={ndim}; dim{i+1}', end=PBARL_MSG)
+                dim.append(dimi)
+
+        #: dimension list
+        assert len(dim) == ndim, 'PBARL ndim=%s len(dims)=%s' % (ndim, len(dim))
+        #assert len(dims) == len(self.dim), 'PBARL ndim=%s len(dims)=%s' % (ndim, len(self.dim))
+
+        nsm = force_double_or_blank(card, 9 + ndim, 'nsm', default=0.0)
+        return PBARL(pid, mid, Type, dim, group=group, nsm=nsm, comment=comment)
+
     @classmethod
     def add_op2_data(cls, data, comment=''):
         pid = data[0]
@@ -1674,6 +1803,19 @@ class PBARL(LineProperty):
         """
         msg = ', which is required by PBARL mid=%s' % self.mid
         self.mid_ref = model.Material(self.mid, msg=msg)
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by PBARL mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.pid, xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -2729,6 +2871,19 @@ class PBEAM3(LineProperty):  # not done, cleanup; MSC specific card
         msg = ', which is required by PBEAM3 mid=%s' % self.mid
         self.mid_ref = model.Material(self.mid, msg=msg)
 
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by PBEAM3 mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.pid, xref_errors, msg=msg)
+
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
         self.mid = self.Mid()
@@ -2883,6 +3038,10 @@ class PBEND(LineProperty):
 
         Parameters
         ----------
+        pid : int
+            property id
+        mid : int
+            material id
         A : float
             cross-sectional area
         i1, i2 : float
@@ -2899,12 +3058,15 @@ class PBEND(LineProperty):
             Shear stiffness factor K in K*A*G for plane 1 and plane 2
         nsm : float; default=0.
             nonstructural mass per unit length???
+        rc : float; default=None
+            Radial offset of the geometric centroid from points GA and GB.
         zc : float; default=None
             Offset of the geometric centroid in a direction perpendicular to
             the plane of points GA and GB and vector v.
         delta_n : float; default=None
             Radial offset of the neutral axis from the geometric centroid,
             positive is toward the center of curvature
+
         """
         beam_type = 1
         fsi = None
@@ -2930,6 +3092,10 @@ class PBEND(LineProperty):
 
         Parameters
         ----------
+        pid : int
+            property id
+        mid : int
+            material id
         fsi : int
             Flag selecting the flexibility and stress intensification
             factors. See Remark 3. (Integer = 1, 2, or 3)
@@ -3180,6 +3346,19 @@ class PBEND(LineProperty):
         msg = ', which is required by PBEND mid=%s' % self.mid
         self.mid_ref = model.Material(self.mid, msg=msg)
 
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by PBEND mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.pid, xref_errors, msg=msg)
+
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
         self.mid = self.Mid()
@@ -3191,7 +3370,7 @@ class PBEND(LineProperty):
         assert isinstance(self.A, float), self.get_stats()
         return self.A * rho + self.nsm
 
-    def raw_fields(self) -> list[Union[str, float, int, None]]:
+    def raw_fields(self) -> list[str | float | int | None]:
         return self.repr_fields()
 
     def repr_fields(self):
@@ -3226,7 +3405,8 @@ class PBEND(LineProperty):
 
 
 def split_arbitrary_thickness_section(key: str,
-                                      value: Union[str, float, list[int]]) -> tuple[int, Union[float, list[int]]]:
+                                      value: str | float | list[int],
+                                      ) -> tuple[int, float | list[int]]:
     """
     Helper method for PBRSECT/PBMSECT
 

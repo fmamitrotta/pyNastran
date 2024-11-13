@@ -10,7 +10,7 @@ All axisymmetric shell elements are defined in this file.  This includes:
 
 """
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 from pyNastran.bdf.field_writer_8 import (
     set_blank_if_default,
 )
@@ -529,12 +529,12 @@ class CCONEAX(Element):
         return self.rings
 
     def cross_reference(self, model: BDF) -> None:
-        msg = ', which is required by CCONEAX eid=%s' % (self.eid)
+        msg = f', which is required by CCONEAX eid={self.eid}'
         #self.rings_ref
         self.pid_ref = model.Property(self.pid, msg=msg)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
-        msg = ', which is required by CCONEAX eid=%s' % (self.eid)
+        msg = f', which is required by CCONEAX eid={self.eid}'
         #self.rings_ref
         self.pid_ref = model.safe_property(self.pid, self.eid, xref_errors, msg=msg)
 
@@ -697,13 +697,31 @@ class PCONEAX(Property):
             the BDF object
 
         """
-        msg = ', which is required by PCONEAX=%s' %(self.pid)
+        msg = f', which is required by PCONEAX={self.pid}'
         if self.mid1 > 0:
             self.mid1_ref = model.Material(self.mid1, msg=msg)
         if self.mid2 > 0:
             self.mid2_ref = model.Material(self.mid2, msg=msg)
         if self.mid3 > 0:
             self.mid3_ref = model.Material(self.mid3, msg=msg)
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = f', which is required by PCONEAX={self.pid}'
+        if self.mid1 > 0:
+            self.mid1_ref = model.safe_material(self.mid1, self.pid, xref_errors, msg=msg)
+        if self.mid2 > 0:
+            self.mid2_ref = model.safe_material(self.mid2, self.pid, xref_errors, msg=msg)
+        if self.mid3 > 0:
+            self.mid3_ref = model.safe_material(self.mid3, self.pid, xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""

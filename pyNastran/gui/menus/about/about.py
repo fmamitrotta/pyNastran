@@ -7,7 +7,10 @@ import importlib
 import warnings
 with warnings.catch_warnings():  # avoid an imp module deprecation warning
     warnings.simplefilter("ignore")
-    import setuptools
+    try:
+        import setuptools
+    except ModuleNotFoundError:
+        pass
 
 import numpy
 import scipy
@@ -24,27 +27,29 @@ from qtpy.QtWidgets import (
 
 import cpylog
 from pyNastran.gui import ICON_PATH, IS_LINUX, IS_MAC # IS_WINDOWS
+from pyNastran.gui.default_controls import CONTROLS
 from pyNastran.gui.qt_version import qt_name, PYQT_VERSION, is_pygments
 from pyNastran.gui.menus.python_console import QSCINTILLA_VERSION
 from pyNastran.gui.utils.qt.pydialog import PyDialog, make_font
 
-def get_qt_license(qt_name: str) -> str:
-    if qt_name == 'PyQt5':
+
+def get_qt_license(qt_namei: str) -> str:
+    if qt_namei == 'PyQt5':
         qt  = '* Qt5 cross-platform GUI toolkit, developed by many contributors.\n\n'
         qt += '* PyQt5 Python bindings for Qt5, by Riverbank Computing Limited.\n\n'
         qt += '* Scintilla, a source code editor widget, written by Neil Hodgson and many contributors.'
-    elif qt_name == 'PyQt6':
+    elif qt_namei == 'PyQt6':
         qt  = '* Qt6 cross-platform GUI toolkit, developed by many contributors.\n\n'
         qt += '* PyQt6 Python bindings for Qt6, by Riverbank Computing Limited.\n\n'
         qt += '* Scintilla, a source code editor widget, written by Neil Hodgson and many contributors.'
-    elif qt_name == 'PySide2':
+    elif qt_namei == 'PySide2':
         qt  = '* Qt5 cross-platform GUI toolkit, developed by many contributors.\n\n'
         qt += '* PySide2 Python bindings for Qt5, by Qt for Python.'
-    elif qt_name == 'PySide6':
+    elif qt_namei == 'PySide6':
         qt  = '* Qt6 cross-platform GUI toolkit, developed by many contributors.\n\n'
         qt += '* PySide6 Python bindings for Qt6, by Qt for Python.'
     else:  # pragma: no cover
-        raise NotImplementedError(qt_name)
+        raise NotImplementedError(qt_namei)
     return qt
 
 QT = get_qt_license(qt_name)
@@ -204,27 +209,27 @@ def get_packages() -> dict[str, str]:
         #'Python Build': str(platform.python_build()),
         'Compiler': platform.python_compiler(),
         'Implementation': platform.python_implementation(),
-        'setuptools': setuptools.__version__,
-        'numpy' : numpy.__version__,
-        'scipy' : scipy.__version__,
-        'cpylog' : cpylog.__version__,
-        'matplotlib' : 'N/A',
-        'pandas' : 'N/A',
-        'h5py' : 'N/A',
-        'tables' : 'N/A',
-        'imageio' : 'N/A',
-        'PIL' : 'N/A',
-        'vtk' : VTK_VERSION,
-        'qtpy' : qtpy.__version__,
-        qt_name : PYQT_VERSION,
+        'setuptools': 'N/A',
+        'numpy': numpy.__version__,
+        'scipy': scipy.__version__,
+        'cpylog': cpylog.__version__,
+        'matplotlib': 'N/A',
+        'pandas': 'N/A',
+        'h5py': 'N/A',
+        'tables': 'N/A',
+        'imageio': 'N/A',
+        'PIL': 'N/A',
+        'vtk': VTK_VERSION,
+        'qtpy': qtpy.__version__,
+        qt_name: PYQT_VERSION,
         'QScintilla2': QSCINTILLA_VERSION,
-        'pygments' : 'N/A',
-        'docopt-ng' : docopt.__version__,
+        'pygments': 'N/A',
+        'docopt-ng': docopt.__version__,
     }
     if 'pyside' in qt_name.lower():
         del packages['QScintilla2']
 
-    for name in ['matplotlib', 'pandas', 'h5py', 'tables', 'imageio', 'PIL', 'pygments']:
+    for name in ['setuptools', 'matplotlib', 'pandas', 'h5py', 'tables', 'imageio', 'PIL', 'pygments']:
         try:
             module = importlib.import_module(name, package=None)
         except ImportError:
@@ -260,11 +265,11 @@ def get_version() -> dict[str, str]:
         'Release Type': 'Final Release' if 'dev' not in pyNastran.__version__ else 'Developement',
         'Release Date': pyNastran.__releaseDate2__.title(),
         #'Cache Directory': ,
-        'OS' : f'win32 (sys.platform={sys_platform})',
-        'Platform' : platform.platform(),
-        'Architecture' : str(platform.architecture()),
-        'Machine' : platform.machine(),
-        'Processor' : platform.processor(),
+        'OS': f'win32 (sys.platform={sys_platform})',
+        'Platform': platform.platform(),
+        'Architecture': str(platform.architecture()),
+        'Machine': platform.machine(),
+        'Processor': platform.processor(),
 
         #'Bit': bit,
         #'Memory': memory,
@@ -386,33 +391,13 @@ def get_shortcuts() -> tuple[dict[str, str], dict[str, str]]:
         'Shift + Left Click' : 'Pan/Recenter Rotation Point',
         'Right Mouse / Wheel' : 'Zoom',
     }
-    keyboard_shortcuts = {
-        'R' : 'reset camera view',
-        'Shift+X/X' : 'snap to x axis',
-        'Shift+Y/Y' : 'snap to y axis',
-        'Shift+Z/Z' : 'snap to z axis',
-        #'',
-        #'h   - show/hide legend & info',
+    shortcuts_order = [
+        'reset', 'xsnap', 'ysnap', 'zsnap', 'fwd_scale', 'rev_scale',
+        'scale', 'rotate', 'pick', 'edge1', 'edge2', 'rotation_center',
+    ]
 
-        # shown on the menu
-        #'CTRL+I - take a screenshot (image)',
-        #'CTRL+W - clear the labels',
-        #'CTRL+L - Legend',
-        #'CTRL+A - Animation',
-        #'S      - view model as a surface',
-        #'W      - view model as a wireframe',
-
-        'L' : 'cycle the results forwards',
-        'K' : 'cycle the results backwards',
-        'm/Shift+M' : 'scale up/scale down by 1.1 times',
-        'o/Shift+O' : 'rotate counter-clockwise/clockwise 5 degrees',
-        'P' : 'pick node/element',
-        'F' : 'set rotation center (zoom out when picking to disable clipping)',
-        'E' : 'view model edges',
-        'B' : 'change edge color from scalar/black',
-        #'',
-        #'Reload Model:  using the same filename, reload the model',
-    }
+    keyboard_shortcuts = {shortcut_msg[0]: shortcut_msg[1]
+        for unused_key, shortcut_msg in CONTROLS.items()}
     return mouse_shortcuts, keyboard_shortcuts
 
 def layout_to_vlayout(layout):

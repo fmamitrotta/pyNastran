@@ -1,5 +1,6 @@
 import os
 import unittest
+from pathlib import Path
 from io import StringIO
 import numpy as np
 from numpy import allclose, array
@@ -14,10 +15,14 @@ from pyNastran.bdf.mesh_utils.mass_properties import mass_properties
 from pyNastran.bdf.mesh_utils.forces_moments import get_forces_moments_array
 from pyNastran.bdf.test.test_bdf import run_bdf, compare, run_lots_of_files, main as test_bdf
 
-PKG_PATH = pyNastran.__path__[0]
-TEST_PATH = os.path.join(PKG_PATH, 'bdf', 'test')
-MODEL_PATH = os.path.join(PKG_PATH, '..', 'models')
-GUI_MODEL_DIRNAME = os.path.join(PKG_PATH, 'converters', 'nastran', 'models')
+
+
+from pyNastran.bdf.bdf import BDF
+
+PKG_PATH = Path(pyNastran.__path__[0])
+TEST_PATH = PKG_PATH / 'bdf' / 'test'
+MODEL_PATH = PKG_PATH / '..' / 'models'
+GUI_MODEL_DIRNAME = PKG_PATH / 'converters' / 'nastran' / 'models'
 
 class Tester(unittest.TestCase):
 
@@ -75,8 +80,7 @@ class TestBDFUnit(Tester):
     def test_bdf_include5(self):
         """verify we get 5 include files if they are one after the other"""
         model = BDF(debug=False)
-        unit_dir = bdf_filename = os.path.join(TEST_PATH, 'unit')
-        bdf_filename = os.path.join(unit_dir, 'include5.bdf')
+        bdf_filename = TEST_PATH / 'unit' / 'include5.bdf'
         #bdf_filename_out = os.path.join(unit_dir, 'include5_out.bdf')
         model.read_bdf(bdf_filename, save_file_structure=False, read_includes=False)
 
@@ -752,7 +756,7 @@ class TestBDFUnit(Tester):
 
     def test_bdf_05(self):
         """checks testA.dat"""
-        bdf_filename = os.path.join(PKG_PATH, 'bdf', 'test', 'unit', 'testA.bdf')
+        bdf_filename = TEST_PATH / 'unit' / 'testA.bdf'
         (unused_fem1, unused_fem2, diff_cards) = self.run_bdf(
             '', bdf_filename, xref=False,
             run_extract_bodies=False,
@@ -1006,6 +1010,51 @@ class TestBDFUnit(Tester):
         #diff_cards2 = list(set(diff_cards))
         #diff_cards2.sort()
         #assert len(diff_cards2) == 0, diff_cards2
+
+    def test_write_bdfs(self):
+        model = BDF()
+        base_dir = TEST_PATH / 'unit' / 'include_bug'
+        bdf_filename = base_dir / 'main_input.bdf'
+        assert bdf_filename.exists(), bdf_filename
+        bdf_filename = str(bdf_filename)
+        model.read_bdf(bdf_filename, save_file_structure=True)
+        nnodes = 20
+        assert len(model.nodes) == nnodes, model.nodes
+
+        out_files_map = {}
+        main_bdf_filename2 = bdf_filename[:-4] + "_NEW" + bdf_filename[-4:]
+        out_files_map[model.active_filenames[0]] = main_bdf_filename2
+
+        # active_files = [
+        #     'include_bug\\main_input.bdf',
+        #     'include_bug\\Dir A\\nodeset1.bdf',
+        #     'include_bug\\dir A\\dir_A2\\nodeset1a.inc',
+        #     'include_bug\\Dir B\\nodeset2.bdf',
+        #     'include_bug\\dir B\\dir_B2\\nodeset2b.inc']
+        # include_filenames = {
+        #     0: ['include_bug\\Dir A\\nodeset1.bdf',
+        #         'include_bug\\Dir B\\nodeset2.bdf'],
+        #     1: ['include_bug\\dir A\\dir_A2\\nodeset1a.inc'],
+        #     3: ['include_bug\\dir B\\dir_B2\\nodeset2b.inc']}
+
+        #print('active_files = ', fem.active_filenames)
+        #print('include_filenames = ', fem.include_filenames)
+        for ifile, include_filenames in model.include_filenames.items():
+            for include_filename in include_filenames:
+                base, ext = os.path.splitext(include_filename)
+                new_filename = base + "_NEW" + ext
+                out_files_map[include_filename] = new_filename
+                #print(f' - {include_filename}')
+                #print(f' > {new_filename}')
+
+        model.write_bdfs(out_files_map, relative_dirname=base_dir)
+        mdoel2 = read_bdf(main_bdf_filename2)
+
+        model.write_bdfs(out_files_map, relative_dirname='')
+        mdoel3 = read_bdf(main_bdf_filename2)
+        assert len(mdoel2.nodes) == nnodes
+        assert len(mdoel3.nodes) == nnodes
+
 
 def compare_mass_cg_inertia(fem1, reference_point=None, sym_axis=None):
     unused_mass1, unused_cg1, unused_I1 = mass_properties(

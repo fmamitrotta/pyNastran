@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from collections import defaultdict
 from struct import pack, Struct
-from typing import Union, TYPE_CHECKING
+from typing import Any, BinaryIO, TYPE_CHECKING
 
 import numpy as np
 
@@ -13,12 +13,13 @@ from .geom4_writer import write_header, write_header_nvalues
 integer_types = (int, np.int32, np.int64)
 if TYPE_CHECKING:  # pragma: no cover
     from cpylog import SimpleLogger
-    from pyNastran.bdf.cards.aero.aero import CAERO1, CAERO2, PAERO1, PAERO2, AESURF, AESURFS
+    from pyNastran.bdf.cards.bdf_sets import SET1, SET2, SET3
+    from pyNastran.bdf.cards.aero.aero import CAERO1, CAERO2, CAERO5, PAERO1, PAERO2, AESURF, AESURFS
     from pyNastran.bdf.cards.aero.static_loads import AEROS, AESTAT # , CSSCHD, DIVERG, TRIM, TRIM2
     from pyNastran.bdf.cards.aero.dynamic_loads import AERO, MKAERO1, FLUTTER # , FLFACT, MKAERO2
     from pyNastran.op2.op2_geom import OP2Geom, BDF
 
-def write_edt(op2_file, op2_ascii, model: Union[BDF, OP2Geom],
+def write_edt(op2_file: BinaryIO, op2_ascii, model: BDF | OP2Geom,
               endian: bytes=b'<', nastran_format: str='nx') -> None:
     """writes the EDT/EDTS table"""
     if not hasattr(model, 'loads'):  # OP2
@@ -26,16 +27,17 @@ def write_edt(op2_file, op2_ascii, model: Union[BDF, OP2Geom],
     card_types = [
         'MKAERO1', # 'MKAERO2',
         'AERO', 'AEROS',
-        'CAERO1', 'PAERO1', 'SPLINE1',
-        'CAERO2', 'PAERO2', 'SPLINE2',
-        'CAERO3', 'CAERO4', 'CAERO5',
-        'PAERO5',
-        #'AELIST', 'AEFACT', 'AESURF', 'AESURFS'
-        'AESURF', 'AESTAT',
+        'CAERO1', 'CAERO2', 'CAERO3', 'CAERO4', 'CAERO5',
+        'PAERO1', 'PAERO2', 'PAERO5',
+        'SPLINE1', 'SPLINE2', 'SPLINE4', #'SPLINE3',
+        'AELIST',
+        'AEFACT',
+        'AESURF', 'AESURFS',
+        'AESTAT',
         'TRIM', 'DIVERG', 'FLUTTER',
         'DEFORM',
         'FLFACT',
-        'SET1',
+        'SET1', 'SET2', 'SET3',
         'AELINK',
         'MONPNT1', 'MONPNT2', 'MONPNT3',
     ]
@@ -43,11 +45,6 @@ def write_edt(op2_file, op2_ascii, model: Union[BDF, OP2Geom],
     cards_to_skip = [
         #'GUST',  # part of DIT
     ]
-    #card_types = [
-        #'CAERO1', 'CAERO2',
-        #'SPLINE1', 'SPLINE2',
-        #'AEFACT', 'AELIST', 'AESTAT',
-    #]
     out = defaultdict(list)
     # geometry
     for unused_load_id, loads in model.loads.items():
@@ -63,6 +60,8 @@ def write_edt(op2_file, op2_ascii, model: Union[BDF, OP2Geom],
         out[paero.type].append(pid)
     for spline_id, spline in sorted(model.splines.items()):
         out[spline.type].append(spline_id)
+    for aelist_id, aelist in sorted(model.aelists.items()):
+        out[aelist.type].append(aelist_id)
     for aesurf_id, aesurf in sorted(model.aesurf.items()):
         out[aesurf.type].append(aesurf_id)
     for aesurfs_id, aesurfs in sorted(model.aesurfs.items()):
@@ -150,9 +149,9 @@ def remove_unsupported_cards(card_dict: dict[str, Any],
             del card_dict[card_type]
             log.warning(f"removing {card_type} in OP2 writer because it's unsupported")
 
-def write_trim(model: Union[BDF, OP2Geom], name: str,
+def write_trim(model: BDF | OP2Geom, name: str,
                trim_ids: list[int], ncards: int,
-               op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+               op2_file: BinaryIO, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
     """
     (2402, 24, 342)
     MSC 2018.2
@@ -205,9 +204,10 @@ def write_trim(model: Union[BDF, OP2Geom], name: str,
         all_data += data
     return nbytes
 
-def write_diverg(model: Union[BDF, OP2Geom], name: str,
+def write_diverg(model: BDF | OP2Geom, name: str,
                  diverg_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     Record – DIVERG(2702,27,387)
     Divergence analysis data.
@@ -251,9 +251,10 @@ def write_diverg(model: Union[BDF, OP2Geom], name: str,
     assert len(data) == nvalues, f'ndata={len(data)}; nvalues={nvalues}'
     return nbytes
 
-def write_caero1(model: Union[BDF, OP2Geom], name: str,
+def write_caero1(model: BDF | OP2Geom, name: str,
                  caero_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     MSC 2018.2
 
@@ -297,9 +298,10 @@ def write_caero1(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_caero2(model: Union[BDF, OP2Geom], name: str,
+def write_caero2(model: BDF | OP2Geom, name: str,
                  caero_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     MSC 2018.2
 
@@ -339,9 +341,10 @@ def write_caero2(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_caero3(model: Union[BDF, OP2Geom], name: str,
+def write_caero3(model: BDF | OP2Geom, name: str,
                  caero_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     Aerodynamic panel element configuration.
 
@@ -396,9 +399,10 @@ def write_caero3(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_caero4(model: Union[BDF, OP2Geom], name: str,
+def write_caero4(model: BDF | OP2Geom, name: str,
                  caero_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     Word Name Type Description
     1 EID   I Element identification number
@@ -445,9 +449,10 @@ def write_caero4(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_caero5(model: Union[BDF, OP2Geom], name: str,
+def write_caero5(model: BDF | OP2Geom, name: str,
                  caero_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     MSC 2018.2
 
@@ -477,7 +482,7 @@ def write_caero5(model: Union[BDF, OP2Geom], name: str,
     nbytes = write_header(name, nfields, ncards, key, op2_file, op2_ascii)
 
     for caero_id in caero_ids:
-        caero = model.caeros[caero_id] # type: CAERO5
+        caero: CAERO5 = model.caeros[caero_id]
         x1, y1, z1 = caero.p1
         x4, y4, z4 = caero.p4
         #print(caero.get_stats())
@@ -500,9 +505,10 @@ def write_caero5(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_paero1(model: Union[BDF, OP2Geom], name: str,
+def write_paero1(model: BDF | OP2Geom, name: str,
                  paero_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     (3102, 31, 264)
     MSC 2018.2
@@ -536,9 +542,10 @@ def write_paero1(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_paero2(model: Union[BDF, OP2Geom], name: str,
+def write_paero2(model: BDF | OP2Geom, name: str,
                  paero_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     MSC 2018.2
 
@@ -600,13 +607,13 @@ def write_paero2(model: Union[BDF, OP2Geom], name: str,
             data.extend([thii, thni])
         assert None not in data, data
         op2_ascii.write(f'  PAERO2 data={data}\n')
-        #print('npaero2', len(data), data)
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_paero5(model: Union[BDF, OP2Geom], name: str,
+def write_paero5(model: BDF | OP2Geom, name: str,
                  paero_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     MSC 2018.2
     Word Name Type Description
@@ -653,7 +660,6 @@ def write_paero5(model: Union[BDF, OP2Geom], name: str,
             paero.nalpha, paero.lalpha,
             paero.nxis, paero.lxis,
             paero.ntaus, paero.ltaus] + list(paero.caoci) + [-1]
-        #print(data)
 
         assert None not in data, data
         op2_ascii.write(f'  PAERO5 data={data}\n')
@@ -663,9 +669,10 @@ def write_paero5(model: Union[BDF, OP2Geom], name: str,
     assert len(all_data) == nvalues, f'ndata={len(all_data)}; nvalues={nvalues}'
     return nbytes
 
-def write_spline1(model: Union[BDF, OP2Geom], name: str,
+def write_spline1(model: BDF | OP2Geom, name: str,
                   spline_ids: list[int], ncards: int,
-                  op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                  op2_file: BinaryIO, op2_ascii, endian: bytes,
+                  nastran_format: str='nx') -> int:
     """
     Word Name Type Description
     1 EID   I
@@ -698,9 +705,10 @@ def write_spline1(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_spline2(model: Union[BDF, OP2Geom], name: str,
+def write_spline2(model: BDF | OP2Geom, name: str,
                   spline_ids: list[int], ncards: int,
-                  op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                  op2_file: BinaryIO, op2_ascii, endian: bytes,
+                  nastran_format: str='nx') -> int:
     """
     Writes the SPLINE2 card
 
@@ -738,9 +746,109 @@ def write_spline2(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_aesurf(model: Union[BDF, OP2Geom], name: str,
+def write_spline3(model: BDF | OP2Geom, name: str,
+                  spline_ids: list[int], ncards: int,
+                  op2_file: BinaryIO, op2_ascii, endian: bytes,
+                  nastran_format: str='nx') -> int:  # pragma: no cover
+    """
+    Writes the SPLINE3 card
+
+    Word Name Type Description
+    1 EID          I Element identification number
+    2 CAERO        I Identification number of the macro-element on which
+                     the element to be interpolated lies
+    3 BOXID        I Identification number of the aerodynamic element
+    4 COMP         I The component of motion to be interpolated
+    5 USAGE(2) CHAR4 Spline usage flag to determine whether this spline applies
+                     to the force transformation, displacement transformation, or both:
+                     FORCE, DISP, or BOTH
+    7 G            I Identification number of the independent grid point
+    8 C            I Component number in the displacement coordinate system
+    9 A           RS Coefficient of the constraint relationship
+    Words 7 thru 9 repeat until -1 occurs
+
+    How do you interpret the -1. Is it -1 or (-1, -1, -1)?
+    """
+    key = (4901, 49, 173)
+    nvalues = 0
+    msg = b''
+    for spline_id in spline_ids:
+        spline = model.splines[spline_id]
+        ngrid = len(spline.nodes)
+        nvalues += 6 + ngrid * 3
+
+    for spline_id in spline_ids:
+        spline = model.splines[spline_id]
+        usage = spline.usage.encode('ascii')
+        datai = [spline.eid, spline.caero, spline.box_id, spline.components, usage]
+        fmt = endian + b'4i 8s'
+        for nid, comp, coeff in zip(spline.nodes, spline.displacement_components, spline.coeffs):
+            fmt += b'2if'
+            datai.extend([nid, comp, coeff])
+        #values.extend(datai)
+        assert None not in datai, datai
+        msgi = Struct(fmt).pack(*datai)
+        msg += msgi
+        op2_ascii.write(f'  SPLINE3 data={datai}\n')
+    nbytes = write_header_nvalues(name, nvalues, key, op2_file, op2_ascii)
+    op2_file.write(msg)
+    return nbytes
+
+def write_spline4(model: BDF | OP2Geom, name: str,
+                  spline_ids: list[int], ncards: int,
+                  op2_file: BinaryIO, op2_ascii, endian: bytes,
+                  nastran_format: str='nx') -> int:
+    key = (6501, 65, 308)
+
+    msg = b''
+    if nastran_format == 'msc':
+        nfields = 13
+        nbytes = write_header(name, nfields, ncards, key, op2_file, op2_ascii)
+        structi = Struct(endian + b'4i f 8s 8s 2i if')
+        for spline_id in spline_ids:
+            spline = model.splines[spline_id]
+
+            method_bytes = b'%-8s' % spline.method.encode('ascii')
+            usage_bytes = b'%-8s' % spline.usage.encode('ascii')
+
+            ftype = spline.ftype if spline.ftype else 0
+            assert isinstance(ftype, int), ftype
+
+            rcore = spline.rcore if spline.rcore else 0.0
+            assert isinstance(rcore, float), rcore
+
+            datai = [spline.eid, spline.caero, spline.aelist, spline.setg, spline.dz,
+                     method_bytes, usage_bytes, spline.nelements, spline.melements,
+                     ftype, rcore, ]
+            # values.extend(datai)
+            assert None not in datai, datai
+            msgi = structi.pack(*datai)
+            msg += msgi
+            op2_ascii.write(f'  SPLINE4 data={datai}\n')
+    else: # nx
+        nfields = 11
+        nbytes = write_header(name, nfields, ncards, key, op2_file, op2_ascii)
+        structi = Struct(endian + b'4i f 8s 8s 2i')
+        for spline_id in spline_ids:
+            spline = model.splines[spline_id]
+
+            method_bytes = b'%-8s' % spline.method.encode('ascii')
+            usage_bytes = b'%-8s' % spline.usage.encode('ascii')
+            datai = [spline.eid, spline.caero, spline.aelist, spline.setg, spline.dz,
+                     method_bytes, usage_bytes, spline.nelements, spline.melements]
+            #values.extend(datai)
+            assert None not in datai, datai
+            msgi = structi.pack(*datai)
+            msg += msgi
+            op2_ascii.write(f'  SPLINE4 data={datai}\n')
+    op2_file.write(msg)
+    return nbytes
+
+
+def write_aesurf(model: BDF | OP2Geom, name: str,
                  aesurf_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     MSC 2018.2
 
@@ -780,14 +888,14 @@ def write_aesurf(model: Union[BDF, OP2Geom], name: str,
             ldw_int = 0
         elif aesurf.ldw == 'NOLDW':
             ldw_int = 1
-        else:
+        else:  # pragma: no cover
             raise NotImplementedError(aesurf.ldw)
         cid2 = 0 if aesurf.cid2 is None else aesurf.cid2
         aelist_id2 = 0 if aesurf.aelist_id2 is None else aesurf.aelist_id2
 
         #print(aesurf.get_stats())
         data = [
-            aesurf.aesid, label_bytes,
+            aesurf.aesurf_id, label_bytes,
             aesurf.cid1, aesurf.aelist_id1,
             cid2, aelist_id2,
             aesurf.eff, ldw_int,
@@ -808,9 +916,10 @@ def write_aesurf(model: Union[BDF, OP2Geom], name: str,
         op2_ascii.write(f'  AESURF data={data}; float_strs={float_strs}\n')
     return nbytes
 
-def write_aesurfs(model: Union[BDF, OP2Geom], name: str,
+def write_aesurfs(model: BDF | OP2Geom, name: str,
                   aesurfs_ids: list[int], ncards: int,
-                  op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                  op2_file: BinaryIO, op2_ascii, endian: bytes,
+                  nastran_format: str='nx') -> int:
     """
     Word Name Type Description
     1 ID       I     Identification of an aerodynamic trim variable degree
@@ -839,9 +948,10 @@ def write_aesurfs(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_aestat(model: Union[BDF, OP2Geom], name: str,
+def write_aestat(model: BDF | OP2Geom, name: str,
                  aestat_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     MSC 2018.2
 
@@ -857,7 +967,6 @@ def write_aestat(model: Union[BDF, OP2Geom], name: str,
 
     for aestat_id in aestat_ids:
         aestat = model.aestats[aestat_id] # type: AESTAT
-
         label_bytes = b'%-8s' % aestat.label.encode('ascii')
 
         #print(aestat.get_stats())
@@ -867,9 +976,10 @@ def write_aestat(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_flutter(model: Union[BDF, OP2Geom], name: str,
+def write_flutter(model: BDF | OP2Geom, name: str,
                   flutter_ids: list[int], ncards: int,
-                  op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                  op2_file: BinaryIO, op2_ascii, endian: bytes,
+                  nastran_format: str='nx') -> int:
     """
     (3902, 39, 272)
     MSC 2018.2
@@ -938,9 +1048,10 @@ def _makero_temp(data, i: int, nloops: int):
         data_temp = data[i*8:i*8+8]
     return data_temp
 
-def write_mkaero1(model: Union[BDF, OP2Geom], name: str,
+def write_mkaero1(model: BDF | OP2Geom, name: str,
                   mkaero1s: list[MKAERO1], ncards: int,
-                  op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                  op2_file: BinaryIO, op2_ascii, endian: bytes,
+                  nastran_format: str='nx') -> int:
     """writes the MKAERO1
 
     data = (1.3, -1, -1, -1, -1, -1, -1, -1,
@@ -1023,9 +1134,10 @@ def write_mkaero1(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(spack.pack(*data))
     return nbytes
 
-def write_aero(model: Union[BDF, OP2Geom], name: str,
+def write_aero(model: BDF | OP2Geom, name: str,
                aero: list[AERO], ncards: int,
-               op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+               op2_file: BinaryIO, op2_ascii, endian: bytes,
+               nastran_format: str='nx') -> int:
     """
     Word Name Type Description
     1 ACSID     I
@@ -1061,9 +1173,10 @@ def write_aero(model: Union[BDF, OP2Geom], name: str,
     op2_file.write(spack.pack(*data))
     return nbytes
 
-def write_aeros(model: Union[BDF, OP2Geom], name: str,
+def write_aeros(model: BDF | OP2Geom, name: str,
                 aeros: list[AEROS], ncards: int,
-                op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                op2_file: BinaryIO, op2_ascii, endian: bytes,
+                nastran_format: str='nx') -> int:
     """
     AEROS(2202, 22, 340)
 
@@ -1088,9 +1201,10 @@ def write_aeros(model: Union[BDF, OP2Geom], name: str,
     op2_file.write(spack.pack(*data))
     return nbytes
 
-def write_flfact(model: Union[BDF, OP2Geom], name: str,
+def write_flfact(model: BDF | OP2Geom, name: str,
                  flfact_ids, ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     (4102, 41, 274)
     NX 2019.2
@@ -1126,9 +1240,10 @@ def write_flfact(model: Union[BDF, OP2Geom], name: str,
     op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_set1(model: Union[BDF, OP2Geom], name: str,
+def write_set1(model: BDF | OP2Geom, name: str,
                set_ids: list[int], ncards: int,
-               op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+               op2_file: BinaryIO, op2_ascii, endian: bytes,
+               nastran_format: str='nx') -> int:
     """
     SET1: (3502, 35, 268)
     MSC 2018.2
@@ -1152,7 +1267,7 @@ def write_set1(model: Union[BDF, OP2Geom], name: str,
 
     all_data = []
     for set_id in set_ids:
-        seti = model.sets[set_id] # type: PAERO5
+        seti: SET1 = model.sets[set_id]
         ngridsi = len(seti.ids)
 
         # +2 = sid and the -1 flag
@@ -1185,9 +1300,29 @@ def write_set1(model: Union[BDF, OP2Geom], name: str,
     assert len(all_data) == nvalues, f'ndata={len(all_data)}; nvalues={nvalues}'
     return nbytes
 
-def write_set3(model: Union[BDF, OP2Geom], name: str,
+def write_set2(model: BDF | OP2Geom, name: str,
                set_ids: list[int], ncards: int,
-               op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+               op2_file: BinaryIO, op2_ascii, endian: bytes,
+               nastran_format: str = 'nx') -> int:
+
+    key = (3602, 36, 269)
+    nfields = 8
+    nbytes = write_header(name, nfields, ncards, key, op2_file, op2_ascii)
+
+    structi = Struct(endian + b'2i 6f')
+    for set_id in set_ids:
+        seti: SET2 = model.sets[set_id]
+        data = [seti.sid, seti.macro, seti.sp1, seti.sp2,
+                seti.ch1, seti.ch2, seti.zmax, seti.zmin]
+        assert None not in data, data
+        op2_file.write(structi.pack(*data))
+        op2_ascii.write(f'  SET2 data={data}\n')
+    return nbytes
+
+def write_set3(model: BDF | OP2Geom, name: str,
+               set_ids: list[int], ncards: int,
+               op2_file: BinaryIO, op2_ascii, endian: bytes,
+               nastran_format: str='nx') -> int:
     """
     MSC 2018.2
     Word Name Type Description
@@ -1208,43 +1343,40 @@ def write_set3(model: Union[BDF, OP2Geom], name: str,
             4, 1, 309, ..., ..., 378, -1)
     """
     key = (8001, 80, 511)
-    raise NotImplementedError('SET3')
 
-    ngrids = 0
+    nvalues = 0
     for set_id in set_ids:
-        seti = model.sets[set_id] # type: PAERO5
-        ngrids += len(seti.ids)
-        if seti.is_skin:
-            ngrids += 1
+        seti: SET3 = model.sets[set_id]
+        nvalues += len(seti.ids) + 3 # + [sid, desc, -1]
 
-    # 2* = sid and the -1 flag
-    nvalues = 2 * ncards + ngrids
     nbytes = write_header_nvalues(name, nvalues, key, op2_file, op2_ascii)
 
     all_data = []
     for set_id in set_ids:
-        seti = model.sets[set_id] # type: PAERO5
+        seti: SET3 = model.sets[set_id]
+
+        desc = seti.desc
+        if desc in {'ELEM', 'ELEMENT'}:
+            desc_int = 1
+        elif desc == 'GRID':
+            desc_int = 2
+        elif desc == 'POINT':
+            desc_int = 3
+        elif desc == 'PROP':
+            desc_int = 4
+        elif desc.upper() == 'RBEIN':
+            desc_int = 5
+        elif desc.upper() == 'RBEEX':
+            desc_int = 6
+        else:  # pragma: no cover
+            raise NotImplementedError(desc)
+
+        data = [seti.sid, desc_int] + seti.ids + [-1]
         ngridsi = len(seti.ids)
 
         # +2 = sid and the -1 flag
-        fmt = endian + b'%di' % (ngridsi + 2)
-        #print(fmt)
+        fmt = endian + b'%di' % (ngridsi + 3)
         structi = Struct(fmt)
-
-        data = [
-            # 2 NALPHA I
-            # 3 LALPHA I
-            # 4 NXIS   I
-            # 5 LXIS   I
-            # 6 NTAUS  I
-            # 7 LTAUS  I
-            seti.sid,
-        ]
-        if seti.is_skin:
-            data.append(-2)
-        data += seti.ids
-        data.append(-1)
-        #print(data)
 
         assert None not in data, data
         op2_ascii.write(f'  SET3 data={data}\n')
@@ -1254,9 +1386,10 @@ def write_set3(model: Union[BDF, OP2Geom], name: str,
     assert len(all_data) == nvalues, f'ndata={len(all_data)}; nvalues={nvalues}'
     return nbytes
 
-def write_aelink(model: Union[BDF, OP2Geom], name: str,
+def write_aelink(model: BDF | OP2Geom, name: str,
                  aelink_ids: list[int], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     MSC 2018.2
 
@@ -1341,9 +1474,10 @@ def write_aelink(model: Union[BDF, OP2Geom], name: str,
     #assert len(all_data) == nvalues, f'ndata={len(all_data)}; nvalues={nvalues}'
     return nbytes
 
-def write_monpnt1(model: Union[BDF, OP2Geom], name: str,
+def write_monpnt1(model: BDF | OP2Geom, name: str,
                   monpnt_ids: list[int], ncards: int,
-                  op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                  op2_file: BinaryIO, op2_ascii, endian: bytes,
+                  nastran_format: str='nx') -> int:
     """
     MSC 2018.2
     NX-92
@@ -1366,7 +1500,6 @@ def write_monpnt1(model: Union[BDF, OP2Geom], name: str,
     else:
         nfields = 23
         structi = Struct(endian + b'8s 56s i 8s i 3f')  # nx
-
 
     nbytes = write_header(name, nfields, ncards, key, op2_file, op2_ascii)
     #op2 = self.op2
@@ -1395,9 +1528,10 @@ def write_monpnt1(model: Union[BDF, OP2Geom], name: str,
         #all_data.extend(data)
     return nbytes
 
-def write_monpnt2(model: Union[BDF, OP2Geom], name: str,
+def write_monpnt2(model: BDF | OP2Geom, name: str,
                   monpnt_ids: list[int], ncards: int,
-                  op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                  op2_file: BinaryIO, op2_ascii, endian: bytes,
+                  nastran_format: str='nx') -> int:
     """
     Record 59 - MONPNT2(8204,82,621)
 
@@ -1493,9 +1627,10 @@ def write_monpnt2(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
-def write_monpnt3(model: Union[BDF, OP2Geom], name: str,
+def write_monpnt3(model: BDF | OP2Geom, name: str,
                   monpnt_ids: list[int], ncards: int,
-                  op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                  op2_file: BinaryIO, op2_ascii, endian: bytes,
+                  nastran_format: str='nx') -> int:
     """
     Record 60 - MONPNT3(8304,83,622)
     Word Name    Type   Description
@@ -1535,9 +1670,10 @@ def write_monpnt3(model: Union[BDF, OP2Geom], name: str,
     return nbytes
 
 
-def write_deform(model: Union[BDF, OP2Geom], name: str,
+def write_deform(model: BDF | OP2Geom, name: str,
                  loads: list[DEFORM], ncards: int,
-                 op2_file, op2_ascii, endian: bytes, nastran_format: str='nx') -> int:
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
     """
     (104, 1, 81)
     NX 2019.2
@@ -1562,13 +1698,101 @@ def write_deform(model: Union[BDF, OP2Geom], name: str,
         op2_file.write(structi.pack(*data))
     return nbytes
 
+def write_aefact(model: BDF | OP2Geom, name: str,
+                 aefact_ids: list[int], ncards: int,
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
+    """
+    MSC 2018.2
 
+    Word Name Type Description
+    1 SID I
+    2 D RS
+    Word 2 repeats until End of Record
+
+    (1, 0.0, 0.1, 0.2, 1.0, -1,
+     2, 0.0, 0.1, 0.2, 0.5, 1.0, -1,
+    )
+
+    """
+    key = (4002, 40, 273)
+
+    nvalues = 0
+    for aefact_id in aefact_ids:
+        aefacti = model.aefacts[aefact_id]
+        nvalues += 2 + len(aefacti.factors)
+
+    # 2* = sid and the -1 flag
+    nbytes = write_header_nvalues(name, nvalues, key, op2_file, op2_ascii)
+
+    all_data = []
+    for aefact_id in aefact_ids:
+        aefacti = model.aefacts[aefact_id]
+        nfactors = len(aefacti.factors)
+
+        fmt = endian + b'i %df i' % nfactors
+        #print(fmt)
+        structi = Struct(fmt)
+
+        data = [aefacti.sid,] + aefacti.factors + [-1]
+
+        assert None not in data, data
+        op2_ascii.write(f'  AEFACT data={data}\n')
+        op2_file.write(structi.pack(*data))
+        all_data.extend(data)
+    assert len(all_data) == nvalues, f'ndata={len(all_data)}; nvalues={nvalues}'
+    return nbytes
+
+def write_aelist(model: BDF | OP2Geom, name: str,
+                 aelist_ids: list[int], ncards: int,
+                 op2_file: BinaryIO, op2_ascii, endian: bytes,
+                 nastran_format: str='nx') -> int:
+    """
+    MSC 2018.2
+
+    Word Name Type Description
+    1 SID I
+    2 E I
+    Word 2 repeats until End of Record
+
+    """
+    key = (2302, 23, 341)
+
+    nvalues = 0
+    for aelist_id in aelist_ids:
+        aelist = model.aelists[aelist_id]
+        nvalues += 2 + len(aelist.elements)
+
+    # 2* = sid and the -1 flag
+    nbytes = write_header_nvalues(name, nvalues, key, op2_file, op2_ascii)
+
+    all_data = []
+    for aelist_id in aelist_ids:
+        aelist = model.aelists[aelist_id]
+        nelements = len(aelist.elements)
+
+        fmt = endian + b'i %di i' % nelements
+        structi = Struct(fmt)
+
+        data = [aelist.sid,] + aelist.elements + [-1]
+        assert None not in data, data
+        op2_ascii.write(f'  AELIST data={data}\n')
+        op2_file.write(structi.pack(*data))
+        all_data.extend(data)
+    assert len(all_data) == nvalues, f'ndata={len(all_data)}; nvalues={nvalues}'
+
+    return nbytes
 
 EDT_MAP = {
+    'AEFACT': write_aefact,
+    'AELIST': write_aelist,
+
     'MONPNT1': write_monpnt1,
     'MONPNT2': write_monpnt2,
     'MONPNT3': write_monpnt3,
     'SET1': write_set1,
+    'SET2': write_set2,
+    'SET3': write_set3,
     'DIVERG': write_diverg,
     'CAERO1': write_caero1,
     'CAERO2': write_caero2,
@@ -1587,8 +1811,10 @@ EDT_MAP = {
     'FLFACT': write_flfact,
     'SPLINE1': write_spline1,
     'SPLINE2': write_spline2,
+    #'SPLINE3': write_spline3,
+    'SPLINE4': write_spline4,
     'AESURF': write_aesurf,
-    #'AESURFS': _write_aesurfs,
+    'AESURFS': write_aesurfs,
     'AESTAT': write_aestat,
     'AELINK': write_aelink,
     #'GUST': write_gust,  # part of DIT

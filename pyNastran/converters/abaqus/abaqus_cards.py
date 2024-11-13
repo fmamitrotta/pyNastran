@@ -8,7 +8,7 @@ defines:
 
 """
 from __future__ import annotations
-from typing import Union, TextIO, Optional, Any, TYPE_CHECKING
+from typing import TextIO, Optional, Any, TYPE_CHECKING
 import numpy as np
 from pyNastran.converters.abaqus.elements import Elements
 if TYPE_CHECKING:  # pragma: no cover
@@ -545,7 +545,7 @@ class Step:
         self.boundaries: list[Boundary] = boundaries
         self.node_output = node_output
         self.element_output = element_output
-        self.cloads: list[tuple[Union[int, str], int, float]] = cloads
+        self.cloads: list[tuple[int | str, int, float]] = cloads
         self.dloads = dloads
         self.frequencies = frequencies
         assert isinstance(cloads, list), cloads

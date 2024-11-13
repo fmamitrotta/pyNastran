@@ -25,7 +25,7 @@ EPOINTs/SPOINTs classes are for multiple degrees of freedom
 """
 from __future__ import annotations
 from itertools import count
-from typing import Union, Optional, Any, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 import numpy as np
 
 from pyNastran.utils.numpy_utils import integer_types
@@ -39,16 +39,19 @@ from pyNastran.bdf.cards.collpase_card import collapse_thru_packs
 from pyNastran.bdf.bdf_interface.assign_type import (
     integer, integer_or_blank, double, double_or_blank, blank, integer_or_string,
     integer_or_double, components_or_blank, parse_components_or_blank)
+from pyNastran.bdf.bdf_interface.assign_type_force import (
+    force_double_or_blank)
 from pyNastran.bdf.field_writer_8 import print_card_8, print_float_8, print_int_card
 from pyNastran.bdf.field_writer_16 import print_float_16, print_card_16
 from pyNastran.bdf.field_writer_double import print_scientific_double, print_card_double
 
 #u = str
 if TYPE_CHECKING:  # pragma: no cover
-    from pyNastran.bdf import BDF
-    from pyNastran.bdf.cards.coordinate_systems import CORDx
+    from pyNastran.bdf.bdf import BDF
+    from pyNastran.bdf.cards.coordinate_systems import Coord
     from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
     from pyNastran.nptyping_interface import NDArray3float
+    from pyNastran.bdf.cards.base_card import Element
     #from pyNastran.bdf.bdf_interface.typing import Coord, Element
 
 
@@ -1097,7 +1100,7 @@ class GRID(BaseCard):
         h5_file.create_dataset('ps', data=ps)
         h5_file.create_dataset('seid', data=seid)
 
-    def __init__(self, nid: int, xyz: Union[None, list[float], np.ndarray],
+    def __init__(self, nid: int, xyz: np.ndarray | list[float],
                  cp: int=0, cd: int=0, ps: str='', seid: int=0,
                  comment: str='') -> None:
         """
@@ -1135,12 +1138,12 @@ class GRID(BaseCard):
         self.cd = cd
         self.ps = ps
         self.seid = seid
-        self.cp_ref = None # type: Coord
-        self.cd_ref = None # type: Coord
-        self.elements_ref = None # type: list[Element]
+        self.cp_ref: Coord = None
+        self.cd_ref: Coord = None
+        self.elements_ref: list[Element] = None
 
     @classmethod
-    def add_op2_data(cls, data: list[Union[int, float]], comment: str='') -> GRID:
+    def add_op2_data(cls, data: list[int | float], comment: str='') -> GRID:
         """
         Adds a GRID card from the OP2.
 
@@ -1207,12 +1210,55 @@ class GRID(BaseCard):
             seid = 0
         return GRID(nid, xyz, cp, cd, ps, seid, comment=comment)
 
+    @classmethod
+    def add_card_lax(cls, card: BDFCard, comment: str='') -> GRID:
+        """
+        Adds a GRID card from ``BDF.add_card(...)``
+
+        Parameters
+        ----------
+        card : BDFCard()
+            a BDFCard object
+        comment : str; default=''
+            a comment for the card
+
+        """
+        nfields = len(card)
+        #: Node ID
+        nid = integer(card, 1, 'nid')
+
+        #: Grid point coordinate system
+        cp = integer_or_blank(card, 2, 'cp', default=0)
+
+        #: node location in local frame
+        xyz = [
+            force_double_or_blank(card, 3, 'x1', default=0.0),
+            force_double_or_blank(card, 4, 'x2', default=0.0),
+            force_double_or_blank(card, 5, 'x3', default=0.0)]
+
+        if nfields > 6:
+            #: Analysis coordinate system
+            cd = integer_or_blank(card, 6, 'cd', default=0)
+
+            #: SPC constraint
+            ps = components_or_blank(card, 7, 'ps', default='')
+            #u(integer_or_blank(card, 7, 'ps', ''))
+
+            #: Superelement ID
+            seid = integer_or_blank(card, 8, 'seid', default=0)
+            assert len(card) <= 9, f'len(GRID card) = {len(card):d}\ncard={card}'
+        else:
+            cd = 0
+            ps = ''
+            seid = 0
+        return GRID(nid, xyz, cp, cd, ps, seid, comment=comment)
+
     def validate(self) -> None:
-        assert isinstance(self.cp, integer_types), 'cp=%s' % (self.cp)
-        assert self.nid > 0, 'nid=%s' % (self.nid)
-        assert self.cp >= 0, 'cp=%s' % (self.cp)
-        assert self.cd >= -1, 'cd=%s' % (self.cd)
-        assert self.seid >= 0, 'seid=%s' % (self.seid)
+        assert isinstance(self.cp, integer_types), f'cp={self.cp:d}'
+        assert self.nid > 0, f'nid={self.nid:d}'
+        assert self.cp >= 0, f'cp={self.cp:d}'
+        assert self.cd >= -1, f'cd={self.cd:d}'
+        assert self.seid >= 0, f'seid={self.seid:d}'
         assert len(self.xyz) == 3
 
     def Nid(self) -> int:
@@ -1382,7 +1428,7 @@ class GRID(BaseCard):
         """see get_position_wrt"""
         if cid == self.cp: # same coordinate system
             return self.xyz
-        msg = ', which is required by GRID nid=%s' % (self.nid)
+        msg = ', which is required by GRID nid=%s' % self.nid
 
         # converting the xyz point arbitrary->global
         cp_ref = model.Coord(self.cp, msg=msg)
@@ -1415,17 +1461,17 @@ class GRID(BaseCard):
             return self.xyz
         # a matrix global->local matrix is found
         msg = ', which is required by GRID nid=%s' % (self.nid)
-        coord_b = model.Coord(cid, msg=msg) # type: CORDx
+        coord_b: Coord = model.Coord(cid, msg=msg)
         return self.get_position_wrt_coord_ref(coord_b)
 
-    def get_position_wrt_coord_ref(self, coord_out: CORDx) -> np.ndarray:
+    def get_position_wrt_coord_ref(self, coord_out: Coord) -> np.ndarray:
         """
         Gets the location of the GRID which started in some arbitrary
         system and returns it in the desired coordinate system
 
         Parameters
         ----------
-        coord_out : CORDx
+        coord_out : Coord
             the desired coordinate system
 
         Returns
@@ -1470,6 +1516,38 @@ class GRID(BaseCard):
         self.cp_ref = model.Coord(self.cp, msg=msg)
         if self.cd != -1:
             self.cd_ref = model.Coord(self.cd, msg=msg)
+
+    def safe_cross_reference(self, model: BDF, xref_errors: dict[str, Any],
+                             grdset: Optional[Any]=None) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+        grdset : GRDSET / None; default=None
+            a GRDSET if available (default=None)
+
+        .. note::  The gridset object will only update the fields that
+                   have not been set
+
+        """
+        if grdset:
+            # update using a grdset object
+            if not self.cp:
+                self.cp_ref = grdset.cp_ref
+            if not self.cd:
+                self.cd = grdset.cd
+                self.cd_ref = self.cd_ref
+            if not self.ps:
+                self.ps_ref = grdset.ps
+            if not self.seid:
+                self.seid_ref = grdset.seid
+        msg = ', which is required by GRID nid=%s' % (self.nid)
+        self.cp_ref = model.safe_coord(self.cp, self.nid, xref_errors, msg=msg)
+        if self.cd != -1:
+            self.cd_ref = model.safe_coord(self.cd, self.nid, xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -1670,7 +1748,7 @@ class POINT(BaseCard):
         return POINT(nid, xyz, cp=0, comment='')
 
     def __init__(self, nid: int,
-                 xyz: Union[list[float], np.ndarray],
+                 xyz: np.ndarray | list[float],
                  cp: int=0, comment: str='') -> None:
         """
         Creates the POINT card
@@ -1705,8 +1783,8 @@ class POINT(BaseCard):
         self.cp_ref = None
 
     def validate(self) -> None:
-        assert self.nid > 0, 'nid=%s' % (self.nid)
-        assert self.cp >= 0, 'cp=%s' % (self.cp)
+        assert self.nid > 0, 'nid=%s' % self.nid
+        assert self.cp >= 0, 'cp=%s' % self.cp
         assert len(self.xyz) == 3
 
     @classmethod
@@ -1734,7 +1812,7 @@ class POINT(BaseCard):
         return POINT(nid, xyz, cp=cp, comment=comment)
 
     @classmethod
-    def add_op2_data(cls, data: list[Union[int, float]], comment: str='') -> POINT:
+    def add_op2_data(cls, data: list[int | float], comment: str='') -> POINT:
         """
         Adds a POINT card from the OP2
 
@@ -1842,7 +1920,7 @@ class POINT(BaseCard):
         """Removes cross-reference links"""
         self.cp_ref = self.Cp()
 
-    def raw_fields(self) -> list[Union[str, int, float, None]]:
+    def raw_fields(self) -> list[str | int | float | None]:
         """
         Gets the fields in their unmodified form
 
@@ -1855,7 +1933,7 @@ class POINT(BaseCard):
         list_fields = ['POINT', self.nid, self.Cp()] + list(self.xyz)
         return list_fields
 
-    def repr_fields(self) -> list[Union[str, int, float]]:
+    def repr_fields(self) -> list[str | int | float]:
         """
         Gets the fields in their simplified form
 

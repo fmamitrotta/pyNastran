@@ -1,7 +1,7 @@
 from numpy import (array, searchsorted, zeros, full,
-                   nan, where, vstack, dot, cross, degrees, radians, arctan2,
+                   nan, where, vstack, cross, degrees, radians, arctan2,
                    cos, sin, arccos, hstack, eye, ndarray, sqrt, unique,
-                   transpose, asarray, isnan, array_equal)
+                   asarray, array_equal)
 from numpy.linalg import norm  # type: ignore
 
 from pyNastran.bdf.cards.coordinate_systems import (
@@ -346,7 +346,7 @@ class Coord(VectorizedCard):
 
         coord.k = normalize(e12)
         coord.j = normalize(cross(coord.k, e13))
-        coord.i = cross(coord.j, coord.k)
+        coord.i = np.cross(coord.j, coord.k)
 
         #print("  e13 = %s" % e13)
         #print("  e12 = %s" % e12)
@@ -463,7 +463,7 @@ class Coord(VectorizedCard):
         #print('k = %s' % list(coord.k))
         coord.j = normalize(cross(coord.k, e13))
         #print('j = %s' % list(coord.j))
-        coord.i = cross(coord.j, coord.k)
+        coord.i = np.cross(coord.j, coord.k)
 
         #print("  e13 = %s" % e13)
         #print("  e12 = %s" % e12)

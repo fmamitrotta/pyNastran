@@ -13,7 +13,7 @@ import copy
 import traceback
 import warnings
 from itertools import count, chain
-from typing import Optional, Union, Any
+from typing import Optional, Any
 from io import StringIO
 
 import numpy as np
@@ -51,7 +51,7 @@ try:
 except ImportError:
     IS_PYTABLES = False
 
-BDFs = Union[BDF_old, BDFv]
+BDFs = BDF_old | BDFv
 
 #from pyNastran.bdf.mesh_utils.export_mcids import export_mcids, export_mcids_all
 #from pyNastran.bdf.mesh_utils.extract_bodies import extract_bodies
@@ -89,9 +89,9 @@ def run_lots_of_files(filenames: list[str], folder: str='',
                       punch: bool=False,
                       nastran: str='',
                       encoding: Optional[str]=None,
-                      size: Union[int, list[int], None]=None,
-                      post: Union[int, list[int], None]=None,
-                      is_double: Union[bool, list[bool], None]=None,
+                      size: int | list[int] | None=None,
+                      post: int | list[int] | None=None,
+                      is_double: bool | list[bool] | None=None,
                       sum_load: bool=True,
                       run_nominal: bool=True,
                       run_equivalence: bool=True,
@@ -626,7 +626,7 @@ def run_and_compare_fems(
 
     if not quiet:
         print("-" * 80)
-    return (fem1, fem2, diff_cards)
+    return fem1, fem2, diff_cards
 
 def check_setup_flag(model: BDFv) -> None:
     if not isinstance(model, BDFv):
@@ -637,7 +637,7 @@ def check_setup_flag(model: BDFv) -> None:
         if card_type in card_types:
             raise RuntimeError(f'card_type={card_type!r} was already added...check _cards_to_setup')
 
-def _setup_fem(fem1: Union[BDF_old, BDFv],
+def _setup_fem(fem1: BDF_old | BDFv,
                debug: bool, log: SimpleLogger, version: str,
                skip_cards: list[str],
                dumplines: bool, nerrors: int,
@@ -1426,7 +1426,7 @@ def remake_model(bdf_model: BDFs, fem1: BDFs, pickle_obj: bool) -> None:
     if remake:
         #log = fem1.log
         model_name = os.path.splitext(bdf_model)[0]
-        obj_model = '%s.test_bdf.obj' % (model_name)
+        obj_model = f'{model_name}.test_bdf.obj'
         #out_model_8 = '%s.test_bdf.bdf' % (model_name)
         #out_model_16 = '%s.test_bdf.bdf' % (model_name)
 
@@ -1838,7 +1838,7 @@ def check_case(sol: int,
 
     elif sol in {144, 'AESTAT'}:
         ierror = _check_static_aero_case(fem2, log, sol, subcase, ierror, nerrors)
-    elif sol in {145, 'SEFLUTTER'}:
+    elif sol in {145, 'SEFLUTTR', 'SEFLUTTER'}:
         ierror = _check_flutter_case(fem2, log, sol, subcase, ierror, nerrors)
     elif sol in {146, 'SEAERO'}:
         ierror = _check_gust_case(fem2, log, sol, subcase, ierror, nerrors)
@@ -1924,11 +1924,11 @@ def _check_static_aero_case(fem: BDFv, log: SimpleLogger, sol: int,
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem.caero_ids) == 0:
-        msg = 'An CAEROx card is required for STATIC AERO - SOL %i' % (sol)
+        msg = f'An CAEROx card is required for STATIC AERO - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem.spline_ids) == 0:
-        msg = 'An SPLINEx card is required for STATIC AERO - SOL %i' % (sol)
+        msg = f'An SPLINEx card is required for STATIC AERO - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     return ierror
@@ -2012,7 +2012,7 @@ def _check_gust_case(fem2: BDFs, log: SimpleLogger, sol: int, subcase: Subcase,
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem2.mkaeros) == 0:
-        msg = 'An MKAERO1/2 card is required for GUST - SOL %i' % (sol)
+        msg = f'An MKAERO1/2 card is required for GUST - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     unused_mklist = fem2.get_mklist()
@@ -2923,7 +2923,7 @@ def get_test_bdf_usage_args_examples(encoding):
 
 def main(argv=None, show_args: bool=True) -> None:
     """The main function for the command line ``test_bdf`` script."""
-    if argv is None:
+    if argv is None:  # pragma: no cover
         argv = sys.argv
 
     data = test_bdf_argparse(argv)

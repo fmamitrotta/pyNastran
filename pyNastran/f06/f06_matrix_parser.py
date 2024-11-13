@@ -1,4 +1,4 @@
-from collections import defaultdict
+#from collections import defaultdict
 from typing import TextIO, Optional
 
 import numpy as np
@@ -52,7 +52,7 @@ def _read_f06_matrices(f06_file: TextIO,
     i = 0
     debug = False
     tables = {}
-    matrices = {} # defaultdict(list)
+    matrices = {}
     iblank_count = 0
     while True:
         line = f06_file.readline()
@@ -83,11 +83,13 @@ def _read_f06_matrices(f06_file: TextIO,
         if 'R E A L   E I G E N V A L U E S' in line and load_eigenvalues:
             Mhh, Bhh, Khh = _read_real_eigenvalues(f06_file, log, line, i)
             isort = np.argsort(Khh)
-            matrices['MHH'].append(np.diag(Mhh[isort]))
-            matrices['BHH'].append(np.diag(Bhh[isort]))
-            matrices['KHH'].append(np.diag(Khh[isort]))
-            del line_strip, Mhh, Bhh, Khh
-
+            #matrices['MHH'].append(np.diag(Mhh[isort]))
+            #matrices['BHH'].append(np.diag(Bhh[isort]))
+            #matrices['KHH'].append(np.diag(Khh[isort]))
+            matrices['MHH'] = np.diag(Mhh[isort])
+            matrices['BHH'] = np.diag(Bhh[isort])
+            matrices['KHH'] = np.diag(Khh[isort])
+            del Mhh, Bhh, Khh
 
         if line.startswith('0    TABLE'):
             table_name, table, line, i = _read_table(f06_file, line, i, log)
@@ -96,7 +98,7 @@ def _read_f06_matrices(f06_file: TextIO,
             debug = False
         elif line.startswith('0      MATRIX '):
             matrix_name, matrix, line, i = _read_matrix(f06_file, line, i, log, debug)
-            assert isinstance(matrix, scipy.sparse.coo_matrix)
+            assert isinstance(matrix, (np.ndarray, scipy.sparse.coo_matrix))
 
             if matrix_name not in matrices:
                 matrices[matrix_name] = []
@@ -128,6 +130,10 @@ def _compress_matrices(matrices: dict[str, list[np.ndarray]]) -> dict[str, np.nd
         else:
             matrix0 = list_matrices[0]
             if isinstance(matrix0, np.ndarray):
+                if list_matrices.ndim == 2:
+                    matrices2[key] = list_matrices
+                    continue
+
                 try:
                     matrix = np.stack(list_matrices, axis=2)
                 except ValueError:  # pragma: no cover
@@ -152,9 +158,9 @@ def _read_real_eigenvalues(f06_file: TextIO,
     line1 = f06_file.readline()
     if '(' in line1 and ')' in line1:
         # (ACTUAL MODES USED IN THE DYNAMIC ANALYSIS)
-        line1 = f06_file.readline()
+        unused_line1 = f06_file.readline()
 
-    line2 = f06_file.readline()
+    unused_line2 = f06_file.readline()
     line3 = f06_file.readline()
     line_strip = line3.strip()
     i += 3
@@ -189,6 +195,7 @@ def _read_real_eigenvalues(f06_file: TextIO,
     Bhh = np.array(Bhh_list, dtype='float64')
     Khh = np.array(Khh_list, dtype='float64')
     return Mhh, Bhh, Khh
+
 
 def _read_matrix(f06_file: TextIO,
                  line: str, i: int, log: SimpleLogger,
@@ -246,6 +253,7 @@ def _read_matrix(f06_file: TextIO,
             line = f06_file.readline()
             i += 1
             continue
+
         # column header
         # 0COLUMNS       3 THRU       3 ARE NULL.
         #
@@ -255,8 +263,8 @@ def _read_matrix(f06_file: TextIO,
         # 0COLUMN      100      ROWS        1 THRU       10
         sline = line[1:].strip().split()
         column = int(sline[1])
-        row0 = int(sline[3])
-        row1 = int(sline[5])
+        unused_row0 = int(sline[3])
+        unused_row1 = int(sline[5])
         #log.debug(line)
 
         line = f06_file.readline().rstrip()
@@ -264,8 +272,12 @@ def _read_matrix(f06_file: TextIO,
         assert line.strip() == 'ROW', line
 
         line = f06_file.readline().rstrip()
-        assert ')' in line, line
         i += 1
+        while ')' not in line:
+            line = f06_file.readline().rstrip()
+            i += 1
+        assert ')' in line, line
+
         row_lines = [line]
         while ')' in line:
             line = f06_file.readline().rstrip()
@@ -279,7 +291,7 @@ def _read_matrix(f06_file: TextIO,
             row_indexi, datai = _parse_complex_row_lines(row_lines)
         elif is_real:
             row_indexi, datai = _parse_real_row_lines(row_lines)
-        else:
+        else:  # pragma: no cover
             raise RuntimeError(is_complex)
         #print(column)
         ndatai = len(datai)
@@ -291,12 +303,12 @@ def _read_matrix(f06_file: TextIO,
         #    1) -3.5846E+01,-1.3275E+02  -1.5510E+01, 2.3578E-01  -3.2339E+01,-4.9373E+00   6.8078E+01, 1.3428E+01   3.0262E+01, 2.4554E+01
         #    6) -3.5846E+01,-1.3275E+02  -1.5510E+01, 2.3578E-01  -3.2339E+01,-4.9373E+00   6.8078E+01, 1.3428E+01   3.0262E+01, 2.4554E+01
 
-    cols = np.hstack(col_list) # - 1
-    rows = np.hstack(row_list) # - 1
+    cols = np.hstack(col_list)  # - 1
+    rows = np.hstack(row_list)  # - 1
     data = np.hstack(data_list)
     #urows = np.unique(rows)
     #ucols = np.unique(cols)
-    scipy.sparse.coo_matrix
+    #scipy.sparse.coo_matrix
 
     dtype = 'float64'
     if is_complex:
@@ -311,7 +323,8 @@ def _read_matrix(f06_file: TextIO,
     #print(matrix)
     return table_name, matrix, line, i
 
-def _parse_complex_row_lines(lines: list[str]) -> tuple[int, int]:
+
+def _parse_complex_row_lines(lines: list[str]) -> tuple[np.ndarray, np.ndarray]:
     """
     1) -3.5846E+01,-1.3275E+02  -1.5510E+01, 2.3578E-01  -3.2339E+01,-4.9373E+00   6.8078E+01, 1.3428E+01   3.0262E+01, 2.4554E+01
     6) -3.5846E+01,-1.3275E+02  -1.5510E+01, 2.3578E-01  -3.2339E+01,-4.9373E+00   6.8078E+01, 1.3428E+01   3.0262E+01, 2.4554E+01
@@ -348,7 +361,8 @@ def _parse_complex_row_lines(lines: list[str]) -> tuple[int, int]:
     data = np.array(data_list, dtype='complex128')
     return row_index, data
 
-def _parse_real_row_lines(lines: list[str]) -> tuple[int, int]:
+
+def _parse_real_row_lines(lines: list[str]) -> tuple[np.ndarray, np.ndarray]:
     """
     1)    1.1010E+01  1.3762E+00 -4.2021E+00 -5.2526E-01
     """
@@ -437,6 +451,7 @@ def _read_table(f06_file: TextIO, line: str, i: int,
     log.info(f' - {table_name}: {matrix.shape}')
     return table_name, matrix, line, i
 
+
 def _parse_table_records(table_name: str, records: list[str], log: SimpleLogger) -> np.ndarray:
     #records = [
         #['      1)         MKLI        ST  \n'],
@@ -486,7 +501,7 @@ def main():  # pragma: no cover
             mat2 = mat.todense()
             for row in mat2:
                 print(row.tolist())
-        if 0:
+        if 0:  # pragma: no cover
             for row, col, value in zip(mat.row, mat.col, mat.data):
                 print(f'{row}, {col}, {value}')
 

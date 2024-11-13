@@ -7,7 +7,7 @@ The capitalization of the sub-functions is important.
 """
 from __future__ import annotations
 import re
-from typing import Union, Any, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 import numpy as np
 from numpy import (
     cos, sin, tan, log, log10, mean, exp, sqrt, square, mod, abs, sum,
@@ -572,7 +572,7 @@ def _setup_deqatn(equation_id: int,
 
 def fortran_to_python(deqatn_id: int,
                       lines: list[str],
-                      default_values: dict[str, Union[float, np.ndarray]],
+                      default_values: dict[str, float | np.ndarray],
                       comment: str='') -> tuple[str, int, str]:
     """
     Creates the python function
@@ -627,7 +627,7 @@ def fortran_to_python(deqatn_id: int,
             f, eq = line.split('=')
         except ValueError:
             if '=' not in line:
-                raise SyntaxError('= not found in %r' % (line))
+                raise SyntaxError(f'= not found in {line!r}')
             msg = 'only 1 = sign may be found a line\n'
             msg += 'line = %r\n' % line
             if len(lines) > 1:
@@ -786,7 +786,7 @@ def _write_function_line(func_name: str, variables: list[str],
             vals.append('%s=%s' % (var, default_values[var]))
             is_default = True
         else:
-            vals.append('%s' % (var))
+            vals.append('%s' % var)
             if is_default:
                 msg = 'default variables must be set at the end of the function\n'
                 msg += 'variables = %s\n' % variables

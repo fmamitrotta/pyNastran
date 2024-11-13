@@ -1,6 +1,6 @@
 """Parses Nastran fields"""
 import re
-from typing import Union, Optional, Any
+from typing import Optional, Any
 from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 from pyNastran.utils.numpy_utils import (
     integer_types, integer_float_types, float_types)
@@ -222,7 +222,7 @@ def blank(card: BDFCard, ifield: int, fieldname: str, default=None) -> None:
     raise SyntaxError('%s = %r (field #%s) on card must be blank (not %s).\n'
                       'card=%s' % (fieldname, svalue, ifield, dtype, card))
 
-#def field(card: BDFCard, ifield: int, fieldname: str) -> Optional[Union[int, float, str]]:
+#def field(card: BDFCard, ifield: int, fieldname: str) -> Optional[int | float | str]:
     #"""
     #Parameters
     #----------
@@ -244,7 +244,7 @@ def blank(card: BDFCard, ifield: int, fieldname: str, default=None) -> None:
     #return integer_double_string_or_blank(card, ifield, fieldname, default=None)
 
 def integer_double_string_or_blank(card: BDFCard, ifield: int, fieldname: str, default=None):
-    # type (BDFCard, int, str, Union[int, float, str]) -> Optional[Union[int, float, str]]
+    # type (BDFCard, int, str, int | float | str) -> Optional[int | float | str]
     """
     Parameters
     ----------
@@ -586,7 +586,7 @@ def double_or_blank(card: BDFCard, ifield: int, fieldname: str,
                               'card=%s' % (fieldname, svalue, ifield, dtype, card))
     return default
 
-def double_or_string(card: BDFCard, ifield: int, fieldname: str) -> Union[float, str]:
+def double_or_string(card: BDFCard, ifield: int, fieldname: str) -> float | str:
     """
     Casts a value to a double/string
 
@@ -698,7 +698,7 @@ def double_string_or_blank(card: BDFCard, ifield: int, fieldname: str, default=N
                           'card=%s' % (fieldname, svalue, ifield, dtype, card))
     return svalue
 
-def integer_or_double(card: BDFCard, ifield: int, fieldname: str) -> Union[int, float]:
+def integer_or_double(card: BDFCard, ifield: int, fieldname: str) -> int | float:
     """
     Casts a value to an integer/double
 
@@ -787,7 +787,7 @@ def integer_double_or_blank(card: BDFCard, ifield: int, fieldname: str, default=
                               'card=%s' % (fieldname, svalue, ifield, dtype, card))
     return default
 
-def integer_or_string(card: BDFCard, ifield: int, fieldname: str) -> Union[int, str]:
+def integer_or_string(card: BDFCard, ifield: int, fieldname: str) -> int | str:
     """
     Casts a value to an integer/string
 
@@ -916,7 +916,7 @@ def _get_dtype(value):
     return dtype
 
 
-def integer_double_or_string(card: BDFCard, ifield: int, fieldname: str) -> Union[int, float, str]:
+def integer_double_or_string(card: BDFCard, ifield: int, fieldname: str) -> int | float | str:
     """
     Casts a value to an integer/double/string
 
@@ -1092,7 +1092,8 @@ def string_or_blank(card: BDFCard, ifield: int, fieldname: str, default=None):
         return str(svalue.upper())
     return default
 
-def string_choice_or_blank(card: BDFCard, ifield: int, fieldname: str, choices: tuple[str], default=None):
+def string_choice_or_blank(card: BDFCard, ifield: int, fieldname: str,
+                           choices: tuple[str, ...], default=None):
     """
     Parameters
     ----------
@@ -1278,7 +1279,7 @@ def exact_string_or_blank(card: BDFCard, ifield: int, fieldname: str, default=No
 
 
 def interpret_value(value_raw: Optional[str],
-                    card: Union[str, BDFCard]='') -> Union[int, float, str, None]:
+                    card: str | BDFCard='') -> Optional[int | float | str]:
     """
     Converts a value from nastran format into python format.
 

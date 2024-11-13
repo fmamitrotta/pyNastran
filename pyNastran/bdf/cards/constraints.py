@@ -814,7 +814,7 @@ class SPC(Constraint):
     def node_ids(self):
         if self.nodes_ref is None:
             return self.nodes
-        msg = ', which is required by SPC=%s' % (self.conid)
+        msg = f', which is required by SPC={self.conid:d}'
         return self._node_ids(nodes=self.nodes_ref, allow_empty_nodes=True, msg=msg)
 
     def cross_reference(self, model: BDF) -> None:
@@ -827,7 +827,7 @@ class SPC(Constraint):
             the BDF object
 
         """
-        msg = ', which is required by SPC=%s' % (self.conid)
+        msg = f', which is required by SPC={self.conid:d}'
         self.nodes_ref = model.EmptyNodes(self.nodes, msg=msg)
 
     def safe_cross_reference(self, model: BDF, debug=True):
@@ -1214,7 +1214,7 @@ class SPCOFF(Constraint):
         Cs = ['1', '2']
         return SPCOFF(nodes, Cs, comment='')
 
-    def __init__(self, nodes, components, comment=''):
+    def __init__(self, nodes, components, comment: str=''):
         Constraint.__init__(self)
         if comment:
             self.comment = comment
@@ -1258,36 +1258,6 @@ class SPCOFF(Constraint):
             components.append(component)
         assert len(card) > 1, f'len(SPCOFF card) = {len(card):d}\ncard={card}'
         return SPCOFF(nodes, components, comment=comment)
-
-    @classmethod
-    def add_op2_data(cls, data, comment=''):
-        """
-        Adds a SPCOFF card from the OP2
-
-        Parameters
-        ----------
-        data : list[varies]
-            a list of fields defined in OP2 format
-        comment : str; default=''
-            a comment for the card
-
-        """
-        nodes = [data[0]]
-        components = data[1]
-        assert 0 <= components <= 123456, data
-        enforced = [data[2]]
-        assert nodes[0] > 0, data
-        components_str = str(components)
-        assert len(components_str) <= 6, data
-        components = [components_str]
-        #if components[0] == 0:
-            #components[0] = 0
-        #if components[0] == 16:
-            #components[0] = '16'
-        #else:
-            #raise RuntimeError('SPC; components=%s data=%s' % (components, data))
-        #assert 0 < components[0] > 1000, data
-        return SPCOFF(nodes, components, enforced, comment=comment)
 
     @property
     def constraints(self):

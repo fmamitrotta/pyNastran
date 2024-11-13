@@ -183,7 +183,7 @@ class EPT:
 
 # HGSUPPR
 
-    def read_matcid(self, data: bytes, n: int) -> None:
+    def read_matcid(self, data: bytes, n: int) -> int:
         """
         MATCID(17006,170,901)
         Defines material coordinate system for solid elements.
@@ -213,7 +213,7 @@ class EPT:
         self.op2.log.warning('geom skipping MATCID in EPT')
         return len(data)
 
-    def read_psolcz(self, data: bytes, n: int) -> None:
+    def read_psolcz(self, data: bytes, n: int) -> int:
         """
         PSOLCZ(8901,89,905)
         Word Name Type Description
@@ -242,7 +242,7 @@ class EPT:
         op2.card_count['PSOLCZ'] = nentries
         return n
 
-    def read_pcompg1(self, data: bytes, n: int) -> None:
+    def read_pcompg1(self, data: bytes, n: int) -> int:
         """
         PCOMPG1(15106,151,953)
 
@@ -366,7 +366,7 @@ class EPT:
         op2.card_count['PCOMPG1'] = nproperties
         return n
 
-    def read_pcomps(self, data: bytes, n: int) -> None:
+    def read_pcomps(self, data: bytes, n: int) -> int:
         """
         PCOMPS(16006,160,903)
         Defines the properties of an n-ply composite material laminate for solid elements.
@@ -524,7 +524,7 @@ class EPT:
         op2.card_count['PCOMPS'] = nproperties
         return n
 
-    def read_paabaf(self, data: bytes, n: int) -> None:
+    def read_paabaf(self, data: bytes, n: int) -> int:
         """
         PAABSF(1502,15,36)
         Defines the properties of a frequency-dependent acoustic absorber
@@ -556,7 +556,7 @@ class EPT:
         op2.card_count['PAABSF'] = nentries
         return n
 
-    def read_paxsymh(self, data: bytes, n: int) -> None:
+    def read_paxsymh(self, data: bytes, n: int) -> int:
         op2: OP2Geom = self.op2
         op2.log.info(f'geom skipping PAXSYMH in {op2.table_name}; ndata={len(data)-12}')
         #op2.show_data(data[n:], types='ifs')
@@ -1380,7 +1380,7 @@ class EPT:
             self._add_op2_property(prop)
             nproperties += 1
         #print(f"n={n} ndata={ndata}")
-        assert nproperties > 0, 'PBCOMP nproperties=%s' % (nproperties)
+        assert nproperties > 0, f'PBCOMP nproperties={nproperties:d}'
         if len(op2._type_to_id_map['PBEAM']) == 0 and 'PBEAM' in op2.card_count:
             del op2._type_to_id_map['PBEAM']
             del op2.card_count['PBEAM']
@@ -1586,7 +1586,7 @@ class EPT:
             'PBEND', op2._add_methods._add_property_object)
         return n
 
-    def _read_pbend_msc(self, data: bytes, n: int) -> int:
+    def _read_pbend_msc(self, data: bytes, n: int) -> tuple[int, list[PBEND]]:
         """
         PBEND
 
@@ -1654,7 +1654,7 @@ class EPT:
             n += ntotal
         return n, properties
 
-    def _read_pbend_nx(self, data: bytes, n: int) -> int:
+    def _read_pbend_nx(self, data: bytes, n: int) -> tuple[int, list[PBEND]]:
         """
         PBEND
 
@@ -2814,7 +2814,7 @@ class EPT:
 
         return n
 
-    def _read_pconv_nx_16(self, card_obj: PCONV, data: bytes, n: int) -> int:
+    def _read_pconv_nx_16(self, card_obj: PCONV, data: bytes, n: int) -> tuple[int, list[PCONV]]:
         """
         (11001,110,411)- NX version
         """
@@ -2836,7 +2836,7 @@ class EPT:
             n += ntotal
         return n, props
 
-    def _read_pconv_msc_56(self, card_obj: PCONV, data: bytes, n: int) -> int:
+    def _read_pconv_msc_56(self, card_obj: PCONV, data: bytes, n: int) -> tuple[int, list[PCONV]]:
         """
         (11001,110,411)- MSC version - Record 25
         """
@@ -3150,7 +3150,7 @@ class EPT:
             op2.log.warning(f'try-except {card_name}')
         return n
 
-    def _read_pbeam3_456(self, card_obj, data: bytes, n: int) -> int:
+    def _read_pbeam3_456(self, card_obj, data: bytes, n: int) -> tuple[int, list[PBEAM3]]:
         r"""
         # per C:\MSC.Software\msc_nastran_runs\b3plod3.op2
         ints    = (2201, 1, 1.0, 0.1833, 0.0833, 0, -1.0, 0, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5,
@@ -3258,7 +3258,7 @@ class EPT:
         #op2.card_count['PBEAM3'] = nentries
         return n, props
 
-    def _read_pbeam3_264(self, card_obj, data: bytes, n: int) -> int:
+    def _read_pbeam3_264(self, card_obj, data: bytes, n: int) -> tuple[int, list[PBEAM3]]:
         """
         TODO: partial
         # per test_cbeam_cbeam3???

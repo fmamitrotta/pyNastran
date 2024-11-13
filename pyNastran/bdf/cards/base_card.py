@@ -9,7 +9,7 @@ defines:
 """
 from __future__ import annotations
 from abc import abstractmethod, abstractproperty, abstractclassmethod
-from typing import Union, Optional, Any, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 
 import numpy as np
 #from numpy import nan, empty, unique
@@ -29,7 +29,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def write_card(comment: str,
-               card: list[Union[int, float, str, None]],
+               card: list[int | float | str | None],
                size: int, is_double: bool) -> str:
     if size == 8:
         try:
@@ -72,7 +72,7 @@ class BaseCard:
         return []
 
     @abstractclassmethod
-    def add_card(self, card, comment=''):  # pragma: no cover
+    def add_card(self, card, comment: str=''):  # pragma: no cover
         return BaseCard()
 
     def __deepcopy__(self, memo_dict):
@@ -142,7 +142,7 @@ class BaseCard:
             except KeyError:
                 return
 
-    def update_field(self, n: int, value: Optional[Union[int, float, str]]) -> None:
+    def update_field(self, n: int, value: Optional[int | float | str]) -> None:
         """
         Updates a field based on it's field number.
 
@@ -170,7 +170,7 @@ class BaseCard:
         except KeyError:
             self._update_field_helper(n, value)
 
-    def _update_field_helper(self, n: int, value: Optional[Union[int, float, str]]):
+    def _update_field_helper(self, n: int, value: Optional[int | float | str]):
         """
         dynamic method for non-standard attributes
         (e.g., node.update_field(3, 0.1) to update z)
@@ -184,7 +184,7 @@ class BaseCard:
         msg = f'{self.__class__.__name__} has not overwritten _get_field_helper; out of range'
         raise IndexError(msg)
 
-    def get_field(self, n: int) -> Optional[Union[int, float, str]]:
+    def get_field(self, n: int) -> Optional[int | float | str]:
         """
         Gets a field based on it's field number
 
@@ -249,8 +249,8 @@ class BaseCard:
         return self._is_same_fields(fields1, fields2)
 
     def _is_same_fields(self,
-                        fields1: list[Union[int, float, str, None]],
-                        fields2: list[Union[int, float, str, None]]) -> bool:
+                        fields1: list[int | float | str | None],
+                        fields2: list[int | float | str | None]) -> bool:
         for (field1, field2) in zip(fields1, fields2):
             if not is_same(field1, field2):
                 return False
@@ -269,7 +269,7 @@ class BaseCard:
         list_fields = self.raw_fields()
         return self.comment + print_card(list_fields, size=size, is_double=is_double)
 
-    def repr_fields(self) -> list[Union[int, float, str, None]]:
+    def repr_fields(self) -> list[int | float | str | None]:
         """
         Gets the fields in their simplified form
 
@@ -410,6 +410,10 @@ class Material(BaseCard):
         """dummy cross reference method for a Material"""
         pass
 
+    def safe_cross_reference(self, model: BDF,
+                             xref_errors: dict[str, Any]) -> None:
+        return self.cross_reference(model)
+
     def Mid(self) -> Any:
         """
         returns the material ID of an element
@@ -501,13 +505,13 @@ class Element(BaseCard):
         """returns nodeIDs for repr functions"""
         return _node_ids(self, nodes=nodes, allow_empty_nodes=allow_empty_nodes, msg=msg)
 
-    def prepare_node_ids(self, nids: list[int], allow_empty_nodes: bool=False) -> None:
+    def prepare_node_ids(self, nids: list[int], allow_empty_nodes: bool=False) -> list[int]:
         """Verifies all node IDs exist and that they're integers"""
         #self.nodes = nids
         nids = self.validate_node_ids(nids, allow_empty_nodes)
         return nids
 
-    def validate_node_ids(self, nodes: list[int], allow_empty_nodes: bool=False) -> None:
+    def validate_node_ids(self, nodes: list[int], allow_empty_nodes: bool=False) -> list[int]:
         if allow_empty_nodes:
             # verify we have nodes
             if len(nodes) == 0:

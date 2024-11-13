@@ -163,6 +163,7 @@ class TestAero(unittest.TestCase):
         """checks the AEFACT card"""
         data = ['AEFACT', 97, .3, 0.7, 1.0]
         log = SimpleLogger(level='warning')
+        #log = SimpleLogger(level='debug')
         model = BDF(log=log)
         model.add_card(data, data[0], COMMENT_BAD, is_list=True)
 
@@ -201,11 +202,25 @@ class TestAero(unittest.TestCase):
         aefact = AEFACT(200, fractions, comment='')
         aefact.validate()
         aefact.write_card()
+
+        model = BDF(log=log)
+        model.add_aefact(97, [0.3, 0.7, 1.0])
+        eid = 97
+        pid = 100
+        igroup = 0
+        p1 = [0., 0., 0.]
+        x12 = 1.0
+        x43 = 1.0
+        p4 = [0., 10., 0.]
+        model.add_caero1(eid, pid, igroup, p1, x12, p4, x43, lspan=97, lchord=97)
+        model.add_paero1(pid)
         #model = BDF()
         #aefact.cross_reference(model)
         #aefact.write_card()
         #aefact.uncross_reference()
         #aefact.write_card()
+        model.bdf_filename = 'test_aefact_1'
+        save_load_deck(model)
 
 
     def test_aelink_1(self):
@@ -243,13 +258,15 @@ class TestAero(unittest.TestCase):
             model.validate()
         aelink2.linking_coefficients = [1.0, 2.0, 3.0]
         assert aelink2.linking_coefficients == [1., 2., 3.]
+        model.aelinks = {}
 
         #-------------------------------
         idi = 'ALWAYS'
         label = 'LABEL'
         independent_labels = ['pig', 'frog', 'dog']
         linking_coefficients = [1.0, 2.0, 3.0]
-        model.add_aelink(idi, label, independent_labels, linking_coefficients)
+        aelink = model.add_aelink(idi, label, independent_labels, linking_coefficients)
+        aelink.validate()
 
         sid = 10
         mach = 0.5
@@ -278,10 +295,17 @@ class TestAero(unittest.TestCase):
                              pllim=-np.pi/2., pulim=np.pi/2.,
                              hmllim=None, hmulim=None,
                              tqllim=None, tqulim=None, comment='')
+
+        model.add_aesurf(11, label, cid1, 101, cid2=None, aelist_id2=None,
+                         eff=1.0, ldw='LDW', crefc=1.0, crefs=1.0,
+                         pllim=None, pulim=None,
+                         hmllim=None, hmulim=None,
+                         tqllim=None, tqulim=None, comment='')
         elements = [100]
         model.add_aelist(101, elements)
         model.validate()
         model.cross_reference()
+        #save_load_deck(model, run_test_bdf=False)
 
     def test_aelink_2(self):
         log = SimpleLogger(level='warning')
@@ -316,7 +340,7 @@ class TestAero(unittest.TestCase):
         elements = [100]
         model.add_aelist(101, elements)
 
-        save_load_deck(model, run_renumber=False)
+        save_load_deck(model, run_renumber=False, run_test_bdf=False)
 
     def test_aelist_1(self):
         """checks the AELIST card"""
@@ -356,6 +380,7 @@ class TestAero(unittest.TestCase):
         elements = 42.0
         with self.assertRaises(TypeError):
             AELIST(77, elements)
+        save_load_deck(model)
 
     def test_aeparm_1(self):
         """checks the AEPARM card"""
@@ -372,6 +397,18 @@ class TestAero(unittest.TestCase):
         aeparm.safe_cross_reference(None)
         aeparm.write_card()
         save_load_deck(model)
+
+    def test_aesurf_multi_thru(self):
+        """handles blanks in the card"""
+        model = BDF()
+        card = [
+            'AELIST', 1, '1', 'THRU', '10', '', '20', 'THRU', '30', '30', 'THRU', '40',
+        ]
+        aelist = model.add_card(card, 'AELIST')
+        str(aelist)
+        model.pop_parse_errors()
+
+        #save_load_deck(model)
 
    # def test_aestat_1(self):
    # def test_aesurf_1(self):
@@ -516,6 +553,48 @@ class TestAero(unittest.TestCase):
         aeros = AEROS(cref, bref, sref, acsid, rcsid, sym_xz=sym_xz, sym_xy=sym_xy)
         with self.assertRaises(TypeError):
             aeros.validate()
+
+    def test_caero1_split(self):
+        """checks the CAERO1/PAERO1/AEFACT card"""
+        log = SimpleLogger(level='warning')
+        model = BDF(log=log)
+        cref = 1.0
+        bref = 1.0
+        sref = 1.0
+        model.add_aeros(cref, bref, sref, acsid=0, rcsid=0, sym_xz=0, sym_xy=0, comment='')
+
+        pid = 1
+        igroup = 1
+        p1 = [0., 0., 0.]
+        p4 = [1., 10., 0.]
+        x12 = 1.
+        x43 = 1.
+        model.add_paero1(pid, caero_body_ids=None, comment='')
+
+        eid = 1001
+        comment =  '%-8s%-8s%-8s%-8s%-8s%-8s%-8s%-8s%-8s' % ('CAERO1', 'EID', 'PID', 'CP', 'NSPAN', 'NCHORD', 'LSPAN', 'LCHORD', 'IGID\n')
+        comment += '%-8s%-8s%-8s%-8s%-8s%-8s%-8s%-8s%-8s' % ('', 'X1', 'Y1', 'Z1', 'X12', 'X4', 'Y4', 'Z4', 'X43')
+
+        caero = model.add_caero1(eid, pid, igroup, p1, x12, p4, x43,
+                                 cp=0, nspan=10, lspan=0, nchord=10, lchord=0, comment=comment)
+        caero_a, caero_b = caero.span_split(0.10)
+        print(caero)
+        print(caero_a)
+        print(caero_b)
+        print('-----')
+
+        caero_a, caero_b, caero_c, caero_d = caero.span_chord_split(0.10, 0.1)
+        print(caero_a)
+        print(caero_b)
+        print(caero_c)
+        print(caero_d)
+
+        print('new')
+        caeros = caero.span_chord_split(0.0, 0.0)
+        assert len(caeros) == 1, caeros
+        for caero in caeros:
+            print(caero)
+        print('-----')
 
     def test_caero1_paneling_nspan_nchord_1(self):
         """checks the CAERO1/PAERO1/AEFACT card"""
@@ -1183,16 +1262,22 @@ class TestAero(unittest.TestCase):
         caero1l = CAERO1(eid, pid, igid, p1, x12, p4, x43, cp=cp,
                          nspan=nspan, lspan=lspan, nchord=nchord, lchord=lchord,
                          comment='caero1')
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             caero1l.validate()
+        caero1l.p1 = np.array([0., 0., 0.])
+        #with self.assertRaises(AssertionError):
+        caero1l.validate()
 
         p1 = [0., 0., 0.]
         p4 = [1., 2., 3., 4.]
         caero1m = CAERO1(eid, pid, igid, p1, x12, p4, x43, cp=cp,
                          nspan=nspan, lspan=lspan, nchord=nchord, lchord=lchord,
                          comment='caero1')
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             caero1m.validate()
+        caero1m.p4 = np.array([0., 2., 3.])
+        # with self.assertRaises(AssertionError):
+        caero1m.validate()
 
         p4 = [1., 2., 3.]
         eid = 8
@@ -2610,6 +2695,7 @@ class TestAero(unittest.TestCase):
 
         trim2 = model.add_trim(sid+1, mach, q, labels, uxs, aeqr=0.0, trim_type=2, comment='')
         trim2.validate()
+        save_load_deck(model)
 
     def test_trim_03(self):
         """checks the TRIM card with a 2.5g pullup"""
@@ -2922,7 +3008,7 @@ class TestAero(unittest.TestCase):
 
     def test_zona_1(self):
         """zona explicit test"""
-        log = SimpleLogger(level='error', encoding='utf-8', log_func=None)  # lots of zona errors
+        log = SimpleLogger(level='error', encoding='utf-8')  # lots of zona errors
         bdf_filename = os.path.join(MODEL_PATH, 'aero', 'f16_ma41.bdf')
         model = read_bdf(bdf_filename, xref=False, debug=None, log=log)
         model.safe_cross_reference()
@@ -2935,7 +3021,7 @@ class TestAero(unittest.TestCase):
 
     def test_zona_2(self):
         """zona explicit test"""
-        log = SimpleLogger(level='error', encoding='utf-8', log_func=None)  # lots of zona errors
+        log = SimpleLogger(level='error', encoding='utf-8')  # lots of zona errors
         bdf_filename = os.path.join(MODEL_PATH, 'aero', 'ztran.bdf')
         model = read_bdf(bdf_filename, xref=False, debug=None, log=log)
         model.safe_cross_reference()

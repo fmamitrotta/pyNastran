@@ -57,7 +57,8 @@ class CELAS1(SpringElement):
         else:
             raise KeyError('Field %r=%r is an invalid %s entry.' % (n, value, self.type))
 
-    def __init__(self, eid, pid, nids, c1=0, c2=0, comment=''):
+    def __init__(self, eid: int, pid: int, nids: list[int],
+                 c1: int=0, c2: int=0, comment: str=''):
         """
         Creates a CELAS1 card
 
@@ -67,7 +68,7 @@ class CELAS1(SpringElement):
             element id
         pid : int
             property id (PELAS)
-        nids : list[int, int]
+        nids : list[int]
             node ids
         c1 / c2 : int; default=0
             DOF for nid1 / nid2
@@ -157,7 +158,7 @@ class CELAS1(SpringElement):
 
     @property
     def node_ids(self):
-        msg = ', which is required by CELAS1 eid=%s' % (self.eid)
+        msg = f', which is required by CELAS1 eid={self.eid:d}'
         return self._node_ids(nodes=self.nodes_ref, allow_empty_nodes=True, msg=msg)
 
     def get_edge_ids(self):
@@ -195,8 +196,9 @@ class CELAS1(SpringElement):
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by CELAS1 eid=%s' % (self.eid)
+        msg = f', which is required by CELAS1 eid={self.eid:d}'
         self.nodes_ref = model.EmptyNodes(self.node_ids, msg=msg)
         self.pid_ref = model.Property(self.Pid(), msg=msg)
 
@@ -209,7 +211,8 @@ class CELAS1(SpringElement):
         model : BDF()
             the BDF object
         """
-        msg = ', which is required by CELAS1 eid=%s' % self.eid
+
+        msg = f', which is required by CELAS1 eid={self.eid:d}'
         self.nodes_ref = model.EmptyNodes(self.node_ids, msg=msg)
         self.pid_ref = model.safe_property(self.pid, self.eid, xref_errors, msg=msg)
 
@@ -374,7 +377,7 @@ class CELAS2(SpringElement):
 
     @property
     def node_ids(self):
-        msg = ', which is required by CELAS2 eid=%s' % (self.eid)
+        msg = f', which is required by CELAS2 eid={self.eid:d}'
         return self._node_ids(nodes=self.nodes_ref, allow_empty_nodes=True, msg=msg)
 
     def get_edge_ids(self):
@@ -388,8 +391,9 @@ class CELAS2(SpringElement):
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by CELAS2 eid=%s' % (self.eid)
+        msg = f', which is required by CELAS2 eid={self.eid:d}'
         self.nodes_ref = model.EmptyNodes(self.node_ids, msg=msg)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
@@ -400,6 +404,7 @@ class CELAS2(SpringElement):
         ----------
         model : BDF()
             the BDF object
+
         """
         msg = ', which is required by CELAS2 eid=%s' % self.eid
         self.nodes_ref = model.EmptyNodes(self.node_ids, msg=msg)
@@ -555,8 +560,9 @@ class CELAS3(SpringElement):
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by CELAS3 eid=%s' % (self.eid)
+        msg = f', which is required by CELAS3 eid={self.eid:d}'
         self.nodes_ref = model.EmptyNodes(self.nodes, msg=msg)
         self.pid_ref = model.Property(self.Pid(), msg=msg)
 
@@ -568,8 +574,9 @@ class CELAS3(SpringElement):
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by CELAS3 eid=%s' % (self.eid)
+        msg = f', which is required by CELAS3 eid={self.eid:d}'
         #self.nodes_ref = model.safe_empty_nodes(self.node_ids, msg=msg)
         self.nodes_ref = model.EmptyNodes(self.node_ids, msg=msg)
         self.pid_ref = model.safe_property(self.pid, self.eid, xref_errors, msg=msg)
@@ -583,7 +590,7 @@ class CELAS3(SpringElement):
 
     @property
     def node_ids(self):
-        msg = ', which is required by CELAS3 eid=%s' % (self.eid)
+        msg = f', which is required by CELAS3 eid={self.eid:d}'
         return self._node_ids(nodes=self.nodes_ref, allow_empty_nodes=True, msg=msg)
 
     def get_edge_ids(self):
@@ -729,7 +736,7 @@ class CELAS4(SpringElement):
     def node_ids(self):
         if self.nodes_ref is None:
             return self.nodes
-        msg = ', which is required by CELAS4 eid=%s' % (self.eid)
+        msg = f', which is required by CELAS4 eid={self.eid:d}'
         return self._node_ids(nodes=self.nodes_ref, allow_empty_nodes=True, msg=msg)
 
     def get_edge_ids(self):
@@ -743,8 +750,9 @@ class CELAS4(SpringElement):
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by CELAS4 eid=%s' % (self.eid)
+        msg = f', which is required by CELAS4 eid={self.eid:d}'
         self.nodes_ref = model.EmptyNodes(self.nodes, msg=msg)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
@@ -755,8 +763,9 @@ class CELAS4(SpringElement):
         ----------
         model : BDF()
             the BDF object
+
         """
-        msg = ', which is required by CELAS4 eid=%s' % self.eid
+        msg = f', which is required by CELAS4 eid={self.eid:d}'
         self.nodes_ref = model.EmptyNodes(self.node_ids, msg=msg)
         #self.nodes_ref = model.safe_empty_nodes(self.node_ids, msg=msg)
 

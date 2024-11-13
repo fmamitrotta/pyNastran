@@ -5,7 +5,6 @@ https://wiki.python.org/moin/PyQt/Distinguishing%20between%20click%20and%20doubl
 http://www.saltycrane.com/blog/2007/12/pyqt-43-qtableview-qabstracttablemodel/
 http://stackoverflow.com/questions/12152060/how-does-the-keypressevent-method-work-in-this-program
 """
-from typing import Union
 from pyNastran.gui.limits import MAX_POINT_SIZE, MAX_LINE_WIDTH
 #from pyNastran.gui.qt_version import qt_version #qt_int
 
@@ -260,7 +259,7 @@ class EditGeometryProperties(PyDialog):
         self._default_is_apply = False
         self.name = QLabel("Name:")
         self.name_edit = QLineEdit(str(name))
-        self.name_edit.setDisabled(True)
+        self.name_edit.setReadOnly(True)
 
         self.color = QLabel("Color:")
         self.color_edit = QPushButton()
@@ -377,9 +376,7 @@ class EditGeometryProperties(PyDialog):
 
         # show/hide
         self.checkbox_show = QCheckBox("Show")
-        self.checkbox_hide = QCheckBox("Hide")
         self.checkbox_show.setChecked(show)
-        self.checkbox_hide.setChecked(not show)
 
         if name == 'main':
             self.color.setEnabled(False)
@@ -448,7 +445,6 @@ class EditGeometryProperties(PyDialog):
         self.point_size_slider_edit.setVisible(False)
         self.line_width_slider_edit.setVisible(False)
         self.checkbox_show.setVisible(False)
-        self.checkbox_hide.setVisible(False)
 
     def on_update_geometry_properties_window(self, data):
         """Not Implemented"""
@@ -613,7 +609,6 @@ class EditGeometryProperties(PyDialog):
         #if self.use_slider:
             #self.opacity_slider_edit.setValue(opacity*10)
         self.checkbox_show.setChecked(is_visible)
-        self.checkbox_hide.setChecked(not is_visible)
 
         passed = self.on_validate()
         #self.on_apply(force=True)  # TODO: was turned on...do I want this???
@@ -670,10 +665,6 @@ class EditGeometryProperties(PyDialog):
         wire_surf_checkboxes.addButton(self.checkbox_wire)
         wire_surf_checkboxes.addButton(self.checkbox_surf)
 
-        checkboxs = QButtonGroup(self)
-        checkboxs.addButton(self.checkbox_show)
-        checkboxs.addButton(self.checkbox_hide)
-
         vbox = QVBoxLayout()
         vbox.addWidget(self.table, stretch=1)
         vbox.addLayout(grid)
@@ -684,7 +675,6 @@ class EditGeometryProperties(PyDialog):
 
         vbox2 = QVBoxLayout()
         vbox2.addWidget(self.checkbox_show)
-        vbox2.addWidget(self.checkbox_hide)
 
         #vbox.addLayout(vbox1)
         vbox.addLayout(vbox2)
@@ -713,7 +703,6 @@ class EditGeometryProperties(PyDialog):
 
         self.color_edit.clicked.connect(self.on_color)
         self.checkbox_show.clicked.connect(self.on_show)
-        self.checkbox_hide.clicked.connect(self.on_hide)
         self.cancel_button.clicked.connect(self.on_cancel)
         # closeEvent
 
@@ -748,13 +737,6 @@ class EditGeometryProperties(PyDialog):
         name = self.active_key
         is_checked = self.checkbox_show.isChecked()
         self.out_data[name].is_visible = is_checked
-        self.on_apply(force=self.force)
-
-    def on_hide(self):
-        """hides the actor"""
-        name = self.active_key
-        is_checked = self.checkbox_hide.isChecked()
-        self.out_data[name].is_visible = not is_checked
         self.on_apply(force=self.force)
 
     def on_line_width(self):
@@ -898,7 +880,7 @@ class EditGeometryProperties(PyDialog):
             self.close()
             #self.destroy()
 
-def rounded_int(value: Union[int, float]) -> int:
+def rounded_int(value: int | float) -> int:
     """rounds a value that *should* be an integer"""
     return int(round(value, 0))
 

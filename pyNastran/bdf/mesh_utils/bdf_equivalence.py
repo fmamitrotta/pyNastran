@@ -11,7 +11,7 @@ defines:
 """
 from __future__ import annotations
 from itertools import combinations
-from typing import Union, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 import numpy as np
 from numpy.linalg import norm  # type: ignore
 import scipy
@@ -31,7 +31,7 @@ def bdf_equivalence_nodes(bdf_filename: str,
                           bdf_filename_out: Optional[str],
                           tol: float,
                           renumber_nodes: bool=False, neq_max: int=4, xref: bool=True,
-                          node_set: Optional[Union[list[int], NDArrayNint]]=None,
+                          node_set: Optional[list[int] | NDArrayNint]=None,
                           size: int=8, is_double: bool=False,
                           remove_collapsed_elements: bool=False,
                           avoid_collapsed_elements: bool=False,
@@ -126,7 +126,7 @@ def bdf_equivalence_nodes(bdf_filename: str,
         model2.read_bdf(bdf_filename_out)
     return model
 
-#def _simplify_node_set_old(node_set: Optional[Union[list[int], list[NDArrayNint]]],
+#def _simplify_node_set_old(node_set: Optional[list[int] | list[NDArrayNint]]
                            #idtype: str='int32') -> Optional[list[NDArrayNint]]:
     #if node_set is None:
         #return
@@ -141,9 +141,9 @@ def bdf_equivalence_nodes(bdf_filename: str,
     # list of ndarrays
     #return node_set
 
-def _simplify_node_set(node_set: Optional[Union[list[int],
-                                                set[int],
-                                                list[NDArrayNint]]],
+def _simplify_node_set(node_set: Optional[list[int] |
+                                          set[int] |
+                                          list[NDArrayNint]],
                        idtype: str='int32') -> Optional[list[NDArrayNint]]:  # pragma: no cover
     """
     accepts multiple forms of the node_set parameter
@@ -732,7 +732,7 @@ def _eq_nodes_build_tree_new(kdt: KDTree,
     if debug and len(diff_bad) or len(diff_missed):  # pragma: no cover
         #log.warning(f'nid_pairs          = {nid_pairs}')
         #log.warning(f'nid_pairs_expected = {nid_pairs_expected}')
-        if (len(diff_bad) + len(diff_missed) < 20):
+        if len(diff_bad) + len(diff_missed) < 20:
             log.warning(f'diff_bad = {diff_bad}')
             log.warning(f'diff_missed = {diff_missed}')
         else:

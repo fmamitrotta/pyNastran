@@ -59,6 +59,7 @@ from pyNastran.op2.result_objects.eqexin import EQEXIN
 from pyNastran.op2.result_objects.matrix_dict import MatrixDict
 from pyNastran.op2.result_objects.qualinfo import QualInfo
 from pyNastran.op2.result_objects.op2_results import CSTM
+from pyNastran.op2.result_objects.campbell import CampbellData
 from pyNastran.op2.op2_interface.msc_tables import MSC_GEOM_TABLES
 from pyNastran.op2.op2_interface.nx_tables import NX_GEOM_TABLES
 
@@ -1029,7 +1030,7 @@ class OP2Reader:
             #doubles = np.frombuffer(blocks[1], dtype='float64')
             nints = len(ints)
 
-            assert nints % 14 == 0, 'nints=%s' % (nints)
+            assert nints % 14 == 0, f'nints={nints:d}'
             ncstm = get_table_size_from_ncolumns('CSTM', nints, 14)
             ints = ints.reshape(ncstm, 14)[:, :2]
             floats = floats.reshape(ncstm, 14)[:, 2:]
@@ -1347,7 +1348,7 @@ class OP2Reader:
                 raise RuntimeError(msg)
             op2._frequencies = freqs
             if self.is_debug_file:
-                self.binary_debug.write('  recordi = [%r, freqs]\n'  % (subtable_name_raw))
+                self.binary_debug.write(f'  recordi = [{subtable_name_raw!r}, freqs]\n')
                 self.binary_debug.write(f'  subtable_name={subtable_name!r}\n')
                 self.binary_debug.write('  freqs = %s' % freqs)
         self._read_subtables()
@@ -1928,8 +1929,8 @@ class OP2Reader:
                 1: 'RPM',
                 2: 'eigenfreq',
                 3: 'Lehr',
-                4: 'real eig',
-                5: 'imag eig',
+                4: 'real_eig',
+                5: 'imag_eig',
                 6: 'whirl_dir',
                 7: 'converted_freq',
                 8: 'whirl_code',
@@ -1939,11 +1940,13 @@ class OP2Reader:
                 nfields = self.get_marker1(rewind=True)
                 if nfields == 0:
                     break
-                data = self._read_record()
+
                 if op2.read_mode == 1:
+                    data = self._skip_record()
                     marker -= 1
                     continue
 
+                data = self._read_record()
                 ints = np.frombuffer(data, op2.idtype)
                 nints = len(ints)
                 floats = np.frombuffer(data, op2.fdtype) # .reshape(nints//7, 7)
@@ -1966,12 +1969,13 @@ class OP2Reader:
 
                 i = 0
                 data_out = {}
+                solution0 = -1
                 while i < nints:
                     nvalues = ints[i]
-                    #ncurves = ints[i+1]
+                    ncurves = ints[i+1]
                     keyword = ints[i+2]  # 10000+(SOLN*10)+DATTYP
                     base = keyword - 10000 # (SOLN*10)+DATTYP
-                    #solution = base // 10
+                    solution = base // 10
                     datatype = base % 10
                     assert datatype in [1, 2, 3, 4, 5, 6, 7, 8], datatype
                     values = floats[i+3:i+3+nvalues]
@@ -1980,38 +1984,21 @@ class OP2Reader:
                     datatype_str = dict_map[datatype]
                     #print(f'{nvalues}, {ncurves}, {solution}, {datatype}, {datatype_str:14s} {values}')
                     data_out[datatype_str] = values
+                    if solution0 == -1:
+                        solution0 = solution
+                    assert solution == solution0, (solution, solution0)
                     i += 3 + nvalues
                 marker -= 1
                 cddata_list.append(data_out)
-                #import matplotlib.pyplot as plt
-
-                #plt.figure(2)
-                #plt.plot(data_out[1], data_out[2]) # RPM vs. eigenfreq
-                #plt.grid(True)
-
-                #plt.figure(3)
-                #plt.plot(data_out[1], data_out[3]) # RPM vs. Lehr
-                #plt.grid(True)
-
-                #plt.figure(4)
-                #plt.plot(data_out[1], data_out[4]) # RPM vs. real_eig
-                #plt.grid(True)
-
-                #plt.figure(5)
-                #plt.plot(data_out[1], data_out[5]) # RPM vs. imag_eig
-                #plt.grid(True)
-
-                #plt.figure(7)
-                #plt.plot(data_out[1], data_out[7]) # RPM vs. converted_freq
-                #plt.grid(True)
 
             #print('------------------------------------')
-        else:
+        else:  # pragma: no cover
             raise NotImplementedError(f'CDDATA method={method}')
         if op2.read_mode == 2:
             #plt.grid(True)
             #plt.show()
-            self.op2.op2_results.cddata = cddata_list
+            cambell = CampbellData(solution, cddata_list)
+            self.op2.op2_results.cddata[solution] = cambell
         nfields = self.get_marker1(rewind=False)
 
     def read_stdisp(self):
@@ -2068,7 +2055,7 @@ class OP2Reader:
                     subtable_name, month, day, year, zero, one))
                 self.binary_debug.write(f'  subtable_name={subtable_name!r}\n')
             self._print_month(month, day, year, zero, one)
-        else:
+        else:  # pragma: no cover
             raise NotImplementedError(self.show_data(data))
         self._read_subtables()
 
@@ -2926,7 +2913,7 @@ class OP2Reader:
 
         Parameters
         ----------
-        last_table_name : bytes; default=Noen
+        last_table_name : bytes; default=None
             the last table name
 
         Returns
@@ -3530,7 +3517,12 @@ class OP2Reader:
 
         subtable_name = self.get_subtable_name4(op2, data, ndata)
         op2.subtable_name = subtable_name
+        #try:
+        op2._results.log = op2.log
         self._read_subtables()
+        #except Exception:
+            #self.log.error('\n' + str(self.op2.code_information()))
+            #raise
 
     def read_results_table8(self) -> None:
         """Reads a results table"""
@@ -3554,7 +3546,11 @@ class OP2Reader:
         subtable_name = reshape_bytes_block(
             subtable_name, is_interlaced_block=is_interlaced_block)
         op2.subtable_name = subtable_name
-        self._read_subtables()
+        try:
+            self._read_subtables()
+        except Exception:
+            self.log.error('\n' + str(self.op2.code_information()))
+            raise
 
     def get_subtable_name8(self, op2, data: bytes, ndata: int) -> bytes:
         is_interlaced_block = self.op2.is_nx
@@ -3768,6 +3764,7 @@ class OP2Reader:
                 raise
             #force_table4 = self._read_subtable_3_4(table3_parser, table4_parser, passer)
             op2.isubtable -= 1
+            #self.log.debug(f'op2.isubtable = {op2.isubtable}')
 
             iloc = op2.f.tell()
             if op2._nastran_format == 'optistruct' and 0:
@@ -3780,6 +3777,7 @@ class OP2Reader:
                 if not outi[1] == op2.isubtable:
                     self.log.warning(f'outi={outi} isubtable={op2.isubtable:d}')
             else:
+                #self.show(4 * 3 * 3, types='i')
                 #self.show_ndata(36, types='i', force=False, endian=None)
                 try:
                     self.read_3_markers([op2.isubtable, 1, 0])
@@ -3807,6 +3805,7 @@ class OP2Reader:
                         #self.show(200)
                         #break
                     raise
+            #self.show_ndata(100, types='ifs')
             markers = self.get_nmarkers(1, rewind=True)
 
         if self.is_debug_file:

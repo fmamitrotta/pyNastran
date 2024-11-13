@@ -5,17 +5,18 @@ Defines a method to add a card that is faster than add_card.
 """
 import copy
 from itertools import count
-from typing import Optional, Union, Any
+from typing import Optional, Any
 import numpy as np
 
-from pyNastran.utils.numpy_utils import integer_types, integer_string_types
+from pyNastran.utils.numpy_utils import integer_types #, integer_string_types
 from pyNastran.nptyping_interface import NDArray3float, NDArray66float
 from pyNastran.bdf.field_writer import print_card_
 from pyNastran.bdf.field_writer_8 import print_card_8
 from pyNastran.bdf.bdf_interface.add_methods import AddMethods
 
 from pyNastran.bdf.cards.bolt import BOLT, BOLTSEQ, BOLTFOR, BOLTLD, BOLTFRC
-from pyNastran.bdf.cards.elements.elements import CFAST, CGAP, CRAC2D, CRAC3D, PLOTEL, GENEL
+from pyNastran.bdf.cards.elements.elements import (
+    CFAST, CGAP, CRAC2D, CRAC3D, PLOTEL, PLOTEL3, PLOTEL4, GENEL)
 from pyNastran.bdf.cards.properties.properties import PFAST, PGAP, PRAC2D, PRAC3D
 from pyNastran.bdf.cards.properties.solid import PLSOLID, PSOLID, PIHEX, PCOMPS, PCOMPLS
 from pyNastran.bdf.cards.cyclic import CYAX, CYJOIN
@@ -177,10 +178,6 @@ CARD_MAP = {
     'BCONP' : BCONP,
     'BLSEG' : BLSEG,
     'BFRIC' : BFRIC,
-
-    # nx glue
-    'BGADD' : BGADD,
-    'BGSET' : BGSET,
 
     # nx bolt
     'BOLT' : BOLT,
@@ -756,9 +753,9 @@ CARD_MAP = {
 
 class AddCoords:
     def add_cord2r(self, cid: int,
-                   origin: Optional[Union[list[float], NDArray3float]],
-                   zaxis: Optional[Union[list[float], NDArray3float]],
-                   xzplane: Optional[Union[list[float], NDArray3float]],
+                   origin: Optional[list[float] | NDArray3float],
+                   zaxis: Optional[list[float] | NDArray3float],
+                   xzplane: Optional[list[float] | NDArray3float],
                    rid: int=0, setup: bool=True, comment: str='') -> CORD2R:
         """
         Creates the CORD2R card, which defines a rectangular coordinate
@@ -786,9 +783,9 @@ class AddCoords:
         return coord
 
     def add_cord2c(self, cid: int,
-                   origin: Optional[Union[list[float], NDArray3float]],
-                   zaxis: Optional[Union[list[float], NDArray3float]],
-                   xzplane: Optional[Union[list[float], NDArray3float]],
+                   origin: Optional[list[float] | NDArray3float],
+                   zaxis: Optional[list[float] | NDArray3float],
+                   xzplane: Optional[list[float] | NDArray3float],
                    rid: int=0, setup: bool=True, comment: str='') -> CORD2C:
         """
         Creates the CORD2C card, which defines a cylindrical coordinate
@@ -816,9 +813,9 @@ class AddCoords:
         return coord
 
     def add_cord2s(self, cid: int,
-                   origin: Optional[Union[list[float], NDArray3float]],
-                   zaxis: Optional[Union[list[float], NDArray3float]],
-                   xzplane: Optional[Union[list[float], NDArray3float]],
+                   origin: Optional[list[float] | NDArray3float],
+                   zaxis: Optional[list[float] | NDArray3float],
+                   xzplane: Optional[list[float] | NDArray3float],
                    rid: int=0, setup: bool=True, comment: str='') -> CORD2S:
         """
         Creates the CORD2C card, which defines a spherical coordinate
@@ -953,10 +950,10 @@ class AddBolts:
                        s_nos: list[int],
                        b_ids: list[int],
                        n_incs: Optional[list[int]]=None,
-                       comment: str='') -> BOLT:
-        bolt = BOLTSEQ(sid, s_nos, b_ids, n_incs=n_incs, comment=comment)
-        self._add_methods._add_boltseq_object(bolt)
-        return bolt
+                       comment: str='') -> BOLTSEQ:
+        boltseq = BOLTSEQ(sid, s_nos, b_ids, n_incs=n_incs, comment=comment)
+        self._add_methods._add_boltseq_object(boltseq)
+        return boltseq
 
     def add_boltfor_nx(self, sid: int, load_value: float, bolt_ids: list[int],
                        comment: str='') -> BOLTFOR:
@@ -1079,7 +1076,7 @@ class Add0dElements:
             element id
         mass : float
             mass
-        nids : list[int, int]
+        nids : list[int]
             node ids
         c1 / c2 : int; default=None
             DOF for nid1 / nid2
@@ -1102,7 +1099,7 @@ class Add0dElements:
             element id
         pid : int
             property id (PMASS)
-        nids : list[int, int]
+        nids : list[int]
             SPOINT ids
         comment : str; default=''
             a comment for the card
@@ -1123,7 +1120,7 @@ class Add0dElements:
             element id
         mass : float
             SPOINT mass
-        nids : list[int, int]
+        nids : list[int]
             SPOINT ids
         comment : str; default=''
             a comment for the card
@@ -1169,7 +1166,7 @@ class Add0dElements:
             TABLEDx that defines k vs. frequency
         tgeid : int; default=0
             TABLEDx that defines ge vs. frequency
-        s : float; default=0.
+        tknid : float; default=0.
             TABLEDx that defines force vs. displacement
         comment : str; default=''
             a comment for the card
@@ -1190,7 +1187,7 @@ class Add0dElements:
             element id
         pid : int
             property id (PELAS)
-        nids : list[int, int]
+        nids : list[int]
             node ids
         c1 / c2 : int; default=0
             DOF for nid1 / nid2
@@ -1214,7 +1211,7 @@ class Add0dElements:
             element id
         k : float
             spring stiffness
-        nids : list[int, int]
+        nids : list[int]
             SPOINT ids
             node ids
         c1 / c2 : int; default=0
@@ -1242,7 +1239,7 @@ class Add0dElements:
             element id
         pid : int
             property id (PELAS)
-        nids : list[int, int]
+        nids : list[int]
             SPOINT ids
         comment : str; default=''
             a comment for the card
@@ -1263,7 +1260,7 @@ class Add0dElements:
             element id
         k : float
             spring stiffness
-        nids : list[int, int]
+        nids : list[int]
             SPOINT ids
         comment : str; default=''
             a comment for the card
@@ -1284,7 +1281,7 @@ class Add0dElements:
             element id
         pid : int
             property id (PDAMP)
-        nids : list[int, int]
+        nids : list[int]
             node ids
         c1 / c2 : int; default=0
             DOF for nid1 / nid2
@@ -1307,7 +1304,7 @@ class Add0dElements:
             element id
         b : float
             damping
-        nids : list[int, int]
+        nids : list[int]
             SPOINT ids
             node ids
         c1 / c2 : int; default=0
@@ -1331,7 +1328,7 @@ class Add0dElements:
             element id
         pid : int
             property id (PDAMP)
-        nids : list[int, int]
+        nids : list[int]
             SPOINT ids
         comment : str; default=''
             a comment for the card
@@ -1352,7 +1349,7 @@ class Add0dElements:
             element id
         b : float
             damping
-        nids : list[int, int]
+        nids : list[int]
             SPOINT ids
         comment : str; default=''
             a comment for the card
@@ -1373,7 +1370,7 @@ class Add0dElements:
             element id
         pid : int
             property id (PDAMP5)
-        nids : list[int, int]
+        nids : list[int]
             GRID/SPOINT ids
         comment : str; default=''
             a comment for the card
@@ -1413,7 +1410,7 @@ class Add0dElements:
             element id
         pid : int
             property id (PVISC)
-        nids : list[int, int]
+        nids : list[int]
             GRID ids
         comment : str; default=''
             a comment for the card
@@ -1444,7 +1441,7 @@ class Add0dElements:
         return prop
 
     def add_cgap(self, eid: int, pid: int, nids: list[int],
-                 x: Optional[list[int]], g0: Optional[int],
+                 x: Optional[list[float]], g0: Optional[int],
                  cid: Optional[int]=None, comment: str='') -> CGAP:
         """
         Creates a CGAP card
@@ -1455,7 +1452,7 @@ class Add0dElements:
             Element ID
         pid : int
             Property ID (PGAP)
-        nids : list[int, int]
+        nids : list[int]
             node ids; connected grid points at ends A and B
         x : list[float, float, float]
             Components of the orientation vector,
@@ -1582,7 +1579,7 @@ class Add1dElements:
             element id
         mid : int
             material id
-        nids : list[int, int]
+        nids : list[int]
             node ids
         A : float; default=0.
             area
@@ -1610,7 +1607,7 @@ class Add1dElements:
             element id
         pid : int
             property id (PROD)
-        nids : list[int, int]
+        nids : list[int]
             node ids
         comment : str; default=''
             a comment for the card
@@ -1633,7 +1630,7 @@ class Add1dElements:
            material id
         A : float
            area
-        J : float; default=0.
+        j : float; default=0.
            polar moment of inertia
         c : float; default=0.
            stress factor
@@ -1657,7 +1654,7 @@ class Add1dElements:
             element id
         pid : int
             property id
-        nids : list[int, int]
+        nids : list[int]
             node ids
         comment : str; default=''
             a comment for the card
@@ -1743,9 +1740,7 @@ class Add1dElements:
         ----------
         pid : int
             property id
-        mid : int
-            material id
-        nids : list[int, int]
+        nids : list[int]
             node ids; connected grid points at ends A and B
         x : list[float, float, float]
             Components of orientation vector, from GA, in the displacement
@@ -1832,7 +1827,7 @@ class Add1dElements:
             property id
         mid : int
             material id
-        area : float
+        A : float
             area
         i1, i2, i12, j : float
             moments of inertia
@@ -1898,7 +1893,7 @@ class Add1dElements:
         self._add_methods._add_property_object(prop)
         return prop
 
-    def add_cbeam(self, eid, pid, nids,
+    def add_cbeam(self, eid: int, pid: int, nids: list[int],
                   x: Optional[list[float]], g0: Optional[int],
                   offt='GGG', bit=None,
                   pa=0, pb=0, wa=None, wb=None, sa=0, sb=0, comment='') -> CBEAM:
@@ -1909,9 +1904,7 @@ class Add1dElements:
         ----------
         pid : int
             property id
-        mid : int
-            material id
-        nids : list[int, int]
+        nids : list[int]
             node ids; connected grid points at ends A and B
         x : list[float, float, float]
             Components of orientation vector, from GA, in the displacement
@@ -2282,7 +2275,7 @@ class Add1dElements:
             Element id
         pid : int
             Property id (PBUSH)
-        nids : list[int, int]
+        nids : list[int]
             node ids; connected grid points at ends A and B
             The nodes may be coincident, but then cid is required.
         x : list[float, float, float]; None
@@ -2377,7 +2370,7 @@ class Add1dElements:
                           m11: float, m22: float,
                           k12: float, k21: float,
                           b12: float, b21: float,
-                          m12: float, m21: float, comment: str='') -> None:
+                          m12: float, m21: float, comment: str='') -> PBUSH2D:
         """
         MSC only card
 
@@ -2470,7 +2463,7 @@ class Add2dElements:
             element id
         pid : int
             property id (PSHELL/PCOMP/PCOMPG)
-        nids : list[int, int, int]
+        nids : list[int]
             node ids
         zoffset : float; default=0.0
             Offset from the surface of grid points to the element reference
@@ -2850,7 +2843,7 @@ class Add2dElements:
 
 
 class Add3dElements:
-    def add_ctetra(self, eid, pid, nids, comment='') -> Union[CTETRA4, CTETRA10]:
+    def add_ctetra(self, eid, pid, nids, comment='') -> CTETRA4 | CTETRA10:
         """
         Creates a CTETRA4/CTETRA10
 
@@ -2873,7 +2866,7 @@ class Add3dElements:
         self._add_methods._add_element_object(elem)
         return elem
 
-    def add_cpyram(self, eid, pid, nids, comment='') -> Union[CPYRAM5, CPYRAM13]:
+    def add_cpyram(self, eid, pid, nids, comment='') -> CPYRAM5 | CPYRAM13:
         """
         Creates a CPYRAM5/CPYRAM13
 
@@ -2896,7 +2889,7 @@ class Add3dElements:
         self._add_methods._add_element_object(elem)
         return elem
 
-    def add_cpenta(self, eid, pid, nids, comment='') -> Union[CPENTA6, CPENTA15]:
+    def add_cpenta(self, eid, pid, nids, comment='') -> CPENTA6 | CPENTA15:
         """
         Creates a CPENTA6/CPENTA15
 
@@ -2919,7 +2912,7 @@ class Add3dElements:
         self._add_methods._add_element_object(elem)
         return elem
 
-    def add_chexa(self, eid, pid, nids, comment='') -> Union[CHEXA8, CHEXA20]:
+    def add_chexa(self, eid, pid, nids, comment='') -> CHEXA8 | CHEXA20:
         """
         Creates a CHEXA8/CHEXA20
 
@@ -3029,7 +3022,7 @@ class AddRigidElements:
         ----------
         eid : int
             element id
-        nids : list[int, int]
+        nids : list[int]
             node ids; connected grid points at ends A and B
         cma / cmb : str; default=''
             dependent DOFs
@@ -3157,7 +3150,7 @@ class AddRigidElements:
         ----------
         eid : int
             element id
-        nids : list[int, int]
+        nids : list[int]
             node ids; connected grid points at ends A and B
         cna / cnb : str
             independent DOFs in '123456'
@@ -3223,7 +3216,7 @@ class AddRigidElements:
             GRID/ELEM
         shell/solid_eid : int; default=None
             the shell/solid element id (if rigid_type=ELEM)
-        shell/solid_grids : list[int, int]; default=None
+        shell/solid_grids : list[int]; default=None
             the shell/solid node ids (if rigid_type=GRID)
         comment : str; default=''
             a comment for the card
@@ -3254,8 +3247,8 @@ class AddAcoustic:
         return acmodl
 
     def add_acplnw(self, sid: int, form: str, scale: float,
-                   real: Union[int, float],
-                   imag: Union[int, float],
+                   real: int | float,
+                   imag: int | float,
                    cid1: int, xyz: list[float],
                    cid2: int, nxyz: list[float], comment: str='') -> None:
         #acoustic
@@ -3448,8 +3441,10 @@ class AddMaterial:
         self._add_methods._add_creep_material_object(mat)
         return mat
 
-    def add_mat1(self, mid, E, G, nu, rho=0.0, a=0.0, tref=0.0, ge=0.0, St=0.0,
-                 Sc=0.0, Ss=0.0, mcsid=0, comment='') -> MAT1:
+    def add_mat1(self, mid: int, E: float, G: float, nu: float,
+                 rho: float=0.0, a: float=0.0, tref: float=0.0, ge: float=0.0,
+                 St: float=0.0, Sc: float=0.0, Ss: float=0.0,
+                 mcsid: int=0, comment: str='') -> MAT1:
         """
         Creates a MAT1 card
 
@@ -3844,9 +3839,9 @@ class AddMaterial:
 
 
 class AddContact:
-    def add_bsurfs(self, id, eids, g1s, g2s, g3s, comment='') -> BSURFS:
+    def add_bsurfs(self, bsurfs_id, eids, g1s, g2s, g3s, comment='') -> BSURFS:
         """Creates a BSURFS card"""
-        bsurfs = BSURFS(id, eids, g1s, g2s, g3s, comment=comment)
+        bsurfs = BSURFS(bsurfs_id, eids, g1s, g2s, g3s, comment=comment)
         self._add_methods._add_bsurfs_object(bsurfs)
         return bsurfs
 
@@ -4467,7 +4462,7 @@ class AddAero:
         return spline
 
     def add_trim(self, sid, mach, q, labels, uxs, aeqr=1.0, trim_type=1,
-                 comment='') -> Union[TRIM, TRIM2]:
+                 comment='') -> TRIM | TRIM2:
         """
         Creates a TRIM/TRIM2 card for a static aero (144) analysis.
 
@@ -4667,7 +4662,7 @@ class AddAero:
         self._add_methods._add_flfact_object(flfact)
         return flfact
 
-    def add_aecomp(self, name: str, list_type: list[str], lists: Union[int, list[int]],
+    def add_aecomp(self, name: str, list_type: list[str], lists: list[int],
                    comment: str='') -> AECOMP:
         """
         Creates an AECOMP card
@@ -4845,8 +4840,10 @@ class AddAero:
     def add_aesurf(self, aesid, label, cid1, aelist_id1, cid2=None, aelist_id2=None,
                    eff=1.0, ldw='LDW', crefc=1.0, crefs=1.0,
                    pllim=-np.pi/2., pulim=np.pi/2.,
-                   hmllim=None, hmulim=None, # hinge moment lower/upper limits
-                   tqllim=None, tqulim=None, # TABLEDi deflection limits vs. dynamic pressure
+                   # hinge moment lower/upper limits
+                   hmllim: Optional[float]=None, hmulim: Optional[float]=None,
+                   # TABLEDi deflection limits vs. dynamic pressure
+                   tqllim: int=None, tqulim: int=0,
                    comment='') -> AESURF:
         """
         Creates an AESURF card, which defines a control surface
@@ -4871,10 +4868,10 @@ class AddAero:
             reference area for the control surface
         pllim / pulim : float; default=-pi/2 / pi/2
             Lower/Upper deflection limits for the control surface in radians
-        hmllim / hmulim : float; default=None
+        hmllim / hmulim : Optional[float]; default=None
             Lower/Upper hinge moment limits for the control surface in
             force-length units
-        tqllim / tqulim : int; default=None
+        tqllim / tqulim : int; default=0
             Set identification numbers of TABLEDi entries that provide the
             lower/upper deflection limits for the control surface as a
             function of the dynamic pressure
@@ -5528,9 +5525,9 @@ class AddOptimization:
 
     def add_dresp1(self, dresp_id: int, label: str,
                    response_type: str, property_type: str, region: int,
-                   atta: Union[int, float, str, None],
-                   attb: Union[int, float, str, None],
-                   atti: list[Union[int, float, str]],
+                   atta: Optional[int | float | str],
+                   attb: Optional[int | float | str],
+                   atti: list[int | float | str],
                    validate: bool=True, comment: str='') -> DRESP1:
         """
         Creates a DRESP1 card.
@@ -5614,7 +5611,7 @@ class AddOptimization:
         return dresp
 
     def add_dresp2(self, dresp_id: int, label: str,
-                   dequation: Union[int, str],
+                   dequation: int | str,
                    region: int, params,
                    method: str='MIN', c1: float=1., c2: float=0.005, c3: float=10.,
                    validate: bool=True, comment: str='') -> DRESP2:
@@ -5732,7 +5729,7 @@ class AddOptimization:
         self._add_methods._add_dvcrel_object(dvcrel)
         return dvcrel
 
-    def add_dvprel1(self, oid: int, prop_type: str, pid: int, pname_fid: Union[int, str],
+    def add_dvprel1(self, oid: int, prop_type: str, pid: int, pname_fid: int | str,
                     dvids: list[int],
                     coeffs: list[float],
                     p_min=None, p_max: float=1e20, c0: float=0.0,
@@ -5773,7 +5770,7 @@ class AddOptimization:
         return dvprel
 
     def add_dvprel2(self, oid: int, prop_type: str, pid: int,
-                    pname_fid: Union[int, str], deqation: int,
+                    pname_fid: int | str, deqation: int,
                     dvids: list[int]=None,
                     labels: list[str]=None,
                     p_min: Optional[float]=None, p_max: float=1.0e20,
@@ -5991,7 +5988,7 @@ class AddOptimization:
         self._add_methods._add_dconstr_object(dconadd)
         return dconadd
 
-    def add_doptprm(self, params: dict[str, Union[int, float]], comment='') -> DOPTPRM:
+    def add_doptprm(self, params: dict[str, int | float], comment='') -> DOPTPRM:
         """Creates a DOPTPRM card"""
         doptprm = DOPTPRM(params, comment=comment)
         self._add_methods._add_doptprm_object(doptprm)
@@ -6096,7 +6093,7 @@ class AddOptimization:
         MSC 2001
         """
         fields = ['DVSET', vid, dv_type, field, pref, alpha] + pids
-        self.reject_card_lines('DVSET', print_card_(fields).split('\n'), show_log=False)
+        self.reject_card_lines('DVSET', print_card_8(fields).split('\n'), show_log=False)
 
     def add_dvar(self, bid: int, label: str, vids: list[float], deltab: float=0.02):
         """
@@ -6126,14 +6123,14 @@ class AddOptimization:
 
         """
         fields = ['DVAR', bid, label, deltab] + vids
-        self.reject_card_lines('DVAR', print_card_(fields).split('\n'), show_log=False)
+        self.reject_card_lines('DVAR', print_card_8(fields).split('\n'), show_log=False)
 
     def add_bndgrid(self, components: str, values: list[int], comment: str='') -> None:
         fields = ['BNDGRID', components] + values
-        self.reject_card_lines('BNDGRID', print_card_(fields).split('\n'), show_log=False)
+        self.reject_card_lines('BNDGRID', print_card_8(fields).split('\n'), show_log=False)
 
 class AddSuperelements:
-    def add_sebset(self, seid: int, ids: list[int], components, comment='') -> Union[SEBSET, SEBSET1]:
+    def add_sebset(self, seid: int, ids: list[int], components, comment='') -> SEBSET | SEBSET1:
         """Creates an SEBSET/SEBSET1 card"""
         if isinstance(components, integer_string_types):
             sebset = SEBSET1(seid, ids, components, comment=comment)
@@ -6143,12 +6140,12 @@ class AddSuperelements:
         return sebset
 
     def add_sebset1(self, seid: int, ids: list[int],
-                    components, comment='') -> Union[SEBSET, SEBSET1]:
+                    components, comment='') -> SEBSET | SEBSET1:
         """.. seealso:: ``add_secset``"""
         return self.add_sebset(seid, ids, components, comment=comment)
 
     def add_secset(self, seid: int, ids: list[int],
-                   components, comment='') -> Union[SECSET, SECSET1]:
+                   components, comment='') -> SECSET | SECSET1:
         """Creates an SECSET/SECSET1 card"""
         if isinstance(components, integer_string_types):
             secset = SECSET1(seid, ids, components, comment=comment)
@@ -6158,12 +6155,12 @@ class AddSuperelements:
         return secset
 
     def add_secset1(self, seid: int, ids: list[int],
-                    components, comment='') -> Union[SECSET, SECSET1]:
+                    components, comment='') -> SECSET | SECSET1:
         """.. seealso:: ``add_secset``"""
         return self.add_secset(seid, ids, components, comment=comment)
 
     def add_seqset(self, seid: int, ids: list[int],
-                   components, comment='') -> Union[SEQSET, SEQSET1]:
+                   components, comment='') -> SEQSET | SEQSET1:
         """Creates an SEQSET card"""
         if isinstance(components, integer_string_types):
             seqset = SEQSET1(seid, ids, components, comment=comment)
@@ -6172,7 +6169,7 @@ class AddSuperelements:
         self._add_methods._add_seqset_object(seqset)
         return seqset
 
-    def add_seqset1(self, seid, ids, components, comment='') -> Union[SEQSET, SEQSET1]:
+    def add_seqset1(self, seid, ids, components, comment='') -> SEQSET | SEQSET1:
         """.. seealso:: ``add_secset``"""
         return self.add_seqset(seid, ids, components, comment=comment)
 
@@ -6297,7 +6294,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         custom_types['CaseControlDeck'] = CaseControlDeck
         return custom_types
 
-    def add_grid(self, nid: int, xyz: Union[None, list[float], NDArray3float],
+    def add_grid(self, nid: int, xyz: list[float] | NDArray3float,
                  cp: int=0, cd: int=0, ps: str='', seid: int=0, comment: str='') -> GRID:
         """
         Creates the GRID card
@@ -6350,7 +6347,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self.grdset = grdset
         return grdset
 
-    def add_seqgp(self, nids: list[int], seqids: list[Union[int, float]],
+    def add_seqgp(self, nids: list[int], seqids: list[int | float],
                   comment: str='') -> SEQGP:
         """
         Creates the SEQGP card
@@ -6369,7 +6366,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_seqgp_object(seqgp)
         return seqgp
 
-    def add_spoint(self, ids: Union[int, list[int]], comment: str='') -> SPOINTs:
+    def add_spoint(self, ids: int | list[int], comment: str='') -> SPOINTs:
         """
         Creates the SPOINTs card that contains many SPOINTs
 
@@ -6385,7 +6382,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_spoint_object(spoint)
         return spoint
 
-    def add_epoint(self, ids: Union[int, list[int]], comment: str='') -> EPOINTs:
+    def add_epoint(self, ids: int | list[int], comment: str='') -> EPOINTs:
         """
         Creates the EPOINTs card that contains many EPOINTs
 
@@ -6438,11 +6435,11 @@ class AddCards(AddCoords, AddContact, AddBolts,
         #self._add_load_object(load)
         #return load
 
-    def add_param(self, key: str, values: list[Union[int, float, str]],
+    def add_param(self, key: str, values: list[int | float | str],
                   comment: str='') -> PARAM:
         return self._add_param_nastran(key, values, comment=comment)
 
-    def _add_param_nastran(self, key: str, values: list[Union[int, float, str]],
+    def _add_param_nastran(self, key: str, values: list[int | float | str],
                            comment: str='') -> PARAM:
         """
         Creates a PARAM card
@@ -6461,7 +6458,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_param_object(param)
         return param
 
-    def add_mdlprm(self, mdlprm_dict: dict[str, Union[int, float]],
+    def add_mdlprm(self, mdlprm_dict: dict[str, int | float],
                    comment: str='') -> MDLPRM:
         """
         Creates a MDLPRM card
@@ -6482,7 +6479,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         return mdlprm
 
 
-    def _add_param_mystran(self, key: str, values: list[Union[int, float, str]],
+    def _add_param_mystran(self, key: str, values: list[int | float | str],
                            comment: str='') -> PARAM_MYSTRAN:
         """
         Creates a PARAM card
@@ -6501,7 +6498,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_param_object(param)
         return param
 
-    def _add_param_nasa95(self, key: str, values: list[Union[int, float, str]],
+    def _add_param_nasa95(self, key: str, values: list[int | float | str],
                           comment: str='') -> PARAM_NASA95:
         """
         Creates a PARAM card
@@ -6535,6 +6532,42 @@ class AddCards(AddCoords, AddContact, AddBolts,
 
         """
         elem = PLOTEL(eid, nodes, comment=comment)
+        self._add_methods._add_plotel_object(elem)
+        return elem
+
+    def add_plotel3(self, eid: int, nodes: list[int], comment: str='') -> PLOTEL3:
+        """
+        Adds a PLOTEL3 card
+
+        Parameters
+        ----------
+        eid : int
+            Element ID
+        nodes : list[int, int, int]
+            Unique GRID point IDs
+        comment : str; default=''
+            a comment for the card
+
+        """
+        elem = PLOTEL3(eid, nodes, comment=comment)
+        self._add_methods._add_plotel_object(elem)
+        return elem
+
+    def add_plotel4(self, eid: int, nodes: list[int], comment: str='') -> PLOTEL4:
+        """
+        Adds a PLOTEL4 card
+
+        Parameters
+        ----------
+        eid : int
+            Element ID
+        nodes : list[int, int, int, int]
+            Unique GRID point IDs
+        comment : str; default=''
+            a comment for the card
+
+        """
+        elem = PLOTEL4(eid, nodes, comment=comment)
         self._add_methods._add_plotel_object(elem)
         return elem
 
@@ -7071,8 +7104,8 @@ class AddCards(AddCoords, AddContact, AddBolts,
         darea = DAREA(sid, nid, component, scale, comment=comment)
         self._add_methods._add_darea_object(darea)
 
-    def add_tload1(self, sid: int, excite_id: int, tid: Union[int, float],
-                   delay: Union[int, float]=0, Type: str='LOAD',
+    def add_tload1(self, sid: int, excite_id: int, tid: int | float,
+                   delay: int | float=0, Type: str='LOAD',
                    us0: float=0.0, vs0: float=0.0,
                    comment: str='') -> TLOAD1:
         """
@@ -7406,7 +7439,8 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_load_object(load)
         return load
 
-    def add_force(self, sid, node, mag, xyz, cid=0, comment='') -> FORCE:
+    def add_force(self, sid: int, node: int, mag: float, xyz: np.ndarray,
+                  cid: int=0, comment: str='') -> FORCE:
         """
         Creates a FORCE card
 
@@ -8149,7 +8183,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_set_object(set_obj)
         return set_obj
 
-    def add_aset(self, ids, components, comment='') -> Union[ASET, ASET1]:
+    def add_aset(self, ids, components, comment='') -> ASET | ASET1:
         """
         Creates an ASET/ASET1 card, which defines the degree of freedoms
         that will be retained during an ASET modal reduction.
@@ -8177,11 +8211,11 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_aset_object(aset)
         return aset
 
-    def add_aset1(self, ids, components, comment='') -> Union[ASET, ASET1]:
+    def add_aset1(self, ids, components, comment='') -> ASET | ASET1:
         """.. .. seealso:: ``add_aset``"""
         return self.add_aset(ids, components, comment=comment)
 
-    def add_bset(self, ids, components, comment='') -> Union[BSET, BSET1]:
+    def add_bset(self, ids, components, comment='') -> BSET | BSET1:
         """
         Creates an BSET/BSET1 card, which defines the degree of freedoms
         that will be fixed during a generalized dynamic reduction or
@@ -8209,11 +8243,11 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_bset_object(bset)
         return bset
 
-    def add_bset1(self, ids, components, comment='') -> Union[BSET, BSET1]:
+    def add_bset1(self, ids, components, comment='') -> BSET | BSET1:
         """.. .. seealso:: ``add_bset``"""
         return self.add_bset(ids, components, comment=comment)
 
-    def add_cset(self, ids, components, comment='') -> Union[CSET, CSET1]:
+    def add_cset(self, ids, components, comment='') -> CSET | CSET1:
         """
         Creates an CSET/CSET1 card, which defines the degree of freedoms
         that will be free during a generalized dynamic reduction or
@@ -8242,15 +8276,15 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_cset_object(cset)
         return cset
 
-    def add_cset1(self, ids, components, comment='') -> Union[CSET, CSET1]:
+    def add_cset1(self, ids, components, comment='') -> CSET | CSET1:
         """.. seealso:: ``add_cset``"""
         return self.add_cset(ids, components, comment=comment)
 
-    #def add_omit1(self, ids, components, comment='') -> Union[OMIT, OMIT1]:
+    #def add_omit1(self, ids, components, comment='') -> OMIT | OMIT1:
         #""".. seealso:: ``add_omit``"""
         #return self.add_omit(ids, components, comment=comment)
 
-    #def add_omit(self, ids, components, comment='') -> Union[OMIT, OMIT1]:
+    #def add_omit(self, ids, components, comment='') -> OMIT | OMIT1:
         #"""
         #Creates an OMIT1 card, which defines the degree of freedoms that
         #will be excluded (o-set) from the analysis set (a-set).
@@ -8273,7 +8307,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         #self._add_omit_object(omit)
         #return omit
 
-    def add_omit1(self, ids: list[int], components: str, comment='') -> Union[OMIT, OMIT1]:
+    def add_omit1(self, ids: list[int], components: str, comment='') -> OMIT | OMIT1:
         """
         Creates an OMIT1 card, which defines the degree of freedoms that
         will be excluded (o-set) from the analysis set (a-set).
@@ -8292,7 +8326,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_omit_object(omit1)
         return omit1
 
-    def add_qset(self, ids, components, comment='') -> Union[QSET, QSET1]:
+    def add_qset(self, ids, components, comment='') -> QSET | QSET1:
         """
         Creates a QSET/QSET1 card, which defines generalized degrees of
         freedom (q-set) to be used for dynamic reduction or component
@@ -8317,11 +8351,11 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_qset_object(qset)
         return qset
 
-    def add_qset1(self, ids, components, comment='') -> Union[QSET, QSET1]:
+    def add_qset1(self, ids, components, comment='') -> QSET | QSET1:
         """.. seealso:: ``add_qset``"""
         return self.add_qset(ids, components, comment=comment)
 
-    def add_uset(self, name, ids, components, comment='') -> Union[USET, USET1]:
+    def add_uset(self, name, ids, components, comment='') -> USET | USET1:
         """
         Creates a USET card, which defines a degrees-of-freedom set.
 
@@ -8347,7 +8381,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_uset_object(uset)
         return uset
 
-    def add_uset1(self, name, ids, components, comment='') -> Union[USET, USET1]:
+    def add_uset1(self, name, ids, components, comment='') -> USET | USET1:
         """.. seealso:: ``add_uset``"""
         return self.add_uset(name, ids, components, comment=comment)
 
@@ -8675,7 +8709,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
             The coordinates in the CP coordinate system about which the
             loads are to be monitored.
             None : [0., 0., 0.]
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
            coordinate system of XYZ
         cd : int; default=None -> cp
             the coordinate system for load outputs
@@ -8717,7 +8751,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
             The coordinates in the CP coordinate system about which the
             loads are to be monitored.
             None : [0., 0., 0.]
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
            int : coordinate system
         cd : int; default=None -> cp
             the coordinate system for load outputs
@@ -8911,7 +8945,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         fields = ['EXTRN']
         for nid, comp in zip(nids, comps):
             fields.extend([nid, comp])
-        self.reject_card_lines('EXTRN', print_card_(fields).split('\n'), show_log=False)
+        self.reject_card_lines('EXTRN', print_card_8(fields).split('\n'), show_log=False)
 
     def add_cmfree(self, eid, s, s2, y, n) -> None:
         fields = ['CMFREE', eid, s, s2, y, n]
@@ -8940,7 +8974,7 @@ class AddCards(AddCoords, AddContact, AddBolts,
         fields = ['RSPINT', rid, grida, gridb, gr, unit, table_id]
         self.reject_card_lines('RSPINT', print_card_8(fields).split('\n'), show_log=False)
 
-    def add_dti(self, name: str, fields: dict[int, list], comment='') -> Union[DTI, DTI_UNITS]:
+    def add_dti(self, name: str, fields: dict[int, list], comment='') -> DTI | DTI_UNITS:
         """Creates a DTI card"""
         if name == 'UNITS':
             dti = DTI_UNITS(name, fields, comment=comment)
@@ -9006,17 +9040,35 @@ class AddCards(AddCoords, AddContact, AddBolts,
         self._add_methods._add_dmig_object(dmig)
         return dmig
 
+    def add_dmi_w2gj(self, tin: int, tout: int, nrows: int,
+                GCj, GCi, Real, comment: str='') -> DMI:
+        """Creates a DMI,W2GJ card"""
+        name = 'W2GJ'
+        form = 'rectangular'
+        ncols = 1
+        dmi = DMI(name, form, tin, tout, nrows, ncols, GCj, GCi, Real,
+                  comment=comment)
+        self._add_methods._add_dmi_object(dmi)
+        return dmi
+
     def add_dmi(self, name: str, form: int, tin: int, tout: int, nrows: int, ncols: int,
                 GCj, GCi,
-                Real, Complex=None, comment='') -> DMI:
-        """Creates a DMI card"""
+                Real, Complex=None, comment: str='') -> DMI:
+        """Creates a DMI card
+
+        1 : 'square',
+        2 : 'rectangular', # 9 ???
+        3 : 'diagonal',
+        6 : 'symmetric',
+        9 : 'identity',
+        """
         dmi = DMI(name, form, tin, tout, nrows, ncols, GCj, GCi, Real,
                   Complex, comment=comment)
         self._add_methods._add_dmi_object(dmi)
         return dmi
 
     def add_dense_dmi(self, name: str, myarray: np.ndarray,
-                      form: Union[int, str],
+                      form: int | str,
                       tin=None, tout=None,
                       validate: bool=True):
         """default for tin/tout = myarray.dtype

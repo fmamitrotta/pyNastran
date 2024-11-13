@@ -11,19 +11,20 @@ import getpass
 from datetime import date
 from collections import defaultdict
 from traceback import print_exc
-from typing import Union, Optional, cast, TextIO, TYPE_CHECKING
+from typing import Optional, cast, TextIO, TYPE_CHECKING
 
 import numpy as np
 
 import pyNastran
-from pyNastran.utils import object_attributes
+from pyNastran.utils import object_attributes, PathLike, PurePath
 
 from pyNastran.op2.tables.oee_energy.oee_objects import RealStrainEnergyArray
 from pyNastran.op2.tables.ogf_gridPointForces.ogf_objects import RealGridPointForcesArray
 from pyNastran.op2.op2_interface.op2_f06_common import OP2_F06_Common
-from pyNastran.op2.op2_interface.result_set import ResultSet
-from pyNastran.op2.result_objects.matrix import Matrix #, MatrixDict
+from pyNastran.op2.op2_interface.result_set import ResultSet, add_results_of_exact_type
+from pyNastran.op2.result_objects.matrix import Matrix  #, MatrixDict
 if TYPE_CHECKING:  # pragma: no cover
+    from pyNastran.op2.op2 import OP2
     from pyNastran.op2.tables.onmd import NormalizedMassDensity
 
 
@@ -152,7 +153,7 @@ def make_end(end_flag: bool=False,
 
         SOLLIN = 'F'
         if 'SEMR' in options:
-            SOLLIN = 'T' # p-elements
+            SOLLIN = 'T'  # p-elements
         PVALID = 0
         SOLNL = 'F'
         LOOPID = -1
@@ -212,6 +213,7 @@ class F06Writer(OP2_F06_Common):
     def get_all_results(self) -> list[str]:
         all_results = [
             'stress', 'strain', 'stressa',
+            'elastic_strain', 'plastic_strain', 'thermal_strain', 'creep_strain',
             'element_forces', 'constraint_forces', 'thermal_load',
             ] + self.get_table_types()
         return all_results
@@ -219,8 +221,9 @@ class F06Writer(OP2_F06_Common):
     def clear_results(self) -> None:
         self._results.clear()
 
-    def _add_results(self, results: Union[str, list[str]]) -> None:
+    def _add_results(self, results: str | list[str]) -> None:
         """supports catch all classes...don't call this..."""
+        #self.log.warning(f'_add_results = {results}')
         if isinstance(results, str):
             results = [results]
         all_results = self.get_all_results()
@@ -230,36 +233,37 @@ class F06Writer(OP2_F06_Common):
                 all_results_str = get_all_results_string(all_results)
                 raise RuntimeError(f'all_results={all_results_str}\n{result!r} is not a valid result to remove')
             if result == 'stress':
-                stress_results = []
-                for result in all_results:
-                    if 'stress' in result.lower():
-                        stress_results.append(result)
-                #stress_results = [result if 'stress' in result.lower() for result in all_results]
+                stress_results = add_results_of_exact_type(all_results, 'stress')
+                #assert 'displacements' not in stress_results
                 self._results.update(stress_results)
+            elif result == 'stressa':
+                stressa_results = add_results_of_exact_type(all_results, 'stressa')
+                self._results.update(stressa_results)
             elif result == 'strain':
-                strain_results = []
-                for result in all_results:
-                    if 'strain' in result.lower():
-                        strain_results.append(result)
-                #strain_results = [result if 'strain' in result.lower() for result in all_results]
+                strain_results = add_results_of_exact_type(all_results, 'strain')
                 self._results.update(strain_results)
+            elif 'stressa' in result.lower():
+                self._results.add('stressa')
             elif 'stress' in result.lower():
                 self._results.add('stress')
             elif 'strain' in result.lower():
                 self._results.add('strain')
             elif result in ('spc_forces', 'mpc_forces', 'constraint_forces'):
                 self._results.add('constraint_forces')
-            elif 'force' in result.lower(): # could use more validation...
+            elif 'force' in result.lower():  # could use more validation...
                 self._results.add('element_forces')
             # thermalLoad_VU_3D, thermalLoad_1D, conv_thermal_load, thermalLoad_2D_3D
             self._results.add(result)
+            #assert 'displacements' not in self._results.saved, result
 
-    def set_results(self, results: Union[str, list[str]]) -> None:
+    def set_results(self, results: str | list[str]) -> None:
+        #self.log.warning(f'set_results = {results}')
+        #assert 'displacements' not in results, results
         self.clear_results()
         results = self._results.add(results)
         self._add_results(results)
 
-    def remove_results(self, results: Union[str, list[str]]) -> None:
+    def remove_results(self, results: str | list[str]) -> None:
         self._results.remove(results)
 
     def make_f06_header(self) -> str:
@@ -272,7 +276,7 @@ class F06Writer(OP2_F06_Common):
         """If this class is inherited, the PAGE stamp may be overwritten"""
         return make_stamp(title, today, build=None)
 
-    def make_grid_point_singularity_table(self, failed) -> str:
+    def make_grid_point_singularity_table(self, failed: list[tuple[int, int]]) -> str:
         """
         creates a grid point singularity table
 
@@ -289,14 +293,15 @@ class F06Writer(OP2_F06_Common):
             for (nid, dof) in failed:
                 msg += '                         %8s        G      %s         0.00E+00          B        F         SB       SB   *\n' % (nid, dof)
         else:
-            msg += 'No constraints have been applied...\n'
+            #msg += 'No constraints have been applied...\n'
+            return ''
 
         page_stamp = self.make_stamp(self.title, self.date)
         msg += page_stamp % self.page_num
         self.page_num += 1
         return msg
 
-    def _write_summary(self, f06_file, card_count=None) -> str:
+    def _write_summary(self, f06_file, card_count=None) -> None:
         """writes the F06 card summary table"""
         summary_header = '                                        M O D E L   S U M M A R Y\n\n'
         summary = ''
@@ -318,7 +323,6 @@ class F06Writer(OP2_F06_Common):
             'CHBDYE', 'CHBDYG', 'CHBDYP',
             'CONV',
         }
-
 
         blocks = [
             ['POINTS', ['GRID', 'GRDSET', ]],
@@ -471,12 +475,8 @@ class F06Writer(OP2_F06_Common):
             resi = getattr(results, key)
             if key == 'cddata':
                 f06.write(f'{key}:\n')
-                msg = ''
-                for isub, resii in enumerate(resi):
-                    for ii, resiii in resii.items():
-                        msg += f'{isub},{ii}: {resiii.tolist()}\n'
-                f06.write(msg)
-                print(msg)
+                for subcase, obj in resi.items():
+                    obj.write_f06(f06)
                 continue
 
             if resi is None or isinstance(resi, dict) and len(resi) == 0:
@@ -501,7 +501,7 @@ class F06Writer(OP2_F06_Common):
                 f06, page_stamp=page_stamp, page_num=page_num)
             log.debug('MONPNT1 from [PMRF, PERF, PFRF, AGRF]')
 
-        with open(matrix_filename, 'wb') as mat_file:
+        with open(matrix_filename, 'w') as mat_file:
             for name, matrix in self.matrices.items():  #type: Matrix
                 matrix = cast(Matrix, matrix)
                 if name == 'MP3F':
@@ -738,6 +738,7 @@ class F06Writer(OP2_F06_Common):
             for eid, density in zip(mass.eids, mass.data):
                 f06.write(f' {eid:-8d} {density:.8f}\n')
 
+
 def check_element_node(obj):
     if obj is None:
         raise RuntimeError('obj is None...')
@@ -803,10 +804,10 @@ def get_all_results_string(all_results: list[str]) -> str:
 
 
 def _get_file_obj(self: F06Writer,
-                  f06_filename: str,
+                  f06_filename: PathLike,
                   matrix_filename: Optional[str],
                   quiet: bool=True) -> tuple[TextIO, str, str]:
-    if isinstance(f06_filename, str):
+    if isinstance(f06_filename, (str, PurePath)):
         if matrix_filename is None:
             matrix_filename = os.path.splitext(f06_filename)[0] + '.mat'
         #print("matrix_filename =", matrix_filename)
@@ -825,6 +826,8 @@ def _get_file_obj(self: F06Writer,
             matrix_filename = os.path.splitext(f06_filename)[0] + '.mat'
         if not quiet:
             print('f06_filename =', f06_filename)
+    else:  # pragma: no cover
+        raise TypeError(type(f06_filename))
     return f06, f06_filename, matrix_filename
 
 def _write_responses1(op2: OP2, f06: TextIO,
@@ -856,4 +859,3 @@ def _write_responses2(op2: OP2, f06: TextIO,
         msg = dscmcol.get_responses_by_group()
         f06.write(msg)
     return page_num
-

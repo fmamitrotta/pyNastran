@@ -1069,7 +1069,7 @@ class EPT:
             self._add_op2_property(prop)
             nproperties += 1
         #print(f"n={n} ndata={ndata}")
-        assert nproperties > 0, 'PBCOMP nproperties=%s' % (nproperties)
+        assert nproperties > 0, f'PBCOMP nproperties={nproperties:d}'
         if len(op2._type_to_id_map['PBEAM']) == 0 and 'PBEAM' in op2.card_count:
             del op2._type_to_id_map['PBEAM']
             del op2.card_count['PBEAM']
@@ -2355,7 +2355,7 @@ class EPT:
             lam = 'SYM' if is_symmetrical else ''
             try:
                 ft = map_failure_theory_int(ft_int)
-            except NotImplementedError:
+            except NotImplementedError:  # pragma: no cover
                 raise RuntimeError(f'unsupported ft.  pid={pid} ft={ft_int!r}.'
                                f'\nPCOMP = {data_in}')
 

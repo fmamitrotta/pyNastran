@@ -17,7 +17,6 @@ from typing import Any
 
 import numpy as np
 #import pyNastran
-from pyNastran.utils import _filename
 
 from pyNastran.femutils.io import loadtxt_nice
 from pyNastran.gui.gui_objects.gui_result import GuiResult
@@ -77,7 +76,7 @@ def create_res_obj(islot: int,
     elif dimension == 2:
         vector_size = datai.shape[1]
     else:  # pramga: no cover
-        raise RuntimeError('dimension=%s' % (dimension))
+        raise RuntimeError(f'dimension={dimension}')
 
     if vector_size == 1:
         res_obj = GuiResult(
@@ -127,7 +126,7 @@ def create_res_obj(islot: int,
         else:  # pramga: no cover
             raise RuntimeError('is_deflection=%s is_force=%s' % (is_deflection, is_force))
     else:  # pramga: no cover
-        raise RuntimeError('vector_size=%s' % (vector_size))
+        raise RuntimeError(f'vector_size={vector_size}')
     return res_obj, title
 
 def load_deflection_csv(out_filename: str,
@@ -145,7 +144,7 @@ def load_deflection_csv(out_filename: str,
     if ext not in ['.csv', '.dat', '.txt']:
         raise NotImplementedError('extension=%r is not supported (use .dat, .txt, or .csv)' % ext)
 
-    with open(_filename(out_filename), 'r', encoding=encoding) as file_obj:
+    with open(out_filename, 'r', encoding=encoding) as file_obj:
         names, fmt_dict, dtype, delimiter = _load_format_header(file_obj, ext, force_float=False)
 
         try:
@@ -199,7 +198,7 @@ def load_csv(out_filename, encoding='latin1'):
     if ext not in ['.csv', '.dat', '.txt']:
         raise NotImplementedError('extension=%r is not supported (use .dat, .txt, or .csv)' % ext)
 
-    with open(_filename(out_filename), 'r', encoding=encoding) as file_obj:
+    with open(out_filename, 'r', encoding=encoding) as file_obj:
         names, fmt_dict, dtype, delimiter = _load_format_header(file_obj, ext, force_float=False)
         try:
             #A = loadtxt(file_obj, dtype=dtype, delimiter=delimiter)
@@ -319,7 +318,9 @@ def _load_format_header(file_obj, ext, force_float=False):
     }
     return names, fmt_dict, dtype, delimiter
 
-def load_user_geom(fname: str, log=None, encoding: str='latin1'):
+def load_user_geom(fname: str, log=None,
+                   encoding: str='latin1') -> tuple[np.ndarray, np.ndarray, np.ndarray,
+                                                    np.ndarray, np.ndarray]:
     """
     Loads a file of the form:
 
@@ -371,7 +372,7 @@ def load_user_geom(fname: str, log=None, encoding: str='latin1'):
         bars = np.array([], dtype='int32')
         return grid_ids, xyz, bars, tris, quads
 
-    with open(_filename(fname), 'r', encoding=encoding) as user_geom:
+    with open(fname, 'r', encoding=encoding) as user_geom:
         lines = user_geom.readlines()
 
     grid_ids = []
@@ -398,7 +399,7 @@ def load_user_geom(fname: str, log=None, encoding: str='latin1'):
                 assert len(sline) == 6, sline
                 quads.append(sline[1:])
             else:
-                log.warning(sline)
+                log.warning(str(sline))
 
     grid_ids = np.array(grid_ids, dtype='int32')
     xyz = np.array(xyz, dtype='float32')

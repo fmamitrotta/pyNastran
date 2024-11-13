@@ -52,7 +52,7 @@ def convert(model: BDF, units_to: list[str],
     scale_model(model, xyz_scale, mass_scale, time_scale, force_scale, gravity_scale)
 
 
-def scale_by_terms(bdf_filename: Union[BDF, str], terms: list[float], scales: list[float],
+def scale_by_terms(bdf_filename: BDF | str, terms: list[float], scales: list[float],
                    bdf_filename_out: Optional[str]=None,
                    encoding: Optional[str]=None, log=None, debug: bool=True) -> BDF:
     """
@@ -1139,7 +1139,8 @@ def _convert_materials(model: BDF,
     }
     _write_scales(model.log, scale_map, scales)
 
-def _write_scales(log: SimpleLogger, scale_map: dict[str, str], scales: set[str], keys_to_skip=set([])):
+def _write_scales(log: SimpleLogger, scale_map: dict[str, str], scales: set[str],
+                  keys_to_skip=set([])):
     for scale, msg in scale_map.items():
         if scale in scales:
             log.debug(msg)
@@ -1686,7 +1687,7 @@ def _convert_optimization(model: BDF,
             assert len(desvars) == 1, len(desvars)
             _convert_desvars(desvars, scale)
         else:  # pragma: no cover
-            raise NotImplementedError(dvprel)
+            raise NotImplementedError(dvmrel)
 
     for unused_key, dvprel in model.dvprels.items():
         if dvprel.type == 'DVPREL1':
@@ -1745,7 +1746,8 @@ def _convert_dconstr(model: BDF, dconstr: DCONSTR, pressure_scale: float) -> Non
         print(msg)
         raise NotImplementedError(msg)
 
-def _convert_dvcrel1(dvcrel: Union[DVCREL1, DVCREL2], xyz_scale: float, mass_scale: float) -> float:
+def _convert_dvcrel1(dvcrel: DVCREL1 | DVCREL2,
+                     xyz_scale: float, mass_scale: float) -> float:
     """helper for ``_convert_optimization``"""
     element_type = dvcrel.element_type
     if element_type == 'CBUSH':
@@ -1788,7 +1790,7 @@ def _convert_dvmrel1(dvmrel, xyz_scale: float,
         else:  # pragma: no cover
             raise NotImplementedError('cannot convert %r\n%s' % (var_to_change, dvmrel))
     else:  # pragma: no cover
-        raise NotImplementedError('cannot convert %r\n%s' % (prop_type, dvprel))
+        raise NotImplementedError('cannot convert %r\n%s' % (mat_type, dvmrel))
     return scale
 
 def _convert_dvprel1(dvprel, xyz_scale: float,
@@ -1932,7 +1934,7 @@ def _convert_desvars(desvars, scale):
         if desvar.delx is not None and desvar.delx != 1e20:
             desvar.delx *= scale
         if desvar.ddval is not None:
-            msg = 'DESVAR id=%s DDVAL is not None\n%s' % str(desvar)
+            msg = f'DESVAR id={desvar.ddval} DDVAL is not None\n{str(desvar)}'
             raise RuntimeError(msg)
         assert desvar.ddval is None, desvar
 

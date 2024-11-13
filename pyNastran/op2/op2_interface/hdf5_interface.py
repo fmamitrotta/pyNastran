@@ -10,7 +10,7 @@ defines:
  export_op2_to_hdf5_file(hdf5_file, op2_model)
 
 """
-from typing import Union, Optional, Any
+from typing import Optional, Any
 import numpy as np
 import h5py
 
@@ -19,6 +19,7 @@ import pyNastran
 from pyNastran.op2.op2 import OP2
 
 from pyNastran.op2.result_objects.grid_point_weight import GridPointWeight
+from pyNastran.op2.result_objects.campbell import CampbellData
 from pyNastran.op2.tables.lama_eigenvalues.lama_objects import RealEigenvalues, ComplexEigenvalues, BucklingEigenvalues
 from pyNastran.op2.tables.oug.oug_displacements import RealDisplacementArray, ComplexDisplacementArray
 from pyNastran.op2.tables.oug.oug_velocities import RealVelocityArray, ComplexVelocityArray
@@ -64,10 +65,11 @@ from pyNastran.op2.tables.oes_stressStrain.real.oes_composite_plates import Real
 from pyNastran.op2.tables.oes_stressStrain.real.oes_bush import RealBushStressArray, RealBushStrainArray
 from pyNastran.op2.tables.oes_stressStrain.real.oes_bush1d import RealBush1DStressArray
 from pyNastran.op2.tables.oes_stressStrain.real.oes_gap import NonlinearGapStressArray
-from pyNastran.op2.tables.oes_stressStrain.real.oes_triax import RealTriaxStressArray #, RealTriaxStrainArray
+from pyNastran.op2.tables.oes_stressStrain.real.oes_triax import RealTriaxStressArray, RealTriaxStrainArray
 from pyNastran.op2.tables.oes_stressStrain.real.oes_bend import RealBendStressArray, RealBendStrainArray
 from pyNastran.op2.tables.oes_stressStrain.real.oes_weld import RealWeldStressArray, RealWeldStrainArray
 from pyNastran.op2.tables.oes_stressStrain.real.oes_fast import RealFastStressArray, RealFastStrainArray
+from pyNastran.op2.tables.oes_stressStrain.real.oes_plate_strain_nx import RealCPLSTRNPlateStressNXArray, RealCPLSTRNPlateStrainNXArray
 
 from pyNastran.op2.tables.oes_stressStrain.real.oes_composite_plates_strength_ratio import RealCompositePlateStressStrengthRatioArray # , RealCompositePlateStrainStrengthRatioArray
 
@@ -82,10 +84,11 @@ from pyNastran.op2.tables.oes_stressStrain.complex.oes_bush1d import ComplexCBus
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_plates import ComplexPlateStressArray, ComplexPlateStrainArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_composite_plates import ComplexLayeredCompositeStressArray, ComplexLayeredCompositeStrainArray # ComplexLayeredCompositesArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_plates_vm import ComplexPlateVMStressArray, ComplexPlateVMStrainArray
-from pyNastran.op2.tables.oes_stressStrain.complex.oes_triax import ComplexTriaxStressArray
+from pyNastran.op2.tables.oes_stressStrain.complex.oes_triax import ComplexTriaxStressArray, ComplexTriaxStrainArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_rods import ComplexRodStressArray, ComplexRodStrainArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_shear import ComplexShearStressArray, ComplexShearStrainArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_solids import ComplexSolidStressArray, ComplexSolidStrainArray
+from pyNastran.op2.tables.oes_stressStrain.complex.oes_solids_vm import ComplexSolidStressVMArray, ComplexSolidStrainVMArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_springs import ComplexSpringStressArray, ComplexSpringStrainArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_bend import ComplexBendStressArray, ComplexBendStrainArray
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_fast import ComplexFastStressArray, ComplexFastStrainArray
@@ -150,9 +153,9 @@ def _cast(h5_result_attr):
         return None
 
     if len(h5_result_attr.shape) == 0:
-        out = np.array(h5_result_attr).tolist()
+        out = np.asarray(h5_result_attr, copy=True).tolist()
         return out
-    out = np.array(h5_result_attr)
+    out = np.asarray(h5_result_attr, copy=True, like=None)
     #assert not isinstance(out, str), out
     return out
 
@@ -162,13 +165,13 @@ def _cast_str(h5_result_attr, encoding: str) -> list[str]:
         return None
 
     if len(h5_result_attr.shape) == 0:
-        out = np.array(h5_result_attr).tolist()
+        out = np.asarray(h5_result_attr, copy=True, like=None).tolist()
         if isinstance(out, bytes):
             out = out.decode(encoding)
         return out
         #raise NotImplementedError(h5_result_attr.dtype)
     else:
-        out = np.array(h5_result_attr)
+        out = np.asarray(h5_result_attr, copy=True)
     out2 = [outi.decode(encoding) if isinstance(outi, bytes) else outi
             for outi in out]
     return out2
@@ -179,6 +182,7 @@ STRING_KEYS = [
     'label', 'pval_step', 'title']
 
 TABLE_OBJ_MAP = {
+    'cddata': (CampbellData,),
     'displacements' : (RealDisplacementArray, ComplexDisplacementArray),
     'no.displacements' : (RealDisplacementArray, ComplexDisplacementArray),
     'ato.displacements' : (RealDisplacementArray, ComplexDisplacementArray),
@@ -497,10 +501,9 @@ TABLE_OBJ_MAP = {
     'stress.cfast_stress' : (RealFastStressArray, ComplexFastStressArray, ),
     'strain.cfast_strain' : (RealFastStrainArray, ComplexFastStrainArray, ),
 
-    'stress.cweld_stress' : (RealWeldStressArray, ),
+    'stress.cweld_stress' : (RealWeldStressArray, ComplexWeldStressArray),
 
     # lines
-    'nrl.cbar_force' : (RealCBarForceArray, ),
     'RAFCONS.cbar_force' : (RealCBarForceArray, ),
     'RAFEATC.cbar_force' : (RealCBarForceArray, ),
 
@@ -553,7 +556,7 @@ TABLE_OBJ_MAP = {
     'ato.cquad4_stress' : (RandomPlateStressArray, ),
     'crm.cquad4_stress' : (RandomPlateStressArray, ),
     'psd.cquad4_stress' : (RandomPlateStressArray, ),
-    'rms.cquad4_stress' : (RandomPlateStressArray, ),
+    'rms.cquad4_stress' : (RandomPlateStressArray, RandomPlateVMStressArray),
     'no.cquad4_stress' : (RandomPlateStressArray, RandomPlateVMStressArray),
     'modal_contribution.cquad4_stress' : (RealPlateStressArray, ComplexPlateStressArray, ComplexPlateVMStressArray),
     'RASCONS.cquad4_stress' : (RealPlateStressArray, ),
@@ -563,8 +566,8 @@ TABLE_OBJ_MAP = {
     'ato.ctria3_stress' : (RandomPlateStressArray, ),
     'crm.ctria3_stress' : (RandomPlateStressArray, ),
     'psd.ctria3_stress' : (RandomPlateStressArray, ),
-    'rms.ctria3_stress' : (RandomPlateStressArray, ),
-    'no.ctria3_stress' : (RandomPlateStressArray, ),
+    'rms.ctria3_stress' : (RandomPlateStressArray, RandomPlateVMStressArray),
+    'no.ctria3_stress' : (RandomPlateStressArray, RandomPlateVMStressArray),
     'modal_contribution.ctria3_stress' : (RealPlateStressArray, ComplexPlateStressArray, ComplexPlateVMStressArray),
     'RASCONS.ctria3_stress' : (RealPlateStressArray, ),
     'RASEATC.ctria3_stress' : (RealPlateStressArray, ),
@@ -598,7 +601,7 @@ TABLE_OBJ_MAP = {
     'psd.cquadr_stress' : (RandomPlateStressArray, ),
     'rms.cquadr_stress' : (RandomPlateStressArray, ),
     'no.cquadr_stress' : (RandomPlateStressArray, ),
-    'modal_contribution.cquadr_stress' : (RealPlateStressArray, ),
+    'modal_contribution.cquadr_stress' : (RealPlateStressArray, ComplexPlateVMStressArray),
 
     'strain.cquad4_strain' : (RealPlateStrainArray, ComplexPlateStrainArray),
     'ato.cquad4_strain' : (RandomPlateStrainArray, ),
@@ -641,7 +644,7 @@ TABLE_OBJ_MAP = {
     'psd.ctriar_strain' : (RandomPlateStrainArray, ),
     'rms.ctriar_strain' : (RandomPlateStrainArray, ),
     'no.ctriar_strain' : (RandomPlateStrainArray, ),
-    'modal_contribution.ctria3_strain' : (RealPlateStrainArray, ComplexPlateStrainArray, ComplexPlateVMStrainArray),
+    'modal_contribution.ctria3_strain': (RealPlateStrainArray, ComplexPlateStrainArray, ComplexPlateVMStrainArray),
 
     'strain.cquadr_strain' : (RealPlateStrainArray, ComplexPlateStrainArray),
     'ato.cquadr_strain' : (RandomPlateStrainArray, ),
@@ -649,7 +652,7 @@ TABLE_OBJ_MAP = {
     'psd.cquadr_strain' : (RandomPlateStrainArray, ),
     'rms.cquadr_strain' : (RandomPlateStrainArray, ),
     'no.cquadr_strain' : (RandomPlateStrainArray, ),
-    'modal_contribution.cquadr_strain' : (RealPlateStrainArray, ),
+    'modal_contribution.cquadr_strain' : (RealPlateStrainArray, ComplexPlateStrainArray, ComplexPlateVMStrainArray),
 
     'stress.ctriax_stress' : (RealTriaxStressArray, ComplexTriaxStressArray,),
 
@@ -673,6 +676,27 @@ TABLE_OBJ_MAP = {
     'strain.ctriar_composite_strain' : (RealCompositePlateStrainArray, ),
     'strain.cquad8_composite_strain' : (RealCompositePlateStrainArray, ),
     'strain.cquadr_composite_strain' : (RealCompositePlateStrainArray, ),
+
+    'elastic_strain.cquad4_composite_strain': (RealCompositePlateStrainArray,),
+    'elastic_strain.ctria3_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.ctria6_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.ctriar_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.cquad8_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.cquadr_composite_strain': (RealCompositePlateStrainArray,),
+
+    #'plastic_strain.cquad4_composite_strain': (RealCompositePlateStrainArray,),
+    #'plastic_strain.ctria3_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.ctria6_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.ctriar_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.cquad8_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.cquadr_composite_strain': (RealCompositePlateStrainArray,),
+
+    'thermal_strain.cquad4_composite_strain': (RealCompositePlateStrainArray,),
+    'thermal_strain.ctria3_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.ctria6_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.ctriar_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.cquad8_composite_strain': (RealCompositePlateStrainArray,),
+    #'strain.cquadr_composite_strain': (RealCompositePlateStrainArray,),
 
     #'modal_contribution.cquad4_composite_strain' : (RealCompositePlateStrainArray, ),
     'modal_contribution.cquad4_composite_strain' : (ComplexLayeredCompositeStrainArray, ),
@@ -736,9 +760,10 @@ TABLE_OBJ_MAP = {
     'no.ctetra_stress' : (RandomSolidStressArray, ),
     'RASCONS.ctetra_stress' : (RealSolidStressArray, ),
     'RASEATC.ctetra_stress' : (RealSolidStressArray, ),
+    'modal_contribution.ctetra_stress': (ComplexSolidStressVMArray,),
 
     'stress.cpenta_stress' : (RealSolidStressArray, RealSolidStressArrayNx, ComplexSolidStressArray),
-    'stress.cpenta_composite_strain': (RealSolidCompositeStrainArray, ),
+    'stress.cpenta_composite_stress': (RealSolidCompositeStressArray,),
     'ato.cpenta_stress' : (RandomSolidStressArray, ),
     'crm.cpenta_stress' : (RandomSolidStressArray, ),
     'psd.cpenta_stress' : (RandomSolidStressArray, ),
@@ -746,6 +771,7 @@ TABLE_OBJ_MAP = {
     'no.cpenta_stress' : (RandomSolidStressArray, ),
     'RASCONS.cpenta_stress' : (RealSolidStressArray, ),
     'RASEATC.cpenta_stress' : (RealSolidStressArray, ),
+    'modal_contribution.cpenta_stress': (ComplexSolidStressVMArray,),
 
     'stress.chexa_stress' : (RealSolidStressArray, RealSolidStressArrayNx, ComplexSolidStressArray),
     'stress.chexa_composite_stress': (RealSolidCompositeStressArray, ),
@@ -756,9 +782,20 @@ TABLE_OBJ_MAP = {
     'no.chexa_stress' : (RandomSolidStressArray, ),
     'RASCONS.chexa_stress' : (RealSolidStressArray, ),
     'RASEATC.chexa_stress' : (RealSolidStressArray, ),
+    'modal_contribution.chexa_stress': (ComplexSolidStressVMArray,),
 
-    'strain.cpyram_strain' : (RealSolidStrainArrayNx, ComplexSolidStrainArray, ),
-    'stress.cpyram_stress' : (RealSolidStressArrayNx, ComplexSolidStressArray, ),
+    'stress.cpyram_stress' : (RealSolidStressArray, RealSolidStressArrayNx, ComplexSolidStressArray, ),
+    'modal_contribution.cpyram_stress': (ComplexSolidStressVMArray,),
+    # new
+    'stress.cplstn3_stress': (RealCPLSTRNPlateStressNXArray, ),
+    'stress.cplstn4_stress': (RealCPLSTRNPlateStressNXArray, ),
+    'stress.cplstn6_stress': (RealCPLSTRNPlateStressNXArray,),
+    'stress.cplstn8_stress': (RealCPLSTRNPlateStressNXArray,),
+
+    'strain.cplstn3_strain': (RealCPLSTRNPlateStrainNXArray, ),
+    'strain.cplstn4_strain': (RealCPLSTRNPlateStrainNXArray, ),
+    'strain.cplstn6_strain': (RealCPLSTRNPlateStrainNXArray,),
+    'strain.cplstn8_strain': (RealCPLSTRNPlateStrainNXArray,),
 
     'strain.ctetra_strain' : (RealSolidStrainArray, RealSolidStrainArrayNx, ComplexSolidStrainArray),
     'ato.ctetra_strain' : (RandomSolidStrainArray, ),
@@ -768,6 +805,7 @@ TABLE_OBJ_MAP = {
     'no.ctetra_strain' : (RandomSolidStrainArray, ),
     'RAECONS.ctetra_strain' : (RealSolidStrainArray, ),
     'RAEEATC.ctetra_strain' : (RealSolidStrainArray, ),
+    'modal_contribution.ctetra_strain': (ComplexSolidStrainVMArray,),
 
     'strain.cpenta_strain' : (RealSolidStrainArray, RealSolidStrainArrayNx, ComplexSolidStrainArray),
     'strain.cpenta_composite_strain': (RealSolidCompositeStrainArray, ),
@@ -778,6 +816,7 @@ TABLE_OBJ_MAP = {
     'no.cpenta_strain' : (RandomSolidStrainArray, ),
     'RAECONS.cpenta_strain' : (RealSolidStrainArray, ),
     'RAEEATC.cpenta_strain' : (RealSolidStrainArray, ),
+    'modal_contribution.cpenta_strain': (ComplexSolidStrainVMArray,),
 
     'strain.chexa_strain' : (RealSolidStrainArray, RealSolidStrainArrayNx, ComplexSolidStrainArray),
     'ato.chexa_strain' : (RandomSolidStrainArray, ),
@@ -788,6 +827,30 @@ TABLE_OBJ_MAP = {
     'RAECONS.chexa_strain' : (RealSolidStrainArray, ),
     'RAEEATC.chexa_strain' : (RealSolidStrainArray, ),
     'strain.chexa_composite_strain': (RealSolidCompositeStrainArray, ),
+    'modal_contribution.chexa_strain': (ComplexSolidStrainVMArray,),
+
+    'strain.cpyram_strain' : (RealSolidStrainArray, RealSolidStrainArrayNx, ComplexSolidStrainArray, ),
+    #'modal_contribution.cpyram_strain': (ComplexSolidStrainVMArray,),
+
+    'elastic_strain.ctetra_strain': (RealSolidStrainArrayNx, ),
+    'elastic_strain.cpenta_strain': (RealSolidStrainArrayNx, ),
+    'elastic_strain.chexa_strain': (RealSolidStrainArrayNx, ),
+    'elastic_strain.cpyram_strain': (RealSolidStrainArrayNx, ),
+
+    'plastic_strain.ctetra_strain': (RealSolidStrainArrayNx, ),
+    'plastic_strain.cpenta_strain': (RealSolidStrainArrayNx, ),
+    'plastic_strain.chexa_strain': (RealSolidStrainArrayNx, ),
+    'plastic_strain.cpyram_strain': (RealSolidStrainArrayNx, ),
+
+    'thermal_strain.ctetra_strain': (RealSolidStrainArrayNx, ),
+    'thermal_strain.cpenta_strain': (RealSolidStrainArrayNx, ),
+    'thermal_strain.chexa_strain': (RealSolidStrainArrayNx, ),
+    'thermal_strain.cpyram_strain': (RealSolidStrainArrayNx, ),
+
+    'creep_strain.ctetra_strain': (RealSolidStrainArrayNx,),
+    'creep_strain.cpenta_strain': (RealSolidStrainArrayNx,),
+    'creep_strain.chexa_strain': (RealSolidStrainArrayNx,),
+    'creep_strain.cpyram_strain': (RealSolidStrainArrayNx,),
     # -------------------------------------
 
     'grid_point_forces' : (RealGridPointForcesArray, ComplexGridPointForcesArray),
@@ -885,8 +948,8 @@ TABLE_OBJ_MAP = {
     'RAFEATC.cbush_force' : (RealCBushForceArray, ),
 
     'stress.cbush1d_stress_strain' : (RealBush1DStressArray, ComplexCBush1DStressArray),
-    'strain.ctriax_strain' : (RealTriaxStressArray, ),
-    'strain.cweld_strain': (RealDisplacementArray, ),
+    'strain.ctriax_strain' : (RealTriaxStrainArray, ComplexTriaxStrainArray),
+    'strain.cweld_strain': (RealWeldStrainArray, ComplexWeldStrainArray),
 
     # -------------------------------------
     # strain energy
@@ -998,6 +1061,7 @@ TABLE_OBJ_MAP = {
     'nonlinear_ctetra_stress_strain' : (RealNonlinearSolidArray, ),
     'nonlinear_cpenta_stress_strain' : (RealNonlinearSolidArray, ),
     'nonlinear_chexa_stress_strain' : (RealNonlinearSolidArray, ),
+    'nonlinear_cpyram_stress_strain': (RealNonlinearSolidArray, ),
 
     'stress.hyperelastic_cquad4_stress' : (HyperelasticQuadArray, ),
     'strain.hyperelastic_cquad4_strain' : (HyperelasticQuadArray, ),
@@ -1117,7 +1181,7 @@ def _load_grid_point_weight(h5_result):
     return obj
 
 def _load_eigenvalue(h5_result, encoding: str,
-                     log: SimpleLogger) -> Union[RealEigenvalues, ComplexEigenvalues, BucklingEigenvalues]:
+                     log: SimpleLogger) -> RealEigenvalues | ComplexEigenvalues | BucklingEigenvalues:
     """Loads a RealEigenvalue"""
     class_name = _cast_str(h5_result.get('class_name'), encoding)
     table_name = '???'
@@ -1457,6 +1521,9 @@ def load_op2_from_hdf5_file(model: OP2, h5_file,
                     h5_result = h5_subcase.get(result_name)
                     obj = _load_grid_point_weight(h5_result)
                     model.grid_point_weight[obj.superelement_adaptivity_index] = obj
+                elif result_name == 'cddata':
+                    #h5_result = h5_subcase.get(result_name)
+                    pass
 
                 elif result_name in TABLE_OBJ_KEYS:
                     if debug:

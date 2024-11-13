@@ -208,7 +208,15 @@ class EDT:
         return n
 
     def _read_mkaero2(self, data: bytes, n: int) -> int:
-        mkaero2x
+        op2 = self.op2
+        mks = np.frombuffer(data[n:], dtype=op2.fdtype8)
+        npairs = len(mks) // 2
+        mks = mks.reshape(npairs, 2)
+        machs = mks[:, 0].tolist()
+        ks = mks[:, 0].tolist()
+        op2.add_mkaero1(machs, ks)
+        return len(data)
+
     def _read_csschd(self, data: bytes, n: int) -> int:
         csschd
     def _read_diverg(self, data: bytes, n: int) -> int:
@@ -1405,7 +1413,7 @@ class EDT:
                 desc = 'RBEin'
             elif desc_int == 6:
                 desc = 'RBEex'
-            else:
+            else:  # pragma: no cover
                 raise NotImplementedError(desc_int)
 
             assert min(elements) > 0, elements
@@ -1702,7 +1710,7 @@ class EDT:
         10 NELEM        I Number of elements for FPS on x-axis
         11 MELEM        I Number of elements for FPS on y-axis
         12 FTYPE        I Radial interpolation function for METHOD=RIS  (not in NX)
-        13 RCORE       RS Radius of radial interpolation function      (not in NX)
+        13 RCORE       RS Radius of radial interpolation function       (not in NX)
 
         """
         op2 = self.op2

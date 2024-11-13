@@ -78,7 +78,7 @@ class CROD(RodElement):
         h5_file.create_dataset('pid', data=pids)
         h5_file.create_dataset('nodes', data=nodes)
 
-    def __init__(self, eid, pid, nids, comment=''):
+    def __init__(self, eid: int, pid: int, nids: list[int], comment: str=''):
         """
         Creates a CROD card
 
@@ -88,7 +88,7 @@ class CROD(RodElement):
             element id
         pid : int
             property id (PROD)
-        nids : list[int, int]
+        nids : list[int]
             node ids
         comment : str; default=''
             a comment for the card
@@ -141,7 +141,7 @@ class CROD(RodElement):
 
 
     def cross_reference(self, model: BDF) -> None:
-        msg = ', which is required by CROD eid=%s' % (self.eid)
+        msg = f', which is required by CROD eid={self.eid:d}'
         self.nodes_ref = model.Nodes(self.nodes, msg=msg)
         self.pid_ref = model.Property(self.pid, msg=msg)
 
@@ -377,7 +377,7 @@ class CTUBE(RodElement):
         return CTUBE(eid, pid, nids, comment=comment)
 
     def cross_reference(self, model: BDF) -> None:
-        msg = ', which is required by CTUBE eid=%s' % (self.eid)
+        msg = f', which is required by CTUBE eid={self.eid:d}'
         self.nodes_ref = model.Nodes(self.nodes, msg=msg)
         self.pid_ref = model.Property(self.pid, msg=msg)
 
@@ -648,7 +648,7 @@ class CONROD(RodElement):
         model : BDF()
             the BDF object
         """
-        msg = ', which is required by CONROD eid=%s' % (self.eid)
+        msg = f', which is required by CONROD eid={self.eid:d}'
         self.nodes_ref = model.Nodes(self.nodes, msg=msg)
         self.mid_ref = model.Material(self.mid, msg=msg)
 

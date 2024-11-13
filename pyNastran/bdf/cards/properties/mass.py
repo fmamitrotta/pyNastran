@@ -14,11 +14,14 @@ from typing import TYPE_CHECKING
 from pyNastran.bdf.cards.base_card import expand_thru_by, expand_thru, BaseCard, Property
 from pyNastran.bdf.bdf_interface.assign_type import (
     integer, integer_or_string, double, double_or_blank, string)
+from pyNastran.bdf.bdf_interface.assign_type_force import (
+    force_double_or_blank)
 from pyNastran.bdf.field_writer_8 import print_card_8
 from pyNastran.bdf.field_writer_16 import print_card_16
 from pyNastran.utils.numpy_utils import integer_types, float_types
 if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import BDF
+    from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 
 
 class NSMx(Property):
@@ -30,7 +33,7 @@ class NSMx(Property):
     #: Set points to either Property entries or Element entries.
     #: Properties are:
     valid_properties = [
-        'PSHELL', 'PCOMP', 'PBAR', 'PBARL', 'PBEAM', 'PBEAML', 'PBCOMP',
+        'PSHELL', 'PCOMP', 'PCOMPG', 'PBAR', 'PBARL', 'PBEAM', 'PBEAML', 'PBCOMP',
         'PROD', 'CONROD', 'PBEND', 'PSHEAR', 'PTUBE', 'PCONEAX', 'PRAC2D',
         'ELEMENT', 'PDUM8',
     ]
@@ -147,7 +150,7 @@ class NSMx(Property):
 class NSM1x(Property):
     """Common class for NSM1 and NSML1"""
     valid_properties = [
-        'PSHELL', 'PCOMP', 'PBAR', 'PBARL', 'PBEAM', 'PBEAML', 'PBCOMP',
+        'PSHELL', 'PCOMP', 'PCOMPG', 'PBAR', 'PBARL', 'PBEAM', 'PBEAML', 'PBCOMP',
         'PROD', 'CONROD', 'PBEND', 'PSHEAR', 'PTUBE', 'PCONEAX', 'PRAC2D',
         'ELEMENT',
     ]
@@ -289,7 +292,7 @@ class NSM1(NSM1x):
 
     def __init__(self, sid, nsm_type, value, pid_eid, comment=''):
         """See ``NSM1x``"""
-        assert isinstance(value, float), 'NSM1; value=%r and must be a float' % (value)
+        assert isinstance(value, float), f'NSM1; value={value!r} and must be a float'
         NSM1x.__init__(self, sid, nsm_type, value, pid_eid, comment='')
 
 
@@ -433,7 +436,7 @@ class NSML1(NSM1x):
         comment : str; default=''
             a comment for the card
         """
-        assert isinstance(value, float), 'NSML1; value=%r and must be a float' % (value)
+        assert isinstance(value, float), f'NSML1; value={value!r} and must be a float'
         NSM1x.__init__(self, sid, nsm_type, value, ids, comment=comment)
 
 
@@ -602,7 +605,7 @@ class PMASS(Property):
         mass = 1.
         return PMASS(pid, mass, comment='')
 
-    def __init__(self, pid, mass, comment=''):
+    def __init__(self, pid: int, mass: float, comment: str=''):
         """
         Creates an PMASS card, which defines a mass applied to a single DOF
 
@@ -622,7 +625,7 @@ class PMASS(Property):
         self.mass = mass
 
     @classmethod
-    def add_card(cls, card, icard=0, comment=''):
+    def add_card(cls, card: BDFCard, icard: int=0, comment: str=''):
         """
         Adds a PMASS card from ``BDF.add_card(...)``
 
@@ -639,6 +642,26 @@ class PMASS(Property):
         #: Property ID
         pid = integer(card, 1 + icard, 'pid')
         mass = double_or_blank(card, 2 + icard, 'mass', default=0.)
+        return PMASS(pid, mass, comment=comment)
+
+    @classmethod
+    def add_card_lax(cls, card: BDFCard, icard: int=0, comment: str=''):
+        """
+        Adds a PMASS card from ``BDF.add_card(...)``
+
+        Parameters
+        ----------
+        card : BDFCard()
+            a BDFCard object
+        icard : int; default=0
+            the index of the card that's being parsed
+        comment : str; default=''
+            a comment for the card
+        """
+        icard *= 2
+        #: Property ID
+        pid = integer(card, 1 + icard, 'pid')
+        mass = force_double_or_blank(card, 2 + icard, 'mass', default=0.)
         return PMASS(pid, mass, comment=comment)
 
     @classmethod
@@ -660,6 +683,9 @@ class PMASS(Property):
     def cross_reference(self, model: BDF) -> None:
         pass
 
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        pass
+
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
         pass
@@ -670,7 +696,7 @@ class PMASS(Property):
         assert isinstance(pid, integer_types), 'pid=%r' % pid
         assert isinstance(mass, float), 'mass=%r' % mass
 
-    def Mass(self):
+    def Mass(self) -> float:
         return self.mass
 
     def raw_fields(self):

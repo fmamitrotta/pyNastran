@@ -1,6 +1,6 @@
 from __future__ import annotations
 import os
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import numpy as np
 #from numpy import vstack, amax, amin, arange, ones, zeros, where
 
@@ -62,7 +62,7 @@ cell_type_to_offset_size = {cell_type: nnodes + 1
     #27: 13, # cpyram13
 #}
 
-Results = Union[GuiResult, DisplacementResults, ForceTableResults]
+Results = GuiResult | DisplacementResults | ForceTableResults
 class VtkIO:
     def __init__(self, gui: MainWindow):
         self.gui = gui

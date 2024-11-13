@@ -109,7 +109,7 @@ def remove_unused(bdf_filename: str,
     # this are things that haven't been referenced yet
     not_implemented_types = {
         # not checked------------------------------------------
-        'PHBDY', 'CHBDYG', 'CHBDYP', 'CHBDYE', 'RADBC', # 'CONV',
+        'PHBDY', 'CHBDYG', 'CHBDYP', 'CHBDYE', 'RADBC', 'CONVM', # 'CONV',
         'QVOL', 'PCONVM', # 'PCONV',
         #'PBCOMP', 'PDAMP5', 'CFAST',
         'AECOMP', 'CAERO2', 'CAERO3', 'CAERO4', 'CAERO5',
@@ -122,7 +122,7 @@ def remove_unused(bdf_filename: str,
         'CGEN', 'NXSTRAT',
 
         # axisymmetric
-        'FORCEAX',
+        'FORCEAX', 'PRESAX',
 
         # acoustic
         'PACABS', 'PMIC', 'MATPOR', 'AMLREG', 'CAABSF', 'MICPNT',
@@ -156,6 +156,7 @@ def remove_unused(bdf_filename: str,
         'TEMP', 'QBDY1', 'QBDY2', 'QBDY3', 'QHBDY',
         'ACCEL', 'PLOADX1', 'SLOAD', 'ACCEL1', 'LOADCYN', 'LOAD', 'CLOAD',
         'LSEQ', 'DLOAD', 'QVECT', 'RADM', 'TEMPAX', 'DEFORM',
+        'TEMPRB', 'RANDT1',
         # msgmesh
         #'GMLOAD',
     }
@@ -265,11 +266,11 @@ def remove_unused(bdf_filename: str,
                 prop = model.properties[pid]
                 mids_used.add(prop.Mid())
 
-        elif card_type == 'PLOTEL':
+        elif card_type in {'PLOTEL', 'PLOTEL3', 'PLOTEL4'}:
             for eid in ids:
                 elem = model.plotels[eid]
                 nids_used.update(elem.node_ids)
-        elif card_type in ['PSOLID', 'PLSOLID', 'PIHEX']:
+        elif card_type in {'PSOLID', 'PLSOLID', 'PIHEX'}:
             for pid in ids:
                 prop = model.properties[pid]
                 mids_used.add(prop.Mid())
@@ -277,8 +278,8 @@ def remove_unused(bdf_filename: str,
             for pid in ids:
                 prop = model.properties[pid]
                 mids_thermal_used.add(prop.Mid())
-        elif card_type in ['PBAR', 'PBARL', 'PROD', 'PTUBE', 'PBEAM', 'PBEAML', 'PBEAM3',
-                           'PSHEAR', 'PRAC2D', 'PRAC3D', 'PBEND']:
+        elif card_type in {'PBAR', 'PBARL', 'PROD', 'PTUBE', 'PBEAM', 'PBEAML', 'PBEAM3',
+                           'PSHEAR', 'PRAC2D', 'PRAC3D', 'PBEND'}:
             for pid in ids:
                 prop = model.properties[pid]
                 mids_used.add(prop.Mid())
@@ -287,18 +288,18 @@ def remove_unused(bdf_filename: str,
                 prop = model.properties[pid]
                 mids = [mid for mid in prop.material_ids if mid is not None]
                 mids_used.update(mids)
-        elif card_type in ['PCOMP', 'PCOMPG']:
+        elif card_type in {'PCOMP', 'PCOMPG'}:
             for pid in ids:
                 prop = model.properties[pid]
                 mids = prop.material_ids
                 mids_used.update(mids)
-        elif card_type in ['PBCOMP']:
+        elif card_type == 'PBCOMP':
             for pid in ids:
                 prop = model.properties[pid]
                 mids = prop.Mids()
                 mids_used.add(prop.Mid())
                 mids_used.update(mids)
-        elif card_type in ['PCOMPS', 'PCOMPLS']:
+        elif card_type in {'PCOMPS', 'PCOMPLS'}:
             for pid in ids:
                 prop = model.properties[pid]
                 mids = prop.Mids()
@@ -314,7 +315,7 @@ def remove_unused(bdf_filename: str,
                 prop = model.properties[pid]
                 mids_used.update(mids)
 
-        elif card_type in ['RBAR', 'RBAR1', 'RBE1', 'RBE2', 'RBE3', 'RROD', 'RSPLINE', 'RSSCON']:
+        elif card_type in {'RBAR', 'RBAR1', 'RBE1', 'RBE2', 'RBE3', 'RROD', 'RSPLINE', 'RSSCON'}:
             for eid in ids:
                 elem = model.rigid_elements[eid]
                 #print(elem.object_attributes())
@@ -322,7 +323,7 @@ def remove_unused(bdf_filename: str,
                 nids_used.update(elem.independent_nodes)
                 nids_used.update(elem.dependent_nodes)
 
-        elif card_type in ['TLOAD1', 'TLOAD2', 'RLOAD1', 'RLOAD2', 'ACSRCE']:
+        elif card_type in {'TLOAD1', 'TLOAD2', 'RLOAD1', 'RLOAD2', 'ACSRCE'}:
             pass
         elif card_type in load_types:
             _store_loads(model, card_type, ids, nids_used, eids_used, cids_used)
@@ -345,7 +346,7 @@ def remove_unused(bdf_filename: str,
             for spcadds in model.spcadds.values():
                 for spcadd in spcadds:
                     spcs_used.update(spcadd.spc_ids)
-        elif card_type in ['SPC1', 'SPC', 'GMSPC', 'SPCAX']:
+        elif card_type in {'SPC1', 'SPC', 'GMSPC', 'SPCAX'}:
             for spcs in model.spcs.values():
                 for spc in spcs:
                     if spc.type in ['GMSPC', 'SPCAX']:
@@ -514,7 +515,7 @@ def remove_unused(bdf_filename: str,
                 tfs = model.transfer_functions[tf_id]
                 for transfer_function in tfs:
                     nids_used.update(transfer_function.nids)
-        elif card_type in ['NSM', 'NSM1', 'NSML', 'NSML1']:
+        elif card_type in {'NSM', 'NSM1', 'NSML', 'NSML1'}:
             _store_nsm(model, ids, pids_used)
 
         elif card_type in ['POINTAX', 'AXIC', 'RINGAX']:
@@ -593,7 +594,7 @@ def remove_unused(bdf_filename: str,
                     log.warning('skipping AELIST in MONPNT1/AECOMP')
                 elif aecomp.list_type == 'CAERO':
                     log.warning('skipping CAERO in MONPNT1/AECOMP')
-                else:
+                else:  # pragma: no cover
                     raise NotImplementedError(aecomp)
         elif card_type in {'FREQ', 'FREQ1', 'FREQ2', 'FREQ3', 'FREQ4', 'FREQ5'}:
             # freq_id exists, but we shouldn't be getting rid of it
@@ -601,7 +602,17 @@ def remove_unused(bdf_filename: str,
         #    for freq_id,
         elif card_type in not_implemented_types:
             model.log.warning(f'skipping {card_type}')
-        else:
+        elif card_type == 'SNORM':
+            for nid in ids:
+                card = model.normals[nid]
+                #nid: 1
+                #cid: 0
+                #normal: array([0., 0., 1.])
+                nids_used.add(card.nid)
+                cids_used.add(card.cid)
+            #for nid in ids:
+
+        else:  # pragma: no cover
             raise NotImplementedError(card_type)
 
 
@@ -868,11 +879,21 @@ def _store_loads(model, unused_card_type, unused_ids, nids_used, eids_used, cids
             elif load.type in ['LOAD', 'LSEQ', 'LOADCYN']:
                 pass
             elif load.type in ['QVOL', 'TEMPRB']:
+                # eids: [1901, 1902, 1903, 6901, 11901]
+                # sid: 2
+                # ta: 100.0
+                # tai: [100.0, 100.0, 100.0, 100.0]
+                # tb: 100.0
+                # tbi: [100.0, 100.0, 100.0, 100.0]
+                # tp1: [None, None]
+                # tp2: [None, None]
+                # type: 'TEMPRB'
+                #
                 # eids
                 pass
             elif load.type in ['TEMPAX']:
                 pass # not done...
-            else:
+            else:  # pragma: no cover
                 raise NotImplementedError(load)
 
 def _store_dresp1(model: BDF, ids, nids_used, pids_used, dresps_used):

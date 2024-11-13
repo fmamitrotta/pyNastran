@@ -421,7 +421,7 @@ def _check_dvmrel_options(mp_name, material_type, options):
             'valid: [%s]' % (mp_name, material_type, ', '.join(soptions)))
         raise ValueError(msg)
 
-def _check_dvprel_options(pname_fid: Union[str, int],
+def _check_dvprel_options(pname_fid: str | int,
                           prop_type: str, options):
     if pname_fid not in options:
         soptions = [str(val) for val in options]
@@ -684,7 +684,7 @@ class DCONSTR(OptConstraint):
             the BDF object
 
         """
-        msg = ', which is required by DCONSTR oid=%s' % (self.oid)
+        msg = f', which is required by DCONSTR oid={self.oid:d}'
         self.dresp_id_ref = model.DResp(self.dresp_id, msg)
         if isinstance(self.lid, integer_types):
             self.lid_ref = model.TableD(self.lid, msg)
@@ -1153,7 +1153,6 @@ DOPTPRM_DEFAULTS = {
     'DSMXESL' : 20,
     'DXMAX' : 1.0,
     'DXMIN' : 0.05,  # 1e-5 for topology optimization
-    'DPMIN' : 0.01,
 
     'ETA1' : 0.01,
     'ETA2' : 0.25,
@@ -1288,7 +1287,7 @@ class DOPTPRM(OptConstraint):
             params[param] = val
         return DOPTPRM(params, comment=comment)
 
-    def raw_fields(self) -> list[Union[int, float, str]]:
+    def raw_fields(self) -> list[int | float | str]:
         list_fields = ['DOPTPRM']
         for param, val in sorted(self.params.items()):
             list_fields += [param, val]
@@ -1844,8 +1843,8 @@ class DRESP1(OptConstraint):
                  response_type: str,
                  property_type: str,
                  region: int,
-                 atta: Optional[Union[int, float, str]],
-                 attb: Optional[Union[int, float, str]],
+                 atta: Optional[int | float | str],
+                 attb: Optional[int | float | str],
                  atti: list[int],
                  comment: str='', validate: bool=False):
         """
@@ -2198,7 +2197,7 @@ class DRESP1(OptConstraint):
             the BDF object
 
         """
-        msg = ', which is required by DRESP1 dresp_id=%s' % (self.dresp_id)
+        msg = f', which is required by DRESP1 dresp_id={self.dresp_id:d}'
         msg += '\n' + str(self)
 
         op2_results = [
@@ -2577,7 +2576,7 @@ class DRESP2(OptConstraint):
     type = 'DRESP2'
 
     def __init__(self, dresp_id: int, label: str,
-                 dequation: Union[int, str],
+                 dequation: int | str,
                  region: int, params,
                  method: str='MIN',
                  c1: float=1., c2: float=0.005, c3: float=10.,
@@ -2894,7 +2893,7 @@ class DRESP2(OptConstraint):
         self.dequation = self.DEquation()
         self.dequation_ref = None
 
-    def DEquation(self) -> Union[int, str]:
+    def DEquation(self) -> int | str:
         if self.dequation_ref is None:
             return self.dequation
         return self.dequation_ref.equation_id
@@ -3201,7 +3200,7 @@ class DRESP3(OptConstraint):
             the BDF object
 
         """
-        msg = ', which is required by DRESP3 ID=%s' % (self.dresp_id)
+        msg = f', which is required by DRESP3 ID={self.dresp_id:d}'
         default_values = {}
         params = {}
         for key, vals in sorted(self.params.items()):
@@ -4239,7 +4238,7 @@ class DVMREL1(DVXREL1):
             the BDF object
 
         """
-        msg = ', which is required by DVMREL1 oid=%r' % (self.oid)
+        msg = f', which is required by DVMREL1 oid={self.oid:d}'
         self.mid_ref = model.Material(self.mid, msg=msg)
         self.dvids_ref = [model.Desvar(dvid, msg) for dvid in self.dvids]
 
@@ -4581,6 +4580,30 @@ class DVMREL2(DVXREL2):
 
         #assert self.pid_ref.type not in ['PBEND', 'PBARL', 'PBEAML'], self.pid
 
+
+    def cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        .. todo:: add support for DEQATN cards to finish DVMREL2 xref
+
+        """
+        msg = ', which is required by DVMREL2 oid=%r' % self.oid
+        if self.mat_type in self.allowed_materials:
+            self.mid_ref = model.safe_material(self.mid, self.oid, xref_errors, msg=msg)
+        else:
+            raise NotImplementedError('mat_type=%r is not supported' % self.mat_type)
+        self.dvids_ref = [model.safe_desvar(dvid, self.oid, xref_errors, msg) for dvid in self.dvids]
+        self.dequation_ref = model.DEQATN(self.dequation, msg=msg)
+        self._check_args()
+
+        #assert self.pid_ref.type not in ['PBEND', 'PBARL', 'PBEAML'], self.pid
+
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
         self.mid = self.Mid()
@@ -4866,6 +4889,19 @@ class DVPREL1(DVXREL1):
         msg = ', which is required by DVPREL1 oid=%r' % self.oid
         self.pid_ref = self._get_property(model, self.pid, msg=msg)
         self.dvids_ref = [model.Desvar(dvid, msg) for dvid in self.dvids]
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+        """
+        msg = ', which is required by DVPREL1 oid=%r' % self.oid
+        self.pid_ref = self._get_property(model, self.pid, msg=msg)
+        self.dvids_ref = [model.safe_desvar(dvid, self.oid, xref_errors, msg) for dvid in self.dvids]
 
     def _get_property(self, model: BDF, pid: int, msg: str=''):
         assert isinstance(self.pid, int), type(self.pid)

@@ -11,7 +11,7 @@ import os
 import sys
 import traceback
 import warnings
-from typing import Optional, Union, Any, cast
+from typing import Optional, Any, cast
 from io import StringIO
 
 import numpy as np
@@ -64,7 +64,7 @@ MESH_OPT_CARDS = [
     'GRIDG', 'CGEN', 'SPCG', 'FEEDGE', 'FEFACE', 'ADAPT', # 'EQUIV',
     'PVAL', 'GMCURV', 'GMSURF',
 ]
-FREQS = Union[FREQ1, FREQ2, FREQ3, FREQ4, FREQ5]
+FREQS = FREQ1 | FREQ2 | FREQ3 | FREQ4 | FREQ5
 class MeshOptimizationError(RuntimeError):
     pass
 
@@ -76,9 +76,9 @@ def run_lots_of_files(filenames: list[str], folder: str='',
                       punch: bool=False,
                       nastran: str='',
                       encoding: Optional[str]=None,
-                      size: Union[int, list[int], None]=None,
-                      post: Union[int, list[int], None]=None,
-                      is_double: Union[bool, list[bool], None]=None,
+                      size: int | list[int] | None=None,
+                      post: int | list[int] | None=None,
+                      is_double: bool | list[bool] | None=None,
                       sum_load: bool=True,
                       run_mass: bool=True,
                       dev: bool=True,
@@ -265,6 +265,7 @@ def run_bdf(folder: str, bdf_filename: str,
             encoding=None,
             size=8, is_double=False,
             hdf5=False,
+            is_lax_parser: bool=False,
             stop=False, nastran='', post=-1, dynamic_vars=None,
             quiet=False, dumplines=False, dictsort=False,
             limit_mesh_opt: bool=False,
@@ -361,6 +362,7 @@ def run_bdf(folder: str, bdf_filename: str,
         punch=punch, mesh_form=mesh_form,
         print_stats=print_stats, encoding=encoding,
         sum_load=sum_load, size=size, is_double=is_double,
+        is_lax_parser=is_lax_parser,
         stop=stop, nastran=nastran, post=post, hdf5=hdf5,
         dynamic_vars=dynamic_vars,
         quiet=quiet, dumplines=dumplines, dictsort=dictsort,
@@ -395,6 +397,7 @@ def run_and_compare_fems(
         size: int=8,
         is_double: bool=False,
         save_file_structure: bool=False,
+        is_lax_parser: bool=False,
         stop: bool=False,
         nastran: str='',
         post: int=-1,
@@ -421,6 +424,9 @@ def run_and_compare_fems(
     """runs two fem models and compares them"""
     assert os.path.exists(bdf_model), f'{bdf_model!r} doesnt exist\n%s' % print_bad_path(bdf_model)
     fem1 = BDF(debug=debug, log=log)
+    if is_lax_parser:
+        fem1.log.warning('using lax card parser')
+        fem1.is_lax_parser = True
     fem1.use_new_deck_parser = True
     if version:
         map_version(fem1, version)
@@ -560,7 +566,7 @@ def run_and_compare_fems(
 
     if not quiet:
         print("-" * 80)
-    return (fem1, fem2, diff_cards)
+    return fem1, fem2, diff_cards
 
 
 def run_nastran(bdf_model: str, nastran: str, post: int=-1,
@@ -861,7 +867,7 @@ def remake_model(bdf_model: str, fem1: BDF, pickle_obj: bool) -> BDF:
     if remake:
         #log = fem1.log
         model_name = os.path.splitext(bdf_model)[0]
-        obj_model = '%s.test_bdf.obj' % (model_name)
+        obj_model = f'{model_name}.test_bdf.obj'
         #out_model_8 = '%s.test_bdf.bdf' % (model_name)
         #out_model_16 = '%s.test_bdf.bdf' % (model_name)
 
@@ -1230,12 +1236,12 @@ def check_case(sol: int,
         ierror = check_for_optional_param(('TSTEP', 'TSTEPNL'),
                                           subcase, msg,
                                           RuntimeError, log, ierror, nerrors)
-    elif sol in {1, 101, 'SESTATIC', 'SESTATICS'}:
+    elif sol in {1, 101, 'STATIC', 'STATICS', 'SESTATIC', 'SESTATICS'}:
         _assert_has_spc(subcase, fem2)
         ierror = check_for_optional_param(
             ('LOAD', 'TEMPERATURE(LOAD)', 'P2G'),
             subcase, msg, RuntimeError, log, ierror, nerrors)
-    elif sol in {3, 103, 'SEMODES'}:
+    elif sol in {3, 103, 'MODES', 'SEMODES'}:
         ierror = check_for_optional_param(
             ('METHOD', 'RSMETHOD', 'RIGID', 'BOLTID', 'BGSET'),
             subcase, msg, RuntimeError, log, ierror, nerrors)
@@ -1262,7 +1268,7 @@ def check_case(sol: int,
         ierror = check_for_optional_param(
             ('LOAD', 'TEMPERATURE(LOAD)', 'CLOAD'),
             subcase, msg, RuntimeError, log, ierror, nerrors)
-    elif sol in {7, 107, 'SEDCEIG'}:
+    elif sol in {7, 107, 'DCEIG', 'SEDCEIG'}:
         # direct complex eigenvalue
         _assert_has_spc(subcase, fem2)
         ierror = check_for_optional_param(
@@ -1272,10 +1278,10 @@ def check_case(sol: int,
                                           #RuntimeError, log, ierror, nerrors)
     elif sol in {8, 108}: # freq
         assert 'FREQUENCY' in subcase, subcase
-    elif sol in {109, 'SEDTRAN'}:  # time
+    elif sol in {109, 'DTRAN', 'SEDTRAN'}:  # time
         check_for_flag_in_subcases(fem2, subcase, ('TIME', 'TSTEP', 'TSTEPNL'))
 
-    elif sol in {110, 'SEMCEIG'}:  # modal complex eigenvalues
+    elif sol in {110, 'MCEIG', 'SEMCEIG'}:  # modal complex eigenvalues
         _assert_has_spc(subcase, fem2)
         ierror = check_for_optional_param(
             ('LOAD', 'STATSUB'),
@@ -1283,7 +1289,7 @@ def check_case(sol: int,
     elif sol in {11, 111, 'SEMFREQ'}:  # modal frequency
         assert subcase.has_parameter('FREQUENCY'), msg
         assert any(subcase.has_parameter('METHOD', 'RMETHOD')), msg
-    elif sol in {112, 'SEMTRAN'}:  # modal transient
+    elif sol in {112, 'MTRAN', 'SEMTRAN'}:  # modal transient
         check_for_flag_in_subcases(fem2, subcase, ('TIME', 'TSTEP', 'TSTEPNL'))
         #assert any(subcase.has_parameter('TIME', 'TSTEP', 'TSTEPNL')), 'sol=%s\n%s' % (sol, subcase)
     elif sol == 114:
@@ -1309,11 +1315,11 @@ def check_case(sol: int,
     elif sol in {159, 'NLTCSH'}:  # thermal transient
         assert any(subcase.has_parameter('TIME', 'TSTEP', 'TSTEPNL')), msg
 
-    elif sol == 144:  # aero - trim, diverg
+    elif sol in {144, 'AESTAT'}:  # aero - trim, diverg
         ierror = _check_static_aero_case(fem2, log, sol, subcase, ierror, nerrors)
-    elif sol == 145:  # aero - flutter
+    elif sol in {145, 'SEFLUTTR', 'SEFLUTTER'}:  # aero - flutter
         ierror = _check_flutter_case(fem2, log, sol, subcase, ierror, nerrors)
-    elif sol == 146:  # aero - gust
+    elif sol in {146, 'SEAERO'}:  # aero - gust
         ierror = _check_gust_case(fem2, log, sol, subcase, ierror, nerrors)
 
     elif sol in {153, 'NLSCSH'}:
@@ -1389,11 +1395,11 @@ def _check_static_aero_case(fem2: BDF, log: SimpleLogger, sol: int,
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem2.caeros) == 0:
-        msg = 'An CAEROx card is required for STATIC AERO - SOL %i' % (sol)
+        msg = f'An CAEROx card is required for STATIC AERO - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem2.splines) == 0:
-        msg = 'An SPLINEx card is required for STATIC AERO - SOL %i' % (sol)
+        msg = f'An SPLINEx card is required for STATIC AERO - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     return ierror
@@ -1407,15 +1413,15 @@ def _check_flutter_case(fem2: BDF, log: SimpleLogger, sol: int, subcase: Subcase
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
 
     if len(fem2.caeros) == 0:
-        msg = 'An CAEROx card is required for FLUTTER - SOL %i' % (sol)
+        msg = 'An CAEROx card is required for FLUTTER - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem2.splines) == 0:
-        msg = 'An SPLINEx card is required for FLUTTER - SOL %i' % (sol)
+        msg = f'An SPLINEx card is required for FLUTTER - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem2.mkaeros) == 0:
-        msg = 'An MKAERO1/2 card is required for FLUTTER - SOL %i' % (sol)
+        msg = f'An MKAERO1/2 card is required for FLUTTER - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     unused_mklist = fem2.get_mklist()
@@ -1461,20 +1467,20 @@ def _check_gust_case(fem2: BDF, log: SimpleLogger, sol: int, subcase: Subcase,
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if fem2.aero is None:
-        msg = 'An AERO card is required for GUST - SOL %i' % sol
+        msg = f'An AERO card is required for GUST - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
 
     if len(fem2.caeros) == 0:
-        msg = 'An CAEROx card is required for GUST - SOL %i' % (sol)
+        msg = f'An CAEROx card is required for GUST - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem2.splines) == 0:
-        msg = 'An SPLINEx card is required for GUST - SOL %i' % (sol)
+        msg = f'An SPLINEx card is required for GUST - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem2.mkaeros) == 0:
-        msg = 'An MKAERO1/2 card is required for GUST - SOL %i' % (sol)
+        msg = f'An MKAERO1/2 card is required for GUST - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     unused_mklist = fem2.get_mklist()
@@ -1622,16 +1628,11 @@ def _tstep_msg(fem: BDF,
                tstep_type: str='') -> str:
     """writes the TSTEP/TSTEPNL info"""
     msg = (
-        'tstep%s_id=%s\n'
-        'tsteps=%s\n'
-        'tstepnls=%s\n'
-        #'tstep1s=%s\n'
-        'subcase:\n%s' % (
-            tstep_type, tstep_id,
-            str(fem.tsteps),
-            str(fem.tstepnls),
-            #str(fem.tstep1s),
-            str(subcase))
+        f'tstep{tstep_type}_id={tstep_id}\n'
+        f'tsteps={str(fem.tsteps)}\n'
+        f'tstepnls={str(fem.tstepnls)}\n'
+        #f'tstep1s={str(fem.tstep1s)}\n'
+        f'subcase:\n{str(subcase)}'
     )
     return msg
 
@@ -1901,6 +1902,7 @@ def _check_case_parameters_aero(subcase: Subcase, fem: BDF, sol: int,
                                 ierror: int=0, nerrors: int=100,
                                 stop_on_failure: bool=True) -> int:
     """helper method for ``_check_case_parameters``"""
+    #assert isinstance(sol, int), sol
     log = fem.log
     if 'TRIM' in subcase:
         trim_id = subcase.get_int_parameter('TRIM')[0]
@@ -2103,6 +2105,8 @@ def test_bdf_argparse(argv=None):
                                help='skip loads calcuations (default=False)')
     parent_parser.add_argument('--skip_mass', action='store_true',
                                help='skip mass calcuations (default=False)')
+    parent_parser.add_argument('--lax', action='store_true',
+                               help='use the lax card parser (default=False)')
     parent_parser.add_argument('-q', '--quiet', action='store_true',
                                help='prints debug messages (default=False)')
     # --------------------------------------------------------------------------
@@ -2278,7 +2282,7 @@ def get_test_bdf_usage_args_examples(encoding):
 
 def main(argv=None):
     """The main function for the command line ``test_bdf`` script."""
-    if argv is None:
+    if argv is None:  # pragma: no cover
         argv = sys.argv
 
     data = test_bdf_argparse(argv)
@@ -2331,6 +2335,7 @@ def main(argv=None):
             run_mass=data['run_mass'],
             run_extract_bodies=False,
 
+            is_lax_parser=data['lax'],
             stop=data['stop'],
             quiet=data['quiet'],
             dumplines=data['dumplines'],
@@ -2380,6 +2385,7 @@ def main(argv=None):
             run_mass=data['run_mass'],
             run_extract_bodies=False,
 
+            is_lax_parser=data['lax'],
             stop=data['stop'],
             quiet=data['quiet'],
             dumplines=data['dumplines'],

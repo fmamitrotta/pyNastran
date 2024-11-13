@@ -9,7 +9,7 @@ defines:
 """
 # pylint: disable=R0904,R0902,E1101,E1103,C0111,C0302,C0103,W0101
 from __future__ import annotations
-from typing import cast, Union, Optional, Any, TYPE_CHECKING
+from typing import cast, Optional, Any, TYPE_CHECKING
 
 import numpy as np
 from numpy.linalg import norm
@@ -594,7 +594,7 @@ class CBAR(LineElement):
         ----------
         card : BDFCard()
             a BDFCard object
-        beamor : BAROR() or None
+        baror : BAROR() or None
             defines the defaults
         comment : str; default=''
             a comment for the card
@@ -760,7 +760,7 @@ class CBAR(LineElement):
         """
         #if self.g0:
         #    self.x = nodes[self.g0].get_position() - nodes[self.ga].get_position()
-        msg = ', which is required by CBAR eid=%s' % (self.eid)
+        msg = f', which is required by CBAR eid={self.eid:d}'
         self.ga_ref = model.Node(self.ga, msg=msg)
         self.gb_ref = model.Node(self.gb, msg=msg)
         self.pid_ref = model.Property(self.pid, msg=msg)
@@ -775,7 +775,7 @@ class CBAR(LineElement):
         #self.get_axes(model)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
-        msg = ', which is required by CBAR eid=%s' % (self.eid)
+        msg = f', which is required by CBAR eid={self.eid}'
         self.ga_ref = model.Node(self.ga, msg=msg)
         self.gb_ref = model.Node(self.gb, msg=msg)
         self.nodes_ref = [self.ga_ref, self.gb_ref]
@@ -1152,7 +1152,7 @@ class CBEAM3(LineElement):  # was CBAR
             the BDF object
 
         """
-        msg = ', which is required by CBEAM3 eid=%s' % (self.eid)
+        msg = f', which is required by CBEAM3 ={self.eid:d}'
         self.ga_ref = model.Node(self.ga, msg=msg)
         self.gb_ref = model.Node(self.gb, msg=msg)
         if self.gc is not None:
@@ -1162,7 +1162,7 @@ class CBEAM3(LineElement):  # was CBAR
             self.g0_ref = model.Node(self.g0, msg=msg)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
-        msg = ', which is required by CBEAM3 eid=%s' % (self.eid)
+        msg = f', which is required by CBEAM3 eid={self.eid:d}'
         self.ga_ref = model.Node(self.ga, msg=msg)
         self.gb_ref = model.Node(self.gb, msg=msg)
         if self.gc is not None:
@@ -1292,7 +1292,7 @@ class CBEAM3(LineElement):  # was CBAR
             length = (
                 (b + 2 * a * t) / (4 * a) * np.sqrt(at2btc) +
                 (4 * a * c - b ** 2) / (8 * a ** 1.5) * np.log(
-                    2*a*t + b + 2*np.sqrt(a*(at2btc)))
+                    2*a*t + b + 2*np.sqrt(a*at2btc))
             )
         return length
 
@@ -1755,14 +1755,14 @@ class CBEND(LineElement):
             the BDF object
 
         """
-        msg = ', which is required by CBEND eid=%s' % (self.eid)
+        msg = f', which is required by CBEND eid={self.eid:d}'
         #self.g0 = model.nodes[self.g0]
         self.ga_ref = model.Node(self.ga, msg=msg)
         self.gb_ref = model.Node(self.gb, msg=msg)
         self.pid_ref = model.Property(self.pid, msg=msg)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
-        msg = ', which is required by CBEND eid=%s' % (self.eid)
+        msg = f', which is required by CBEND ={self.eid:d}'
         self.ga_ref = model.Node(self.ga, msg=msg)
         self.gb_ref = model.Node(self.gb, msg=msg)
         self.pid_ref = model.safe_property(self.pid, self.eid, xref_errors, msg=msg)
@@ -1824,7 +1824,7 @@ def init_x_g0(card, eid, x1_default, x2_default, x3_default):
         raise RuntimeError(msg)
     return x, g0
 
-def get_bar_vector(model: BDF, elem: Union[CBAR, CBEAM],
+def get_bar_vector(model: BDF, elem: CBAR | CBEAM,
                    node1: GRID, node2: GRID,
                    xyz1: np.ndarray) -> tuple[np.ndarray,
                                               int, Coord,

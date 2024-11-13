@@ -21,25 +21,25 @@ from __future__ import annotations
 import math
 from itertools import count
 from collections import defaultdict, namedtuple
-from typing import Union, Any, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 
 import numpy as np
 
 from pyNastran.utils.numpy_utils import integer_types
 #from pyNastran.utils import object_attributes
-from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 from pyNastran.bdf.field_writer_8 import set_blank_if_default, print_card_8, print_float_8
 from pyNastran.bdf.cards.base_card import BaseCard, expand_thru
 from pyNastran.bdf.bdf_interface.assign_type import (
     fields, integer, integer_or_blank, double, double_or_blank, string,
-    string_or_blank, integer_or_string,
+    string_or_blank, integer_or_string, integer_string_or_blank,
     interpret_value, parse_components, components_or_blank, blank)
 from pyNastran.bdf.cards.utils import wipe_empty_fields
 from pyNastran.bdf.cards.aero.utils import (
     points_elements_from_quad_points, create_axisymmetric_body)
 if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.nptyping_interface import NDArray3float
-    from pyNastran.bdf.bdf import BDF, BDFCard
+    from pyNastran.bdf.bdf import BDF
+    from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
     import matplotlib
     AxesSubplot = matplotlib.axes._subplots.AxesSubplot
 
@@ -82,8 +82,8 @@ class AECOMP(BaseCard):
         lists = [1]
         return AECOMP(name, list_type, lists, comment='')
 
-    def __init__(self, name: str, list_type: list[str],
-                 lists: Union[int, list[int]],
+    def __init__(self, name: str, list_type: str,
+                 lists: int | list[int],
                  comment: str='') -> None:
         """
         Creates an AECOMP card
@@ -259,7 +259,7 @@ class AECOMPL(BaseCard):
     @classmethod
     def _init_from_empty(cls):
         name = 'HORIZ'
-        labels = 'ELEV'
+        labels = ['ELEV']
         return AECOMPL(name, labels, comment='')
 
     def __init__(self, name: str,
@@ -473,7 +473,7 @@ class AELINK(BaseCard):
         linking_coefficients = [1., 2.]
         return AELINK(aelink_id, label, independent_labels, linking_coefficients, comment='')
 
-    def __init__(self, aelink_id: Union[int, str],
+    def __init__(self, aelink_id: int | str,
                  label: str, independent_labels: list[str],
                  linking_coefficients: list[float],
                  comment: str='') -> None:
@@ -527,12 +527,12 @@ class AELINK(BaseCard):
             assert self.aelink_id >= 0, f"aelink_id={self.aelink_id} and must be greater than or equal to 0 (or 'ALWAYS')"
 
         if len(self.independent_labels) != len(self.linking_coefficients):
-            msg = 'nlabels=%s nci=%s\nindependent_labels=%s linking_coefficients=%s\n%s' % (
+            msg = 'nlabels=%d nci=%d\nindependent_labels=%s linking_coefficients=%s\n%s' % (
                 len(self.independent_labels), len(self.linking_coefficients),
                 self.independent_labels, self.linking_coefficients, str(self))
             raise RuntimeError(msg)
         if len(self.independent_labels) == 0:
-            msg = 'nlabels=%s nci=%s\nindependent_labels=%s linking_coefficients=%s\n%s' % (
+            msg = 'nlabels=%d nci=%d\nindependent_labels=%s linking_coefficients=%s\n%s' % (
                 len(self.independent_labels), len(self.linking_coefficients),
                 self.independent_labels, self.linking_coefficients, str(self))
             raise RuntimeError(msg)
@@ -572,7 +572,7 @@ class AELINK(BaseCard):
         """
         msg = ', which is required by:\n%s' % str(self)
         if self.aelink_id not in {0, 'ALWAYS'}:
-            sid_ref = model.Trim(self.aelink_id, msg=msg)
+            trim_ref = model.Trim(self.aelink_id, msg=msg)
 
         aesurf_names = {aesurf.label for aesurf in model.aesurf.values()}
         aparam_names = {aeparam.label for aeparam in model.aeparams.values()}
@@ -584,12 +584,11 @@ class AELINK(BaseCard):
                                f'aesurf={list(model.aesurf.keys())} aeparam={list(model.aeparams.keys())}')
         elif is_aesurf:
             self.dependent_label_ref = model.AESurf(self.dependent_label,
-                                                    msg='dependent_label={self.dependent_label!r}; '+ msg)
+                                                    msg='dependent_label={self.dependent_label!r}; ' + msg)
         elif is_aeparam:
             self.dependent_label_ref = model.AEParam(self.dependent_label, msg=msg)
         else:
             raise RuntimeError(f'dependent_label={self.dependent_label} is not an AESURF or AEPARM\n{self}')
-
 
         self.independent_labels_ref = []
         for independent_label in self.independent_labels:
@@ -724,8 +723,9 @@ class AELIST(BaseCard):
 
         """
         sid = integer(card, 1, 'sid')
-        elements = fields(integer_or_string, card, 'eid', i=2, j=len(card))
-        return AELIST(sid, elements, comment=comment)
+        elements = fields(integer_string_or_blank, card, 'eid', i=2, j=len(card))
+        elements2 = [elem for elem in elements if elem is not None]
+        return AELIST(sid, elements2, comment=comment)
 
     def cross_reference(self, model: BDF) -> None:
         pass
@@ -908,7 +908,7 @@ class AESURF(BaseCard):
         return AESURF(aesurf_id, label, cid1, aelist_id1,
                       cid2=None, aelist_id2=None, eff=1.0, ldw='LDW',
                       crefc=1.0, crefs=1.0, pllim=-np.pi/2., pulim=np.pi/2.,
-                      hmllim=None, hmulim=None, tqllim=None, tqulim=None, comment='')
+                      hmllim=None, hmulim=None, tqllim=0, tqulim=0, comment='')
 
     def __init__(self, aesurf_id: int, label: str, cid1: int, aelist_id1: int,
                  cid2: Optional[int]=None, aelist_id2: Optional[int]=None,
@@ -916,9 +916,9 @@ class AESURF(BaseCard):
                  crefc: float=1.0, crefs: float=1.0,
                  pllim: float=-np.pi/2., pulim: float=np.pi/2.,
                   # hinge moment lower/upper limits
-                 hmllim: Optional[int]=None, hmulim: Optional[int]=None,
+                 hmllim: Optional[float]=None, hmulim: Optional[float]=None,
                   # TABLEDi deflection limits vs. dynamic pressure
-                 tqllim: Optional[int]=None, tqulim: Optional[int]=None,
+                 tqllim: int=0, tqulim: int=0,
                  comment='') -> None:
         """
         Creates an AESURF card, which defines a control surface
@@ -946,7 +946,7 @@ class AESURF(BaseCard):
         hmllim / hmulim : float; default=None
             Lower/Upper hinge moment limits for the control surface in
             force-length units
-        tqllim / tqulim : int; default=None
+        tqllim / tqulim : int; default=0
             Set identification numbers of TABLEDi entries that provide the
             lower/upper deflection limits for the control surface as a
             function of the dynamic pressure
@@ -1031,10 +1031,10 @@ class AESURF(BaseCard):
         label = string(card, 2, 'label')
 
         cid1 = integer(card, 3, 'cid1')
-        alid1 = integer(card, 4, 'alid1')
+        aelist_id1 = integer(card, 4, 'alid1')
 
         cid2 = integer_or_blank(card, 5, 'cid2')
-        alid2 = integer_or_blank(card, 6, 'alid2')
+        aelist_id2 = integer_or_blank(card, 6, 'alid2')
 
         eff = double_or_blank(card, 7, 'eff', default=1.0)
         ldw = string_or_blank(card, 8, 'ldw', default='LDW')
@@ -1044,38 +1044,18 @@ class AESURF(BaseCard):
         pllim = double_or_blank(card, 11, 'pllim', default=-np.pi / 2.)
         pulim = double_or_blank(card, 12, 'pulim', default=np.pi / 2.)
 
+        # hinge moment limit
         hmllim = double_or_blank(card, 13, 'hmllim')
         hmulim = double_or_blank(card, 14, 'hmulim')
-        tqllim = integer_or_blank(card, 15, 'tqllim')
-        tqulim = integer_or_blank(card, 16, 'tqulim')
+
+        # lower and upper deflection limits for the control surface as a
+        # function of the dynamic pressure.
+        tqllim = integer_or_blank(card, 15, 'tqllim', default=0)
+        tqulim = integer_or_blank(card, 16, 'tqulim', default=0)
         assert len(card) <= 17, f'len(AESURF card) = {len(card):d}\ncard={card}'
-        return AESURF(aesurf_id, label, cid1, alid1, cid2, alid2, eff, ldw,
+        return AESURF(aesurf_id, label, cid1, aelist_id1, cid2, aelist_id2, eff, ldw,
                       crefc, crefs, pllim, pulim, hmllim, hmulim,
                       tqllim, tqulim, comment=comment)
-
-    @property
-    def aesid(self) -> int:
-        return self.aesurf_id
-    @property
-    def alid1(self) -> int:
-        return self.aelist_id1
-    @property
-    def alid2(self) -> int:
-        return self.aelist_id2
-
-    @aesid.setter
-    def aesid(self, aesid: int) -> None:
-        self.aesurf_id = aesid
-    @alid1.setter
-    def alid1(self, alid1: int) -> None:
-        self.aelist_id1 = alid1
-    @aesid.setter
-    def alid2(self, alid2: int) -> None:
-        self.aelist_id2 = alid2
-
-    #@property
-    #def aesid_ref(self):
-        #return self.aesurf_ref
 
     def Cid1(self) -> int:
         if self.cid1_ref is not None:
@@ -1114,9 +1094,9 @@ class AESURF(BaseCard):
         self.aelist_id1_ref = model.AELIST(self.aelist_id1)
         if self.aelist_id2:
             self.aelist_id2_ref = model.AELIST(self.aelist_id2)
-        if self.tqllim is not None:
+        if self.tqllim:  # integer
             self.tqllim_ref = model.TableD(self.tqllim)
-        if self.tqulim is not None:
+        if self.tqulim:  # integer
             self.tqulim_ref = model.TableD(self.tqulim)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
@@ -1129,9 +1109,9 @@ class AESURF(BaseCard):
         if self.aelist_id2:
             self.aelist_id2_ref = model.safe_aelist(self.aelist_id2, self.aesurf_id, xref_errors, msg=msg)
 
-        if self.tqllim is not None:
+        if self.tqllim:  # integer
             self.tqllim_ref = model.safe_tabled(self.tqllim, self.aesurf_id, xref_errors, msg=msg)
-        if self.tqulim is not None:
+        if self.tqulim:  # integer
             self.tqulim_ref = model.safe_tabled(self.tqulim, self.aesurf_id, xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
@@ -1157,9 +1137,9 @@ class AESURF(BaseCard):
         if self.cid2:
             self.cid2 = coord_map[self.cid2]
 
-        self.alid1 = aelist_map[self.alid1]
-        if self.alid2:
-            self.alid2 = aelist_map[self.alid2]
+        self.aelist_idid1 = aelist_map[self.aelist_idid1]
+        if self.aelist_id2:
+            self.aelist_id2 = aelist_map[self.alid2]
 
     def raw_fields(self):
         """
@@ -1195,10 +1175,13 @@ class AESURF(BaseCard):
         pllim = set_blank_if_default(self.pllim, -np.pi / 2.)
         pulim = set_blank_if_default(self.pulim, np.pi / 2.)
 
+        tqllim = set_blank_if_default(self.tqllim, 0)
+        tqulim = set_blank_if_default(self.tqulim, 0)
+
         list_fields = ['AESURF', self.aesurf_id, self.label, self.Cid1(), self.Aelist_id1(),
                        self.Cid2(), self.Aelist_id2(), eff, ldw, crefc, crefs,
-                       pllim, pulim, self.hmllim, self.hmulim, self.tqllim,
-                       self.tqulim]
+                       pllim, pulim, self.hmllim, self.hmulim, tqllim,
+                       tqulim]
         return list_fields
 
     def write_card(self, size: int=8, is_double: bool=False) -> str:
@@ -1250,7 +1233,7 @@ class AESURFS(BaseCard):
         return AESURFS(aesid, label, list1, list2, comment='')
 
     def __init__(self, aesid: int, label: str,
-                 list1: list[int], list2: list[int],
+                 list1: int, list2: int,
                  comment: str='') -> None:
         """
         Creates an AESURFS card
@@ -1522,11 +1505,11 @@ class CAERO1(BaseCard):
         self.p4 = np.asarray(self.p4)
 
     def __init__(self, eid: int, pid: int, igroup: int,
-                   p1: NDArray3float, x12: float,
-                   p4: NDArray3float, x43: float,
-                   cp: int=0,
-                   nspan: int=0, lspan: int=0,
-                   nchord: int=0, lchord: int=0, comment: str=''):
+                 p1: NDArray3float, x12: float,
+                 p4: NDArray3float, x43: float,
+                 cp: int=0,
+                 nspan: int=0, lspan: int=0,
+                 nchord: int=0, lchord: int=0, comment: str=''):
         """
         Defines a CAERO1 card, which defines a simplified lifting surface
         (e.g., wing/tail).
@@ -1548,9 +1531,9 @@ class CAERO1(BaseCard):
             distance along the flow direction from node 1 to node 2; (typically x, root chord)
         x43 : float
             distance along the flow direction from node 4 to node 3; (typically x, tip chord)
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
             int : coordinate system
-            CORDx : Coordinate object (xref)
+            Coord : Coordinate object (xref)
         nspan : int; default=0
             int > 0 : N spanwise boxes distributed evenly
             int = 0 : use lchord
@@ -1611,14 +1594,60 @@ class CAERO1(BaseCard):
         #self._init_ids() #TODO: make this work here?
 
     def validate(self):
+        # we won't write the card if it's bad
+        try:
+            card_str = str(self)
+        except:
+            card_str = ''
+
         msg = ''
         is_failed = False
+        if not isinstance(self.igroup, int):
+            msg += 'igroup=%s and must be an integer\n' % self.igroup
+            is_failed = True
+        if not isinstance(self.cp, int):
+            msg += 'cp=%s and must be an integer\n' % self.cp
+            is_failed = True
+        if not isinstance(self.x12, float):
+            msg += 'x12=%s and must be a float\n' % self.x12
+            is_failed = True
+        if not isinstance(self.x12, float):
+            msg += 'x43=%s and must be a float\n' % self.x43
+            is_failed = True
+
         if not isinstance(self.p1, np.ndarray):
-            msg += 'p1=%s and must be a numpy array\n' % (self.p1)
+            msg += 'p1=%s and must be a numpy array\n' % self.p1
             is_failed = True
         if not isinstance(self.p4, np.ndarray):
-            msg += 'p1=%s and must be a numpy array\n' % (self.p1)
+            msg += 'p4=%s and must be a numpy array\n' % self.p4
             is_failed = True
+        if is_failed:
+            # types are borked, so don't print the card
+            msg += CAERO1_MSG
+            msg += self.get_stats()
+            raise ValueError(msg)
+
+        try:
+            if len(self.p1) != 3:
+                msg += 'p1=%s and must be a numpy array of length=3\n' % self.p1
+                is_failed = True
+            if len(self.p4) != 3:
+                msg += 'p4=%s and must be a numpy array of length=3\n' % self.p4
+                is_failed = True
+            if is_failed:
+                msg += CAERO1_MSG
+                msg += card_str
+                raise ValueError(msg)
+        except TypeError:
+            # len(self.p1)
+            # TypeError: len() of unsized object
+            is_failed = True
+
+        if is_failed:
+            msg += CAERO1_MSG
+            #msg += card_str:  # can't show this cause it's messed up due to bad types/length
+            msg += self.get_stats()
+            raise ValueError(msg)
 
         if self.x12 <= 0. and self.x43 <= 0.:
             msg += f'X12={self.x12} and X43={self.x43}; one must be greater than or equal to 0\n'
@@ -1882,7 +1911,7 @@ class CAERO1(BaseCard):
         self.lspan_ref = None
         self.ascid_ref = None
 
-    def update(self, maps):
+    def update(self, maps: dict[str, dict[int, int]]) -> None:
         """
         Cross links the card so referenced cards can be extracted directly
 
@@ -1949,6 +1978,320 @@ class CAERO1(BaseCard):
             p2 = p1 + self.ascid_ref.transform_vector_to_global(np.array([self.x12, 0., 0.]))
             p3 = p4 + self.ascid_ref.transform_vector_to_global(np.array([self.x43, 0., 0.]))
         return [p1, p2, p3, p4]
+
+    def area(self) -> float:
+        p1, p2, p3, p4 = self.get_points()
+        a = p3 - p1
+        b = p4 - p2
+        area = np.linalg.norm(np.cross(a, b))
+        assert area > 0, f'eid={self.eid} p1={p1} p2={p2} p3={p3} p4={p4} area={area}'
+        return area
+
+    def span_split(self, span_percentage: float) -> tuple[CAERO1, CAERO1]:
+        """
+        ::
+
+          1
+          | \
+          |  14
+          |  |  \
+          |  |   4
+          |  |   |
+          |  |   |
+          2--23--3
+
+        Parameters
+        ----------
+        span_percentage : float
+            the value to split at
+
+        p1 = [0., 0., 0.]
+        x12 = 1.0
+        p4 = [0., 10., 0.]
+        x43 = 1.0
+        nspan = 10
+        span_percentage = 0.10
+        nspan1 = nspan * span_percentage = 1
+        nspan2 = nspan * (1 - span_percentage) = 9
+        """
+        assert 0. < span_percentage < 1.0, span_percentage
+        assert self.nspan > 0, self.nspan
+        p1 = self.p1
+        p4 = self.p4
+        p2 = p1 + np.array([self.x12, 0., 0.])
+        p3 = p4 + np.array([self.x43, 0., 0.])
+        p14: np.ndarray = p1 * (1 - span_percentage) + p4 * span_percentage
+        p23: np.ndarray = p2 * (1 - span_percentage) + p3 * span_percentage
+        x14_23: float = p23[0] - p23[0]
+
+        nspan_a = max(1, int(self.nspan * span_percentage))
+        nspan_b = max(1, int(self.nspan * (1 - span_percentage)))
+
+        eid_a = self.eid
+        eid_b = self.eid + 1
+        pid = self.pid
+        igroup = self.igroup
+        cp = self.cp
+        nchord = self.nchord
+        lchord = self.lchord
+        lspan = self.lspan
+
+        comment_a = (self.comment + ' A').strip()
+        comment_b = (self.comment + ' B').strip()
+        caero_a = CAERO1(eid_a, pid, igroup, p1, self.x12, p14, x14_23,
+                        cp=cp, nspan=nspan_a, lspan=lspan, nchord=nchord, lchord=lchord,
+                        comment=comment_a)
+        caero_b = CAERO1(eid_b, pid, igroup, p14, x14_23, p4, self.x43,
+                         cp=cp, nspan=nspan_b, lspan=lspan, nchord=nchord, lchord=lchord,
+                         comment=comment_b)
+        return caero_a, caero_b
+
+    def span_chord_split(self,
+                         span_percentage: float,
+                         chord_percentage: float, iy: int=1) -> list[CAERO1]:
+        """
+        ::
+
+          1
+          | \
+          |  14
+          |  |  \
+          |  |   4
+          |  |   |
+          12-c--43
+          |  |   |
+          |  |   |
+          2--23--3
+
+        Parameters
+        ----------
+        span_percentage : float
+            the value to split at
+        chord_percentage : float
+            the value to split at
+        iy : int; default=1
+            the dimension to consider as y (if y and z vary, 1/2 will workj)
+
+        p1 = [0., 0., 0.]
+        x12 = 1.0
+        p4 = [0., 10., 0.]
+        x43 = 1.0
+        nspan = 10
+        span_percentage = 0.10
+        nspan1 = nspan * span_percentage = 1
+        nspan2 = nspan * (1 - span_percentage) = 9
+
+        """
+        assert 0. <= span_percentage < 1.0, span_percentage
+        assert 0. <= chord_percentage < 1.0, chord_percentage
+        assert iy in {1, 2}, iy
+        assert self.nspan > 0, self.nspan
+        assert self.nchord > 0, self.nchord
+        p1 = self.p1
+        p4 = self.p4
+        p2 = p1 + np.array([self.x12, 0., 0.])
+        p3 = p4 + np.array([self.x43, 0., 0.])
+        p14: np.ndarray = p1 * (1 - span_percentage) + p4 * span_percentage
+        p23: np.ndarray = p2 * (1 - span_percentage) + p3 * span_percentage
+
+        p12: np.ndarray = p1 * (1 - chord_percentage) + p2 * chord_percentage
+        p43: np.ndarray = p4 * (1 - chord_percentage) + p3 * chord_percentage
+        pc: np.ndarray = p14 * (1 - chord_percentage) + p23 * chord_percentage
+
+        x1_12: float = p12[0] - p1[0]
+        x12_2: float = p2[0] - p12[0]
+
+        x14_c: float = pc[0] - p14[0]
+        xc_23: float = p23[0] - pc[0]
+
+        x4_43: float = p43[0] - p4[0]
+        x43_3: float = p3[0] - p43[0]
+
+        nspan_a = max(1, int(self.nspan * span_percentage))
+        nspan_b = max(1, int(self.nspan * (1 - span_percentage)))
+
+        nchord_a = max(1, int(self.nchord * chord_percentage))
+        nchord_b = max(1, int(self.nchord * (1 - chord_percentage)))
+
+        eid_a = self.eid
+        eid_b = self.eid
+        pid = self.pid
+        igroup = self.igroup
+        cp = self.cp
+        lchord = self.lchord
+        lspan = self.lspan
+
+        eid_a = self.eid
+        eid_b = self.eid + 1
+        eid_c = self.eid + 2
+        eid_d = self.eid + 3
+
+        comment_a = (self.comment + ' A').strip()
+        comment_b = (self.comment + ' B').strip()
+        comment_c = (self.comment + ' C').strip()
+        comment_d = (self.comment + ' D').strip()
+
+        # LE
+        caero_a = CAERO1(eid_a, pid, igroup, p1, x1_12, p14, x14_c,
+                         cp=cp, nspan=nspan_a, lspan=lspan, nchord=nchord_a, lchord=lchord,
+                         comment=comment_a)
+        caero_b = CAERO1(eid_b, pid, igroup, p14, x14_c, p4, x4_43,
+                         cp=cp, nspan=nspan_b, lspan=lspan, nchord=nchord_a, lchord=lchord,
+                         comment=comment_b)
+
+        y1 = p1[iy]
+        y4 = p4[iy]
+        y14 = p14[iy]
+        y1_14 = abs(y14 - y1)
+        y14_4 = abs(y4 - y14)
+
+        caeros = []
+        #print(f'y1 = {y1}')
+        #print(f'y4 = {y4}')
+        #print(f'y1_14 = {y1_14}')
+        #print(f'y14_4 = {y14_4}')
+        inboard_le_chord = (x1_12 > 0. or x14_c > 0.0)
+        outboard_le_chord = (x14_c > 0.0 or x4_43 > 0.)
+        #print(f'inboard_le_chord = {inboard_le_chord}')
+        #print(f'outboard_le_chord = {outboard_le_chord}')
+
+        if (x1_12 > 0. or x14_c > 0.0) and y1_14 > 0.0:
+            caeros.append(caero_a)
+        if (x14_c > 0.0 or x4_43 > 0.) and y14_4 > 0.0:
+            caeros.append(caero_b)
+
+        # TE
+        caero_c = CAERO1(eid_c, pid, igroup, p12, x12_2, pc, xc_23,
+                        cp=cp, nspan=nspan_a, lspan=lspan, nchord=nchord_b, lchord=lchord,
+                        comment=comment_c)
+        caero_d = CAERO1(eid_d, pid, igroup, pc, xc_23, p43, x43_3,
+                         cp=cp, nspan=nspan_b, lspan=lspan, nchord=nchord_b, lchord=lchord,
+                         comment=comment_d)
+
+        inboard_te_chord = (x12_2 > 0. or xc_23 > 0.0)
+        outboard_te_chord = (xc_23 > 0.0 or x43_3 > 0.)
+        #print(f'inboard_te_chord = {inboard_te_chord}')
+        #print(f'outboard_te_chord = {outboard_te_chord}')
+        if (x12_2 > 0. or xc_23 > 0.0) and y1_14 > 0.0:
+            caeros.append(caero_c)
+        if (xc_23 > 0.0 or x43_3 > 0.) and y14_4 > 0.0:
+            caeros.append(caero_d)
+        return caeros
+
+    def generic_split(self, caero_project: CAERO1) -> list[CAERO1]:  # pragma: no cover
+        """
+        the intention of this method is to vary the chord/span across the panel
+
+        ::
+
+          1
+          | \
+          |   \
+          |     \
+          A--B   4
+          |  |   |
+          |  |   |
+          |  |   |
+          |  |   |
+          2--C---3
+
+        Parameters
+        ----------
+        caero_project : CAERO1
+            the caero to project
+
+        TODO: not done...
+
+        """
+        #p1x = np.array([self.p1[0], 0., 0.])
+        p1 = self.p1.copy() #- p1x
+        p4 = self.p4.copy() #- p1x
+        p2 = p1 + np.array([self.x12, 0., 0.])
+        p3 = p4 + np.array([self.x43, 0., 0.])
+
+        q1 = caero_project.p1.copy() #- p1x
+        q4 = caero_project.p4.copy() #- p1x
+        q2 = q1 + np.array([caero_project.x12, 0., 0.])
+        q3 = q4 + np.array([caero_project.x43, 0., 0.])
+
+        # https://stackoverflow.com/questions/41797953/how-to-find-the-intersection-of-two-lines-given-a-point-on-each-line-and-a-paral
+        #x = x1 + t1 * dx1
+        #y = y1 + t1 * dy1
+        #x = x2 + t2 * dx2
+        #y = y2 + t2 * dy2
+        #
+        #x = x0a + dxa×t
+        #y = y0a + dya×t
+        #x = x0b + dxb×u
+        #y = y0b + dyb×u
+
+        def points_in_polygon(polygoni: np.ndarray, pts: np.ndarray) -> np.ndarray:
+            contour2 = np.vstack((polygoni[1:], polygoni[:1]))
+            test_diff = contour2 - polygoni
+            mask1 = (pts[:, None] == polygoni).all(-1).any(-1)
+            m1 = (polygoni[:, 1] > pts[:, None, 1]) != (contour2[:, 1] > pts[:, None, 1])
+            slope = ((pts[:, None, 0] - polygoni[:, 0]) * test_diff[:, 1]) - (
+                        test_diff[:, 0] * (pts[:, None, 1] - polygoni[:, 1]))
+            m2 = slope == 0
+            mask2 = (m1 & m2).any(-1)
+            m3 = (slope < 0) != (contour2[:, 1] < polygoni[:, 1])
+            m4 = m1 & m3
+            count = np.count_nonzero(m4, axis=-1)
+            mask3 = ~(count % 2 == 0)
+            mask = mask1 | mask2 | mask3
+            return mask
+
+        iy = 1
+        polygon = np.vstack([p1, p2, p3, p4])[:, [0, iy]]
+        points = np.vstack([q1, q2, q3, q4])[:, [0, iy]]
+        iq1, iq2, iq3, iq4 = points_in_polygon(polygon, points)
+
+        caeros = []
+        nq = (iq1 + iq2 + iq3 + iq4)
+        if nq == 4:
+            #
+            # p1--------p4
+            # |          |
+            # |   q1-q4  |
+            # |   |   |  |
+            # |   q2-q3  |
+            # |          |
+            # p2--------p3
+            raise RuntimeError('all points q in p')
+        elif nq == 3:
+            # p1--------p4
+            # |          |
+            # |   q1-----|---q4
+            # |   |      | /
+            # |   |      /
+            # |   q2-q3  |
+            # |          |
+            # p2--------p3
+            raise RuntimeError('one point q not in p')
+        elif nq == 2:
+            # p1--------p4
+            # |          |
+            # |   q1-----|---q4
+            # |   |      |    |
+            # |   |      |    |
+            # |   q2-----|---q3
+            # |          |
+            # p2--------p3
+            raise RuntimeError('two point q not in p')
+        elif nq == 1:
+            # p1--------p4
+            # |          |
+            # |   q1-----*---q4
+            # |   |      |    |
+            # p2--*-----p3    |
+            #     |           |
+            #     q2---------q3
+            raise RuntimeError('primary case')
+        elif nq == 0:
+            return caeros
+        else:  # pragma: no cover
+            raise RuntimeError(f'nq = {nq}')
+        return caeros
 
     def get_box_index(self, box_id: int) -> tuple[int, int]:
         """
@@ -2585,6 +2928,7 @@ class CAERO2(BaseCard):
                 dxyz[i, :] = xr * L
             ystation = dxyz[:, 1]
             zstation = dxyz[:, 2]
+        #get_xyz_station_2d(self):
 
         # I think this just lets you know what directions it can pivot in
         # and therefore doesn't affect visualization
@@ -2668,10 +3012,11 @@ class CAERO3(BaseCard):
         return CAERO3(eid, pid, list_w, p1, x12, p4, x43,
                       cp=0, list_c1=None, list_c2=None, comment='')
 
-    def __init__(self, eid, pid, list_w,
-                 p1, x12, p4, x43,
-                 cp=0, list_c1=None, list_c2=None,
-                 comment=''):
+    def __init__(self, eid: int, pid: int, list_w: int,
+                 p1: np.ndarray, x12: float,
+                 p4: np.ndarray, x43: float,
+                 cp: int=0, list_c1=None, list_c2=None,
+                 comment: str=''):
         """
         Creates a CAERO2 card, which defines a wing with a wing break/cant.
 
@@ -2851,6 +3196,14 @@ class CAERO3(BaseCard):
         p2 = p1 + self.ascid_ref.transform_vector_to_global(np.array([self.x12, 0., 0.]))
         p3 = p4 + self.ascid_ref.transform_vector_to_global(np.array([self.x43, 0., 0.]))
         return [p1, p2, p3, p4]
+
+    def area(self) -> float:
+        p1, p2, p3, p4 = self.get_points()
+        a = p3 - p1
+        b = p4 - p2
+        area = np.linalg.norm(np.cross(a, b))
+        assert area > 0, f'eid={self.eid} p1={p1} p2={p2} p3={p3} p4={p4} area={area}'
+        return area
 
     def panel_points_elements(self):
         """
@@ -3569,19 +3922,21 @@ class CAERO5(BaseCard):
 
         return points_elements_from_quad_points(p1, p4, p3, p2, y, x, dtype='int32')
 
-    def c1_c2(self, mach):
+    def c1_c2(self, mach: float):
         p1, unused_p2, unused_p3, p4 = self.get_points()
         #i = p2 - p1
         #ihat = i / norm(i)
-        #k = cross(ihat, p4-p1)
+        #k = np.cross(ihat, p4-p1)
         #khat = k / norm(k)
-        #jhat = cross(khat, ihat)
+        #jhat = np.cross(khat, ihat)
         #b = self.p4 - self.p1
         L = np.linalg.norm(p4 - p1)
 
         # b = L * cos(Lambda)
         # ci = L * sin(Lambda)
 
+        c1 = None
+        c2 = None
         if self.ntheory == 0:
             # piston theory
             pass
@@ -3714,7 +4069,7 @@ class MONPNT1(BaseCard):
             The coordinates in the CP coordinate system about which the
             loads are to be monitored.
             None : [0., 0., 0.]
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
            coordinate system of XYZ
         cd : int; default=None -> cp
             the coordinate system for load outputs
@@ -3990,8 +4345,8 @@ class MONPNT3(BaseCard):
                        cp=0, cd=None, xflag=None, comment='')
 
     def __init__(self, name: str, label: str, axes: str,
-                 grid_set_group: Union[int, str],
-                 elem_set_group: Union[int, str],
+                 grid_set_group: int | str,
+                 elem_set_group: int | str,
                  xyz: list[float],
                  cp: int=0, cd=None, xflag=None, comment=''):
         """
@@ -4188,7 +4543,7 @@ class MONDSP1(BaseCard):
             The coordinates in the CP coordinate system about which the
             loads are to be monitored.
             None : [0., 0., 0.]
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
            coordinate system of XYZ
         cd : int; default=None -> cp
             the coordinate system for load outputs
@@ -4416,7 +4771,7 @@ class PAERO1(BaseCard):
             if isinstance(caero_body_id, integer_types) and caero_body_id >= 0:
                 caero_body_ids2.append(caero_body_id)
             elif caero_body_id is not None:
-                msg = 'invalid caero_body_id value on PAERO1; caero_body_id=%r' % (caero_body_id)
+                msg = f'invalid caero_body_id value on PAERO1; caero_body_id={caero_body_id}'
                 raise RuntimeError(msg)
             #else:
                 #pass
@@ -5463,13 +5818,13 @@ class SPLINE1(Spline):
             self.setg_ref.cross_reference_set(model, 'Node', msg=msg)
             nnodes = len(self.setg_ref.ids)
             if nnodes < 3:
-                msg = 'SPLINE1 requires at least 3 nodes; nnodes=%s\n' % (nnodes)
+                msg = f'SPLINE1 requires at least 3 nodes; nnodes={nnodes}\n'
                 msg += str(self)
                 msg += str(self.setg_ref)
                 raise RuntimeError(msg)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
-        msg = ', which is required by SPLINE1 eid=%s' % self.eid
+        msg = f', which is required by SPLINE1 eid={self.eid}'
         self.caero_ref = model.safe_caero(self.caero, self.eid, xref_errors, msg=msg)
         #self.setg_ref = model.safe_set(self, self.setg, self.eid, xref_errors, msg=msg)
     #def safe_set(self, setg, set_type, self.eid, xref_errors, msg=''):
@@ -5483,7 +5838,7 @@ class SPLINE1(Spline):
 
             nnodes = len(self.setg_ref.ids)
             if nnodes < 3:
-                msg = 'SPLINE1 requires at least 3 nodes; nnodes=%s\n' % (nnodes)
+                msg = f'SPLINE1 requires at least 3 nodes; nnodes={nnodes}\n'
                 msg += str(self)
                 msg += str(self.setg_ref)
                 model.log.warning(msg)
@@ -5684,13 +6039,13 @@ class SPLINE2(Spline):
             self.setg_ref.cross_reference_set(model, 'Node', msg=msg)
             nnodes = len(self.setg_ref.ids)
             if nnodes < 2:
-                msg = 'SPLINE2 requires at least 2 nodes; nnodes=%s\n' % (nnodes)
+                msg = f'SPLINE2 requires at least 2 nodes; nnodes={nnodes}\n'
                 msg += str(self)
                 msg += str(self.setg_ref)
                 raise RuntimeError(msg)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
-        msg = ', which is required by SPLINE2 eid=%s' % self.eid
+        msg = f', which is required by SPLINE2 eid={self.eid}'
         self.cid_ref = model.safe_coord(self.Cid(), self.eid, xref_errors, msg=msg)
 
         try:
@@ -5707,7 +6062,7 @@ class SPLINE2(Spline):
 
                 nnodes = len(self.setg_ref.ids)
                 if nnodes < 2:
-                    msg = 'SPLINE2 requires at least 2 nodes; nnodes=%s\n' % (nnodes)
+                    msg = f'SPLINE2 requires at least 2 nodes; nnodes={nnodes}\n'
                     msg += str(self)
                     msg += str(self.setg_ref)
                     raise RuntimeError(msg)
@@ -6185,7 +6540,7 @@ class SPLINE4(Spline):
         usage = data[6]
         nelements = data[7]
         melements = data[8]
-        assert len(data) == 9, 'data = %s' % (data)
+        assert len(data) == 9, f'data = {data}'
         return SPLINE4(eid, caero, aelist, setg, dz, method, usage,
                        nelements, melements, comment=comment)
 
@@ -6218,7 +6573,7 @@ class SPLINE4(Spline):
             the BDF object
 
         """
-        msg = ', which is required by SPLINE4 eid=%s' % self.eid
+        msg = f', which is required by SPLINE4 eid={self.eid}'
         self.caero_ref = model.CAero(self.CAero(), msg=msg)
         self.setg_ref = model.Set(self.Set(), msg=msg)
         self.aelist_ref = model.AEList(self.aelist, msg=msg)
@@ -6229,7 +6584,7 @@ class SPLINE4(Spline):
             self.setg_ref.cross_reference_set(model, 'Node', msg=msg)
             nnodes = len(self.setg_ref.ids)
             if nnodes < 3:
-                msg = 'SPLINE4 requires at least 3 nodes; nnodes=%s\n' % (nnodes)
+                msg = f'SPLINE4 requires at least 3 nodes; nnodes={nnodes}\n'
                 msg += str(self)
                 msg += str(self.setg_ref)
                 raise RuntimeError(msg)
@@ -6245,7 +6600,7 @@ class SPLINE4(Spline):
             the BDF object
 
         """
-        msg = ', which is required by SPLINE4 eid=%s' % self.eid
+        msg = f', which is required by SPLINE4 eid={self.eid}'
         self.caero_ref = model.safe_caero(self.caero, self.eid, xref_errors, msg=msg)
         self.aelist_ref = model.safe_aelist(self.aelist, self.eid, xref_errors, msg=msg)
         self.setg_ref = model.Set(self.Set(), msg=msg)
@@ -6257,7 +6612,7 @@ class SPLINE4(Spline):
 
             nnodes = len(self.setg_ref.ids)
             if nnodes < 3:
-                msg = 'SPLINE4 requires at least 3 nodes; nnodes=%s\n' % (nnodes)
+                msg = f'SPLINE4 requires at least 3 nodes; nnodes={nnodes}\n'
                 msg += str(self)
                 msg += str(self.setg_ref)
                 raise ValueError(msg)
@@ -6452,13 +6807,13 @@ class SPLINE5(Spline):
             self.setg_ref.cross_reference_set(model, 'Node', msg=msg)
             nnodes = len(self.setg_ref.ids)
             if nnodes < 3:
-                msg = 'SPLINE1 requires at least 3 nodes; nnodes=%s\n' % (nnodes)
+                msg = f'SPLINE5 requires at least 3 nodes; nnodes={nnodes}\n'
                 msg += str(self)
                 msg += str(self.setg_ref)
                 raise RuntimeError(msg)
 
     def safe_cross_reference(self, model: BDF, xref_errors):
-        msg = ', which is required by SPLINE5 eid=%s' % self.eid
+        msg = f', which is required by SPLINE5 eid={self.eid}'
         self.cid_ref = model.safe_coord(self.cid, self.eid, xref_errors, msg=msg)
         self.caero_ref = model.safe_caero(self.caero, self.eid, xref_errors, msg=msg)
 
@@ -6466,7 +6821,7 @@ class SPLINE5(Spline):
             self.setg_ref = model.Set(self.setg, msg=msg)
             nnodes = len(self.setg_ref.ids)
             if nnodes < 3:
-                msg = 'SPLINE5 requires at least 3 nodes; nnodes=%s\n' % (nnodes)
+                msg = f'SPLINE5 requires at least 3 nodes; nnodes={nnodes}\n'
                 msg += str(self)
                 msg += str(self.setg_ref)
                 raise RuntimeError(msg)
@@ -6734,3 +7089,7 @@ def build_caero_paneling(model: BDF) -> tuple[str, list[str], Any]:
     )
     #print(all_control_surface_name, caero_control_surface_names)
     return all_control_surface_name, caero_control_surface_names, out
+
+CAEROs = CAERO1 | CAERO2 | CAERO3 | CAERO4 | CAERO5
+PAEROs = PAERO1 | PAERO2 | PAERO3 | PAERO4 | PAERO5
+SPLINEs = SPLINE1 | SPLINE2 | SPLINE3 | SPLINE4 | SPLINE5

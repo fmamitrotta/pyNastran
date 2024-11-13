@@ -8,7 +8,7 @@ reading/writing/accessing of BDF data.  Such methods include:
 
 """
 from collections import defaultdict
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import numpy as np
 
@@ -134,8 +134,6 @@ class BDFMethods(BDFAttributes):
         stop_if_no_mass : bool; default=True
             prevents crashing if there are no elements
             setting this to False really doesn't make sense for non-DMIG models
-        detailed : bool, optional, default : False
-            Separates structural and nonstructural mass outputs.
 
         Returns
         -------
@@ -176,7 +174,9 @@ class BDFMethods(BDFAttributes):
 
 
 
-    def get_element_faces(self, element_ids: Optional[list[int]]=None, allow_blank_nids: bool=True) -> Any:
+    def get_element_faces(self,
+                          element_ids: Optional[list[int]]=None,
+                          allow_blank_nids: bool=True) -> Any:
         """
         Gets the elements and faces that are skinned from solid elements.
         This includes internal faces, but not existing shells.

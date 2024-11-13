@@ -17,8 +17,8 @@ All coordinate cards are defined in this file.  This includes:
 from __future__ import annotations
 import copy
 from math import sqrt, degrees, radians, atan2, acos, sin, cos
-from abc import abstractproperty, abstractmethod
-from typing import Union, TYPE_CHECKING
+#from abc import abstractproperty, abstractmethod
+from typing import TYPE_CHECKING
 import numpy as np
 from numpy.linalg import norm  # type: ignore
 
@@ -112,11 +112,11 @@ def normalize(v):
     return v / norm_v
 
 
-class Coord(BaseCard):
+class CoordBase(BaseCard):
     type = 'COORD'
 
     def __init__(self):
-        """Defines a general CORDxx object"""
+        """Defines a general Coord object"""
         #: have all the transformation matricies been determined
         self.is_resolved = False
         self.cid = None
@@ -156,8 +156,8 @@ class Coord(BaseCard):
             #print("e12 = %s" % e12)
         except TypeError:
             msg = ''
-            msg += "\ntype = %s\n" % (self.type)
-            msg += "\ncid  = %s\n" % (self.Cid())
+            msg += f"\ntype = {self.type}\n"
+            msg += f"\ncid  = {self.Cid()}\n"
             msg += "e1 = %s\n" % str(e1)
             msg += "e2 = %s\n" % str(e2)
             msg += "e3 = %s\n" % str(e3)
@@ -168,7 +168,7 @@ class Coord(BaseCard):
             self.k = normalize(e12)
         except RuntimeError:
             print("---InvalidUnitVectorError---")
-            print("Cp  = %s" % (self.Cid()))
+            print(f"Cp  = {self.Cid()}")
             print("e1  = %s" % (self.e1))
             print("e2  = %s" % (self.e2))
             print("e3  = %s" % (self.e3))
@@ -250,8 +250,8 @@ class Coord(BaseCard):
             assert len(self.e3) == 3, self.e3
         except AssertionError:
             msg = 'Invalid Vector Length\n'
-            msg += "type = %s\n" % (self.type)
-            msg += "cid  = %s\n" % (self.cid)
+            msg += f"type = {self.type}\n"
+            msg += f"cid  = {self.cid:d}\n"
             msg += "e1 = %s\n" % str(self.e1)
             msg += "e2 = %s\n" % str(self.e2)
             msg += "e3 = %s\n" % str(self.e3)
@@ -304,8 +304,8 @@ class Coord(BaseCard):
             #print("e12 = %s" % e12)
         except TypeError:
             msg = ''
-            msg += "\ntype = %s\n" % (self.type)
-            msg += "\ncid  = %s\n" % (self.cid)
+            msg += f"\ntype = {self.type}\n"
+            msg += f"\ncid  = {self.cid:d}\n"
             msg += "e1 = %s\n" % str(e1)
             msg += "e2 = %s\n" % str(e2)
             msg += "e3 = %s\n" % str(e3)
@@ -316,7 +316,7 @@ class Coord(BaseCard):
             self.k = normalize(e12)
         except RuntimeError:
             print("---InvalidUnitVectorError---")
-            print("Cp  = %s" % (self.cid))
+            print(f"Cp  = {self.cid}")
             print("e1  = %s" % (self.e1))
             print("e2  = %s" % (self.e2))
             print("e3  = %s" % (self.e3))
@@ -333,7 +333,7 @@ class Coord(BaseCard):
             self.j = normalize(np.cross(self.k, e13))
         except RuntimeError:
             print("---InvalidUnitVectorError---")
-            print("Cp  = %s" % (self.cid))
+            print(f"Cp  = {self.cid}")
             print("e1  = %s" % (self.e1))
             print("e2  = %s" % (self.e2))
             print("e3  = %s" % (self.e3))
@@ -535,7 +535,7 @@ class Coord(BaseCard):
         #Mg = self.transform_vector_to_global(self, M)
 
         #r = self.origin #  maybe a minus sign?
-        #Mdelta = cross(r, Fg)
+        #Mdelta = np.cross(r, Fg)
         #return Fg, Mg + Mdelta
 
     def transform_vector_to_global_assuming_rectangular(self, p):
@@ -827,7 +827,7 @@ class Coord(BaseCard):
         beta = self.beta()
         return self._transform_node_to_local_array(xyz, beta)
 
-    def transform_node_from_local_to_local(self, coord_to: CORDx,
+    def transform_node_from_local_to_local(self, coord_to: Coord,
                                            xyz: NDArray3float) -> NDArray3float:
         """
         Converts an xyz coordinate in an arbitrary system to a different one
@@ -839,7 +839,7 @@ class Coord(BaseCard):
         xyz_local = coord_to.transform_node_to_local(xyz_global)
         return xyz_local
 
-    def transform_node_from_local_to_local_array(self, coord_to: CORDx,
+    def transform_node_from_local_to_local_array(self, coord_to: Coord,
                                                  xyz: NDArray3float) -> NDArray3float:
         """
         Converts an xyz coordinate array in an arbitrary system to a different one
@@ -1039,10 +1039,10 @@ def define_spherical_cutting_plane(model: BDF,
 
     """
     if len(cids) != len(thetas):
-        msg = 'len(cids)=%s len(thetas)=%s; must be equal' % (len(cids, len(thetas)))
+        msg = f'len(cids)={len(cids)} len(thetas)={len(thetas)}; must be equal'
         raise RuntimeError(msg)
     if len(cids) != len(phis):
-        msg = 'len(cids)=%s len(phis)=%s; must be equal' % (len(cids, len(phis)))
+        msg = f'len(cids)={len(cids)} len(phis)={len(phis)}; must be equal'
         raise RuntimeError(msg)
 
     # check for duplicate coords
@@ -1071,7 +1071,7 @@ def define_coord_e123(model: BDF, cord2_type: str, cid: int,
                       xyplane=None, yzplane=None, xzplane=None, add=True):
     """
     Create a coordinate system based on a defined axis and point on the
-    plane.  This is the generalized version of the CORDx card.
+    plane.  This is the generalized version of the Coord card.
 
     Parameters
     ----------
@@ -1820,7 +1820,7 @@ class SphericalCoord:
         return global_to_basic_spherical(self, xyz_global, dtype='float64')
 
 
-class Cord2x(Coord):
+class Cord2x(CoordBase):
     """
     Parent class for:
      - CORD2R
@@ -1851,7 +1851,7 @@ class Cord2x(Coord):
 
         """
         assert isinstance(rid, integer_types), 'rid=%r type=%s' % (rid, type(rid))
-        Coord.__init__(self)
+        super().__init__()
         if comment:
             self.comment = comment
         self.cid = cid
@@ -1963,11 +1963,11 @@ class Cord2x(Coord):
         origin : (3,) ndarray
              defines the location of the origin in the global coordinate frame
         xaxis : (3,) ndarray
-            defines the x axis (default=None)
+            defines the x-axis (default=None)
         yaxis : (3,) ndarray
-            defines the y axis (default=None)
+            defines the y-axis (default=None)
         zaxis : (3,) ndarray
-            defines the z axis (default=None)
+            defines the z-axis (default=None)
 
         Notes
         -----
@@ -2143,7 +2143,7 @@ class Cord2x(Coord):
         Parameters
         ----------
         xref : bool
-            has this model been cross referenced
+            has this model been cross-referenced
 
         """
         cid = self.Cid()
@@ -2216,7 +2216,7 @@ class Cord2x(Coord):
 
     def cross_reference(self, model: BDF) -> None:
         """
-        Cross links the card so referenced cards can be extracted directly
+        Cross-links the card so referenced cards can be extracted directly
 
         Parameters
         ----------
@@ -2246,7 +2246,7 @@ class Cord2x(Coord):
         return self.rid
 
 
-class Cord1x(Coord):
+class Cord1x(CoordBase):
     """
     Parent class for:
      - CORD1R
@@ -2287,7 +2287,7 @@ class Cord1x(Coord):
 
 
         """
-        Coord.__init__(self)
+        super().__init__()
         if comment:
             self.comment = comment
 
@@ -2502,7 +2502,7 @@ class Cord1x(Coord):
         return self.comment + print_card_16(card)
 
 
-class CORD3G(Coord):
+class CORD3G(CoordBase):
     """
     Defines a general coordinate system using three rotational angles as
     functions of coordinate values in the reference coordinate system.
@@ -2545,7 +2545,7 @@ class CORD3G(Coord):
             a comment for the card
 
         """
-        Coord.__init__(self)
+        super().__init__()
         if comment:
             self.comment = comment
         self.cid = cid
@@ -3353,4 +3353,5 @@ def transform_spherical_to_rectangular(rtp: np.ndarray) -> np.ndarray:
     return xyz
 
 
-CORDx = Union[CORD1R, CORD1C, CORD1S, CORD2R, CORD2C, CORD2S]
+Coord = CORD1R | CORD1C | CORD1S | \
+        CORD2R | CORD2C | CORD2S

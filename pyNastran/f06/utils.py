@@ -4,7 +4,13 @@ defines:
 
 """
 from __future__ import annotations
+import sys
 from typing import Optional, TYPE_CHECKING
+
+from docopt import docopt, __version__ as docopt_version
+import pyNastran
+
+
 #import matplotlib
 #matplotlib.use('Qt5Agg')
 #from pyNastran.gui.matplotlib_backend import  matplotlib_backend
@@ -16,8 +22,8 @@ PLOT_TYPES = '[--eas|--tas|--density|--mach|--alt|--q]'
 USAGE_145 = (
     'Usage:\n'
     '  f06 plot_145 F06_FILENAME [--noline] [--modes MODES] [--subcases SUB] [--xlim XLIM] [--ylimdamp DAMP] [--ylimfreq FREQ]'
-    f'{PLOT_TYPES} [--kfreq] [--rootlocus] [--in_units IN] [--out_units OUT] [--nopoints] [--export_zona] [--f06] '
-    '[--vd_limit VD_LIMIT] [--damping_limit DAMPING_LIMIT]\n'
+    f'{PLOT_TYPES} [--kfreq] [--rootlocus] [--in_units IN] [--out_units OUT] [--nopoints] [--export_csv] [--export_zona] [--f06] '
+    '[--vd_limit VD_LIMIT] [--damping_limit DAMPING_LIMIT] [--ncol NCOL]\n'
 )
 USAGE_200 = (
     'Usage:\n'
@@ -25,15 +31,14 @@ USAGE_200 = (
 )
 if TYPE_CHECKING:  # pragma: no cover
     from cpylog import SimpleLogger
+    from pyNastran.f06.flutter_response import FlutterResponse
 
-def cmd_line_plot_flutter(argv=None, plot=True, show=True, log=None):
+def cmd_line_plot_flutter(argv=None, plot: bool=True, show: bool=True,
+                          log: Optional[SimpleLogger]=None) -> dict[int, FlutterResponse]:
     """the interface to ``f06 plot_145`` on the command line"""
-    import sys
     import os
-    from docopt import docopt, __version__ as docopt_version
-    import pyNastran
     from pyNastran.f06.parse_flutter import plot_flutter_f06, float_types
-    if argv is None:
+    if argv is None:  # pragma: no cover
         argv = sys.argv
     msg = (
         USAGE_145 +
@@ -60,11 +65,13 @@ def cmd_line_plot_flutter(argv=None, plot=True, show=True, log=None):
         'Units:\n'
         '  --in_units IN    Selects the input unit system\n'
         '                   si (kg, m, s) -> m/s (default)\n'
+        '                   si_mm (Mg, mm, s) -> mm/s\n'
         '                   english_ft (slug/ft^3, ft, s) -> ft/s\n'
         '                   english_in (slinch/in^3, in, s) -> in/s\n'
 
         '  --out_units OUT  Selects the output unit system (default=in_units)\n'
         '                   si (kg, m, s) -> m/s\n'
+        '                   si_mm (Mg, mm, s) -> mm/s\n'
         '                   english_ft (slug/ft^3, ft, s) -> ft/s\n'
         '                   english_in (slinch/in^3, in, s) -> in/s\n'
         '                   english_kt (slinch/in^3, nm, s) -> knots\n'
@@ -75,9 +82,11 @@ def cmd_line_plot_flutter(argv=None, plot=True, show=True, log=None):
         '  --xlim XLIM      the velocity limits (default=no limit)\n'
         '  --ylimfreq FREQ  the damping limits (default=no limit)\n'
         '  --ylimdamp DAMP  the damping limits (default=-0.3:0.3)\n'
+        '  --ncol NCOL      the number of columns for the legend\n'
         "  --nopoints       don't plot the points\n"
         "  --noline         don't plot the lines\n"
         '  --export_zona    export a zona file\n'
+        '  --export_csv     export a CSV file\n'
         '  --f06            export an F06 file (temporary)\n'
         '  --vd_limit VD_LIMIT            add a Vd and 1.15*Vd line\n'
         '  --damping_limit DAMPING_LIMIT  add a damping limit\n'
@@ -96,8 +105,8 @@ def cmd_line_plot_flutter(argv=None, plot=True, show=True, log=None):
     assert docopt_version >= '0.9.0', docopt_version
     data = docopt(msg, version=ver, argv=argv[1:])
     f06_filename = data['F06_FILENAME']
+    base = os.path.splitext(f06_filename)[0]
     if f06_filename.lower().endswith(('.bdf', '.op2')):
-        base = os.path.splitext(f06_filename)[0]
         f06_filename = base + '.f06'
 
     modes = split_int_colon(data['--modes'], start_value=1)
@@ -114,6 +123,10 @@ def cmd_line_plot_flutter(argv=None, plot=True, show=True, log=None):
     if data['--ylimfreq']:
         ylim_freq = split_float_colons(data['--ylimfreq'])
 
+    ncol = 0
+    if data['--ncol']:
+        ncol = int(data['--ncol'])
+
     # the default units is in SI because there isn't a great default unit
     # system for English.  Better to just make it easy for one system.
     # I rarely want my --out_units to be english_in (I use english_kt), whereas
@@ -125,7 +138,7 @@ def cmd_line_plot_flutter(argv=None, plot=True, show=True, log=None):
         else:
             in_units = data['--in_units']
     in_units = in_units.lower()
-    assert in_units in ['si', 'english_in', 'english_ft', 'english_kt'], 'in_units=%r' % in_units
+    assert in_units in {'si', 'si_mm', 'english_in', 'english_ft', 'english_kt'}, 'in_units=%r' % in_units
 
     # The default used to be SI, but it's really weird when I'm working in
     # English units and my output is in SI
@@ -137,7 +150,7 @@ def cmd_line_plot_flutter(argv=None, plot=True, show=True, log=None):
             out_units = data['--out_units']
     out_units = out_units.lower()
 
-    assert out_units in ['si', 'english_in', 'english_ft', 'english_kt'], 'out_units=%r' % out_units
+    assert out_units in {'si', 'si_mm', 'english_in', 'english_ft', 'english_kt'}, 'out_units=%r' % out_units
 
     plot_type = 'tas'
     if data['--eas']:
@@ -170,41 +183,49 @@ def cmd_line_plot_flutter(argv=None, plot=True, show=True, log=None):
     noline = data['--noline']
 
     export_f06 = data['--f06']
+    export_csv = data['--export_csv']
     export_zona = data['--export_zona']
     export_f06_filename = None if export_f06 is False else 'nastran.f06'
     export_zona_filename = None if export_zona is False else 'nastran.zona'
     export_veas_filename = None if export_zona is False else 'nastran.veas'
 
     # TODO: need a new parameter
-    vg_filename = None if export_zona is  None else 'vg_subcase_%d.png'
-    vg_vf_filename = None if export_zona is  None else 'vg_vf_subcase_%d.png'
-    kfreq_damping_filename = None if export_zona is  None else 'kfreq_damping_subcase_%d.png'
-    root_locus_filename = None if export_zona is  None else 'root_locus_subcase_%d.png'
+    export_csv_filename = None if export_csv is None else base + '.plot_145_subcase_%d.csv'
+
+    vg_filename = None if export_zona is None else 'vg_subcase_%d.png'
+    vg_vf_filename = None if export_zona is None else 'vg_vf_subcase_%d.png'
+    kfreq_damping_filename = None if export_zona is None else 'kfreq_damping_subcase_%d.png'
+    root_locus_filename = None if export_zona is None else 'root_locus_subcase_%d.png'
     if not plot:
         return
 
     assert vd_limit is None or isinstance(vd_limit, float_types), vd_limit
     assert damping_limit is None or isinstance(damping_limit, float_types), damping_limit
 
-    plot_flutter_f06(f06_filename, modes=modes,
-                     plot_type=plot_type,
-                     f06_units=in_units,
-                     out_units=out_units,
-                     plot_root_locus=plot_root_locus, plot_vg_vf=True, plot_vg=False,
-                     plot_kfreq_damping=plot_kfreq_damping,
-                     xlim=xlim,
-                     ylim_damping=ylim_damping, ylim_freq=ylim_freq,
-                     vd_limit=vd_limit,
-                     damping_limit=damping_limit,
-                     nopoints=nopoints,
-                     noline=noline,
-                     export_veas_filename=export_veas_filename,
-                     export_zona_filename=export_zona_filename,
-                     export_f06_filename=export_f06_filename,
-                     vg_filename=vg_filename,
-                     vg_vf_filename=vg_vf_filename,
-                     root_locus_filename=root_locus_filename,
-                     kfreq_damping_filename=kfreq_damping_filename, show=show, log=log)
+    flutter_responses = plot_flutter_f06(
+        f06_filename, modes=modes,
+        plot_type=plot_type,
+        f06_units=in_units,
+        out_units=out_units,
+        plot_root_locus=plot_root_locus, plot_vg_vf=True, plot_vg=False,
+        plot_kfreq_damping=plot_kfreq_damping,
+        xlim=xlim,
+        ylim_damping=ylim_damping, ylim_freq=ylim_freq,
+        vd_limit=vd_limit,
+        damping_limit=damping_limit,
+        nopoints=nopoints,
+        noline=noline,
+        ncol=ncol,
+        export_csv_filename=export_csv_filename,
+        export_veas_filename=export_veas_filename,
+        export_zona_filename=export_zona_filename,
+        export_f06_filename=export_f06_filename,
+        vg_filename=vg_filename,
+        vg_vf_filename=vg_vf_filename,
+        root_locus_filename=root_locus_filename,
+        kfreq_damping_filename=kfreq_damping_filename, show=show, log=log)
+    return flutter_responses
+
 
 def get_cmd_line_float(data: dict[str, str], key: str) -> float:
     try:
@@ -214,6 +235,7 @@ def get_cmd_line_float(data: dict[str, str], key: str) -> float:
         raise
     value = float(svalue)
     return value
+
 
 def split_float_colons(string_values: str) -> list[float]:
     """
@@ -243,7 +265,9 @@ def split_float_colons(string_values: str) -> list[float]:
         values = None # all values
     return values
 
-def split_int_colon(modes: str, nmax: int=1000, start_value: int=0) -> list[int]:
+
+def split_int_colon(modes: str, nmax: int=1000,
+                    start_value: int=0) -> list[int]:
     """
     Uses numpy-ish syntax to parse a set of integers.  Values are inclusive.
     Blanks are interpreted as 0 unless start_value is specified.
@@ -276,7 +300,7 @@ def split_int_colon(modes: str, nmax: int=1000, start_value: int=0) -> list[int]
                         assert len(smode) == 2, smode
                     else:
                         iend = int(smode[1])
-                        assert iend > istart, 'smode=%s; istart=%s iend=%s' % (smode, istart, iend)
+                        assert iend > istart, f'smode={smode}; istart={istart} iend={iend}'
                         modes2 += list(range(istart, iend + 1))
                 elif len(smode) == 3:
                     #start_str, stop_str, step_str = smode
@@ -293,11 +317,11 @@ def split_int_colon(modes: str, nmax: int=1000, start_value: int=0) -> list[int]
                         modes2 += list(range(istart, nmax, istep))
                     else:
                         iend = int(smode[1]) + 1
-                        assert iend > istart, 'smode=%s; istart=%s iend=%s' % (smode, istart, iend)
+                        assert iend > istart, f'smode={smode}; istart={istart} iend={iend}'
                         modes2 += list(range(istart, iend, istep))
 
                 else:
-                    raise NotImplementedError('mode=%r; len=%s' % (mode, len(smode)))
+                    raise NotImplementedError(f'mode={mode!r}; len={len(smode)}')
             else:
                 imode = int(mode)
                 modes2.append(imode)
@@ -313,14 +337,12 @@ def split_int_colon(modes: str, nmax: int=1000, start_value: int=0) -> list[int]
         pass
     return modes
 
-def cmd_line_plot_optimization(argv=None, plot: bool=True, show: bool=True, log: Optional[SimpleLogger]=None):
+
+def cmd_line_plot_optimization(argv=None, plot: bool=True, show: bool=True,
+                               log: Optional[SimpleLogger]=None):
     """the interface to ``f06 plot_145`` on the command line"""
-    import sys
-    #import os
-    from docopt import docopt
-    import pyNastran
     from pyNastran.f06.dev.read_sol_200 import plot_sol_200
-    if argv is None:
+    if argv is None:  # pragma: no cover
         argv = sys.argv
     msg = (
         USAGE_200 +
@@ -383,10 +405,10 @@ def cmd_line_plot_optimization(argv=None, plot: bool=True, show: bool=True, log:
 
     plot_sol_200(f06_filename, show=True)
 
-def cmd_line(argv=None, plot=True, show=True, log=None):
+def cmd_line(argv=None, plot: bool=True, show: bool=True,
+             log: Optional[SimpleLogger]=None) -> None:
     """the interface to ``f06`` on the command line"""
-    import sys
-    if argv is None:
+    if argv is None:  # pragma: no cover
         argv = sys.argv
 
     msg = (
@@ -401,14 +423,14 @@ def cmd_line(argv=None, plot=True, show=True, log=None):
         sys.exit(msg)
 
     #assert sys.argv[0] != 'bdf', msg
-
     if argv[1] == 'plot_145':
         cmd_line_plot_flutter(argv=argv, plot=plot, show=show, log=log)
     elif argv[1] == 'plot_200':
         cmd_line_plot_optimization(argv=argv, plot=plot, show=show, log=log)
-    else:
+    else:  # pragma: no cover
         sys.exit(msg)
         #raise NotImplementedError('arg1=%r' % argv[1])
+
 
 if __name__ == '__main__':  # pragma: no cover
     cmd_line()

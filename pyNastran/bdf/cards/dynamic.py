@@ -1034,7 +1034,7 @@ class FREQ5(FREQ):
         i = 1
         fractions = []
         for ifield in range(4, len(card)):
-            fraction = double(card, ifield, 'FR%i' % (i))
+            fraction = double(card, ifield, f'FR%{i:d}')
             fractions.append(fraction)
             i += 1
         return FREQ5(sid, fractions, f1=f2, f2=f2, comment=comment)
@@ -2764,3 +2764,5 @@ class TIC(BaseCard):
             for nid, comp, u0, v0 in zip(node_ids, self.components, self.u0, self.v0):
                 msg += print_card_16(['TIC', self.sid, nid, comp, u0, v0])
         return msg
+
+FREQs = FREQ | FREQ1 | FREQ2 | FREQ3 | FREQ4 | FREQ5

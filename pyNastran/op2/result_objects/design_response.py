@@ -188,7 +188,7 @@ class WeightResponse:
 
     def get_stats(self, short: bool=False):
         if short:
-            return 'responses.weight_response (%s)\n' % (self.n)
+            return f'responses.weight_response ({self.n:d})\n'
         return self.__repr__() + '\n'
 
 
@@ -593,7 +593,7 @@ class DSCMCOL:
         external_ids = []
         for resp in self.responses.values():
             external_ids.append(resp['external_response_id'])
-            print(resp)
+            #print(resp)
         return external_ids
 
     @property

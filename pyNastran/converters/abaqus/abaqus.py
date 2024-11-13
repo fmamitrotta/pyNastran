@@ -1,7 +1,7 @@
 """Defines the Abaqus class"""
 import os
 from io import StringIO
-from typing import Union, Optional, Any
+from typing import Optional, Any
 
 import numpy as np
 from cpylog import SimpleLogger, get_logger2
@@ -24,7 +24,7 @@ def read_abaqus(abaqus_inp_filename, encoding=None,
 class Abaqus:
     """defines the abaqus reader"""
     def __init__(self, log: Optional[SimpleLogger]=None,
-                 debug: Union[str, bool, None]=True):
+                 debug: str | bool | None=True):
         self.debug = debug
         self.parts: dict[str, Part] = {}
         self.boundaries: dict[str, Boundary] = {}

@@ -10,15 +10,12 @@ import sys
 import traceback
 from pickle import load, dump
 from collections import defaultdict
-from typing import List, Union, Optional
+from typing import Optional
 
 import numpy as np
-in1d = np.in1d
-#if not hasattr(np, 'in'):  # pragma: no cover
-    #np.in = np.in1d
 from cpylog import SimpleLogger, get_logger2, __version__ as CPYLOG_VERSION
 
-from pyNastran.utils import object_attributes, check_path # _filename
+from pyNastran.utils import object_attributes, check_path
 from pyNastran.bdf.bdf_interface.utils import (
     to_fields, _parse_pynastran_header, parse_executive_control_deck)
 
@@ -223,7 +220,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
     #: required for sphinx bug
     #: http://stackoverflow.com/questions/11208997/autoclass-and-instance-attributes
     #__slots__ = ['_is_dynamic_syntax']
-    def __init__(self, debug: Union[str, bool, None],
+    def __init__(self, debug: str | bool | None,
                  log: Optional[SimpleLogger]=None, mode: str='msc'):
         """
         Initializes the BDF object
@@ -904,7 +901,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
 
         self._parse_primary_file_header(bdf_filename)
 
-        self.log.debug('---starting BDF.read_bdf of %s---' % self.bdf_filename)
+        self.log.debug(f'---starting BDF.read_bdf of {self.bdf_filename}---')
 
         #executive_control_lines, case_control_lines, \
             #bulk_data_lines = self.get_lines(self.bdf_filename, self.punch)
@@ -2325,7 +2322,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             nodes[ngrids+nspoints:] = self.epoint.points
         return nodes
 
-    def get_xyz_in_coord(self, cid=0, fdtype='float64', sort_ids=True, dtype='float64'):
+    def get_xyz_in_coord(self, cid=0, fdtype='float64', sort_ids=True):
         """
         Gets the xyz points (including SPOINTS) in the desired coordinate frame
 
@@ -2358,7 +2355,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             raise NotImplementedError('EPOINT')
 
         assert ngrids + nspoints + nepoints > 0, 'ngrids=%s nspoints=%s nepoints=%s' % (ngrids, nspoints, nepoints)
-        xyz_cid0 = np.zeros((ngrids + nspoints + nepoints, 3), dtype=dtype)
+        xyz_cid0 = np.zeros((ngrids + nspoints + nepoints, 3), dtype=fdtype)
         if cid == 0:
             xyz_cid0 = self.grid.get_position_by_node_index()
             assert nspoints == 0, nspoints
@@ -2548,9 +2545,10 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
         unsupported_types = ignored_types.union(ignored_types2)
         all_params = object_attributes(self, keys_to_skip=unsupported_types)
 
-        msg = ['---BDF Statistics---']
-        # sol
-        msg.append('SOL %s\n' % self.sol)
+        msg = [
+            '---BDF Statistics---',
+            'SOL %s\n' % self.sol,
+        ]
 
         # loads
         for (lid, loads) in sorted(self.loads.items()):
@@ -2643,9 +2641,9 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
 
         Parameters
         ----------
-        fdtype : str
+        fdtype : str; default='float64'
             the type of xyz_cp
-        int32 : str
+        idtype : str; default='int32'
             the type of nid_cp_cd
 
         Returns
@@ -2706,7 +2704,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
                 #raise NotImplementedError('EPOINTs')
 
         if nnodes + nspoints + nepoints == 0:
-            msg = 'nnodes=%s nspoints=%s nepoints=%s' % (nnodes, nspoints, nepoints)
+            msg = f'nnodes={nnodes:d} nspoints={nspoints:d} nepoints={nepoints:d}'
             raise ValueError(msg)
 
         #xyz_cid0 = np.zeros((nnodes + nspoints, 3), dtype=dtype)
@@ -2743,7 +2741,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             if cd in [0, -1]:
                 continue
             nids = np.array(nids)
-            icd_transform[cd] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cd] = np.where(np.isin(nids_all, nids))[0]
             if cd in nids_cp_transform:
                 icp_transform[cd] = icd_transform[cd]
         for cp, nids in sorted(nids_cd_transform.items()):
@@ -2752,7 +2750,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             if cp in icd_transform:
                 continue
             nids = np.array(nids)
-            icd_transform[cd] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cd] = np.where(np.isin(nids_all, nids))[0]
 
         return icd_transform, icp_transform, xyz_cp, nid_cp_cd
 
@@ -2859,7 +2857,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
         nids_all = np.array(sorted(self.point_ids))
         for cid in sorted(nids_transform.keys()):
             nids = np.array(nids_transform[cid])
-            icd_transform[cid] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cid] = np.where(np.isin(nids_all, nids))[0]
         return nids_all, nids_transform, icd_transform
 
     def get_displacement_index_transforms(self):
@@ -2916,7 +2914,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
         nids_all = np.array(sorted(self.point_ids))
         for cid in sorted(nids_transform.keys()):
             nids = np.array(nids_transform[cid])
-            icd_transform[cid] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cid] = np.where(np.isin(nids_all, nids))[0]
             beta_transforms[cid] = self.coords[cid].beta()
         return icd_transform, beta_transforms
 

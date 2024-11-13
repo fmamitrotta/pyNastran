@@ -3,7 +3,7 @@ Defines:
  - pierce_shell_model(bdf_filename, xyz_points, tol=1.0)
 """
 from itertools import count
-from typing import Optional, Union, Any
+from typing import Optional, Any
 import numpy as np
 from pyNastran.bdf.bdf import BDF, read_bdf
 from pyNastran.bdf.mesh_utils.bdf_equivalence import _get_tree
@@ -78,7 +78,7 @@ def triangle_intersection(orig: np.ndarray, direction: np.ndarray,
     return orig + direction * (e2.dot(qvec) * inv_det)
 
 
-def pierce_shell_model(bdf_filename: Union[BDF, str], xyz_points: Any,
+def pierce_shell_model(bdf_filename: BDF | str, xyz_points: Any,
                        tol: float=1.0) -> tuple[list[int], np.ndarray, list[list[int]]]:
     """
     Pierces a shell model with a <0., 0., 1.> vector.  In other words,

@@ -8,7 +8,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 import numpy as np
 
-from pyNastran.femutils.utils import pivot_table, unique2d
+from pyNastran.femutils.utils import unique2d # pivot_table,
 
 from pyNastran.op2.result_objects.stress_object import _get_nastran_header
 from pyNastran.op2.op2_interface.op2_classes import (
@@ -20,11 +20,15 @@ from pyNastran.op2.tables.oes_stressStrain.real.oes_solids_nx import RealSolidAr
 from pyNastran.op2.tables.oes_stressStrain.complex.oes_solids import ComplexSolidArray
 
 from pyNastran.converters.nastran.gui.result_objects.simple_table_results import SimpleTableResults
-from pyNastran.converters.nastran.gui.result_objects.layered_table_results import LayeredTableResults
+from pyNastran.converters.nastran.gui.result_objects.layered_table_results import (
+    LayeredTableResults)
 
-from pyNastran.converters.nastran.gui.result_objects.plate_stress_results import PlateStrainStressResults2
-from pyNastran.converters.nastran.gui.result_objects.solid_stress_results import SolidStrainStressResults2
-from pyNastran.converters.nastran.gui.result_objects.composite_stress_results import CompositeStrainStressResults2
+from pyNastran.converters.nastran.gui.result_objects.plate_stress_results import (
+    PlateStrainStressResults2, get_real_plate_cases, plate_cases_to_iresult, _get_plates)
+from pyNastran.converters.nastran.gui.result_objects.solid_stress_results import (
+    SolidStrainStressResults2, get_real_solid_cases, solid_cases_to_iresult, _get_solids)
+from pyNastran.converters.nastran.gui.result_objects.composite_stress_results import (
+    CompositeStrainStressResults2, get_composite_methods, _composite_method_map)
 from pyNastran.converters.nastran.gui.types import CasesDict, NastranKey, KeysMap, KeyMap
 
 if TYPE_CHECKING: # pragma: no cover
@@ -50,7 +54,8 @@ def nocrash_log(func):
             if stop_on_failure:
                 raise
             ncases2 = len(cases)
-            icase += ncases2 - ncases
+            # TODO: was icase += ncases2 - ncases; explicitly pass icase?
+            icase = ncases2 - ncases
         return icase
     return wrapper
 
@@ -815,69 +820,20 @@ def get_plate_stress_strains2(cases: CasesDict,
     """
     if not use_new_sidebar_objects:  # pragma: no cover
         return icase
-    plates, word, subcase_id, analysis_code = _get_plates(model, key, is_stress, prefix)
 
-    plate_cases = []
-    for iplate, result in enumerate(plates):
-        #if result:
-        #print(f'keys[{iplate}] = {result.keys()}')
-        if key not in result:
-            continue
-        plate_case = result[key]
-        if plate_case.is_complex:
-            continue
-        eids = np.unique(plate_case.element_node[:, 0])
-        common_eids = np.intersect1d(element_id, eids)
-        if len(common_eids) == 0:
-            continue
-        #ieids = np.unique(np.searchsorted(element_id, eids))
-        #if element_id[ieids[0]] != eids[0]
-        plate_cases.append(plate_case)
+    plate_cases, subcase_id = get_real_plate_cases(
+        element_id, model, key, is_stress, prefix,
+        require_results=False)
 
     if len(plate_cases) == 0:
         return icase
 
-    #plate_case_headers = plate_case.get_headers()
-    is_von_mises = plate_case.is_von_mises
-    assert isinstance(is_von_mises, bool), is_von_mises
-    von_mises = 7 if is_von_mises else 'von_mises'
-    max_shear = 7 if not is_von_mises else 'max_shear'
-    #print(case_headers)
-    if is_stress:
-        # [fiber_dist, 'oxx', 'oyy', 'txy', 'angle', 'omax', 'omin', ovm]
-        iresult_to_title_annotation_map = {
-            # iresult: (sidebar_label, annotation)
-            0 : ('FiberDistance', 'Fiber Distance'),
-            1 : ('Normal XX', 'XX'),
-            2 : ('Normal YY', 'YY'),
-            3 : ('Shear XY', 'XY'),
-            4 : ('Theta', 'Theta'),
-            5 : ('Max Principal', 'Max Principal'),
-            6 : ('Min Principal', 'Min Principal'),
-            'abs_principal' : ('Abs Principal', 'Abs Principal'),
-            von_mises : ('von Mises', 'von Mises'), # the magnitude is large
-            max_shear : ('Max Shear', 'Max Shear'), # the magnitude is large
-        }
-        word = 'Stress'
-    else:
-        iresult_to_title_annotation_map = {
-            # iresult: (sidebar_label, annotation)
-            #'fiber_curvature' : 'FiberCurvature',
-            0 : ('FiberDistance', 'Fiber Distance'),
-            1 : ('Normal XX', 'XX'),
-            2 : ('Normal YY', 'YY'),
-            3 : ('Shear XY', 'XY'),
-            4 : ('Theta', 'Theta'),
-            5 : ('Max Principal', 'Max Principal'),
-            6 : ('Min Principal', 'Min Principal'),
-            'abs_principal' : ('Abs Principal', 'Abs Principal'),
-            von_mises : ('von Mises', 'von Mises'),  # the magnitude is small
-            max_shear : ('Max Shear', 'Max Shear'),  # the magnitude is small
-        }
-        word = 'Strain'
+    plate_case = plate_cases[0]
+    iresult_to_title_annotation_map, is_fiber_distance, word, max_sheari = plate_cases_to_iresult(
+        plate_cases, is_stress)
 
     if not use_new_terms:
-        del iresult_to_title_annotation_map[max_shear]
+        del iresult_to_title_annotation_map[max_sheari]
         del iresult_to_title_annotation_map['abs_principal']
 
     title = f'Plate {word}'
@@ -892,7 +848,7 @@ def get_plate_stress_strains2(cases: CasesDict,
         data_format='%g', is_variable_data_format=False,
         nlabels=None, labelsize=None, ncolors=None, colormap='',
         set_max_min=False,
-        is_fiber_distance=plate_case.is_fiber_distance,
+        is_fiber_distance=is_fiber_distance,
         eid_to_nid_map=eid_to_nid_map,
         uname='PlateStressStrainResults2')
 
@@ -914,46 +870,11 @@ def get_plate_stress_strains2(cases: CasesDict,
             icase += 1
     return icase
 
-def _get_plates(model: OP2,
-                key,
-                is_stress: bool,
-                prefix: str) -> tuple[str, list, int, int]:
-    analysis_code = key[1]
-    #print("***stress eids=", eids)
-    subcase_id = key[0]
-    if prefix == 'modal_contribution':
-        results = model.op2_results.modal_contribution
-        preword = 'Modal Contribution '
-    elif prefix == '':
-        if is_stress:
-            results = model.op2_results.stress
-        else:
-            results = model.op2_results.strain
-        preword = ''
-    else:  # pragma: no cover
-        raise NotImplementedError(prefix)
-
-    if is_stress:
-        plates = [
-            results.ctria3_stress, results.cquad4_stress,
-            results.ctria6_stress, results.cquad8_stress,
-            results.ctriar_stress, results.cquadr_stress, # results.cquad_stress,
-        ]
-        word = preword + 'Stress'
-    else:
-        plates = [
-            results.ctria3_strain, results.cquad4_strain,
-            results.ctria6_strain, results.cquad8_strain,
-            results.ctriar_strain, results.cquadr_strain, # results.cquad_strain,
-        ]
-        word = preword + 'Strain'
-
-    plates2 = [plate for plate in plates if len(plates)]
-    return plates2, word, subcase_id, analysis_code
 
 def _stack_composite_results(model: OP2, log: SimpleLogger,
                              is_stress: bool,
                              key=None):
+
     if is_stress:
         stress = model.op2_results.stress
         case_map = {
@@ -988,7 +909,7 @@ def _stack_composite_results(model: OP2, log: SimpleLogger,
                 log.warning(f'skipping strength ratio {case.table_name_str}')
                 continue
             key_cases[key].append(case)
-            if (case_key != key or key in keys_map):
+            if case_key != key or key in keys_map:
                 continue
             keys_map[key] = KeyMap(case.subtitle, case.label,
                                    case.superelement_adaptivity_index,
@@ -1109,19 +1030,7 @@ def get_composite_plate_stress_strains2(cases: CasesDict,
         if key not in keys_map:
             keys_map[key] = value
 
-    case = cases2[key]
-    case_headers = case.get_headers()
-    word, method_map = _composite_method_map(is_stress)
-    methods = [method_map[headeri] for headeri in case_headers]
-
-    # verify we don't crash when we try to pivot later
-    # why does this happen???
-    _datai = case.data[0, :, 0]
-    _eids = case.element_layer[:, 0]
-    _layer = case.element_layer[:, 1]
-    unused_mytable, unused_myrows = pivot_table(_datai, _eids, _layer, shape=1)
-    utable = unique2d(case.element_layer)
-    assert np.array_equal(case.element_layer, utable)
+    case, method_map, methods, word = get_composite_methods(key, cases2, is_stress)
 
     if len(case._times) != case.data.shape[0]:
         return icase
@@ -1182,6 +1091,7 @@ def get_composite_plate_stress_strains(cases: CasesDict,
     """
     if not use_old_sidebar_objects:  # pragma: no cover
         return icase
+
     case_map, keys_map2, cases2 = _stack_composite_results(
         model, log, is_stress, key=key)
     if len(case_map) == 0:
@@ -1229,7 +1139,7 @@ def get_composite_plate_stress_strains(cases: CasesDict,
 
     case_headers = case.get_headers()
     #print('case_headers =', case_headers, vm_word)
-    word, method_map = _composite_method_map(is_stress)
+    method_map, word = _composite_method_map(is_stress)
     methods = [method_map[headeri] for headeri in case_headers]
 
     #headersi = case.get_headers()
@@ -1302,42 +1212,6 @@ def get_composite_plate_stress_strains(cases: CasesDict,
     #assert len(cases) == icase
     return icase
 
-def _composite_method_map(is_stress: bool,
-                          ) -> tuple[str, dict[str, str]]:
-    if is_stress:
-        word = 'Stress'
-        method_map = {
-            #'fiber_distance' : 'FiberDist.',
-            'o11' : 'Stress 11',
-            'o22' : 'Stress 22',
-            't12' : 'Stress 12',
-            't1z' : 'Stress 1Z',
-            't2z' : 'Stress 2Z',
-            'angle' : 'Theta',
-            'major' : 'Max Principal',
-            'minor' : 'Min Principal',
-            'max_shear' : 'Max Shear',
-            #'von_mises' : 'von Mises',
-        }
-    else:
-        word = 'Strain'
-        method_map = {
-            #'fiber_distance' : 'FiberDist.',
-            'e11' : 'Strain 11',
-            'e22' : 'Strain 22',
-            'e12' : 'Strain 12',
-            'e1z' : 'Strain 1Z',
-            'e2z' : 'Strain 2Z',
-            'angle' : 'Theta',
-            'major' : 'Max Principal',
-            'minor' : 'Min Principal',
-            'max_shear' : 'Max Shear',
-            #'von_mises' : 'von Mises',
-        }
-    #methods = ['fiber_distance'] + [method_map[headeri] for headeri in case_headers]
-    #methods = case_headers
-    return word, method_map
-
 @nocrash_log
 def get_solid_stress_strains2(cases: CasesDict,
                               node_id: np.ndarray,
@@ -1365,67 +1239,20 @@ def get_solid_stress_strains2(cases: CasesDict,
     """
     if not use_new_sidebar_objects:  # pragma: no cover
         return icase
-    solids, word, subcase_id, analysis_code = _get_solids(
-        model, key, is_stress, prefix)
 
-    solid_cases = []
-    for solid_case in solids:
-        if solid_case.is_complex:
-            continue
-        solid_eids = np.unique(solid_case.element_node[:, 0])
-        common_eids = np.intersect1d(element_id, solid_eids)
-        if len(common_eids) == 0:
-            continue
-        solid_cases.append(solid_case)
+    solid_cases, subcase_id = get_real_solid_cases(
+        element_id, model,
+        key, is_stress, prefix,
+        require_results=False)
 
     if len(solid_cases) == 0:
         return icase
 
-    #solid_case_headers = solid_case.get_headers()
-    is_von_mises = solid_case.is_von_mises
-    assert isinstance(is_von_mises, bool), is_von_mises
-    von_mises = 9 if is_von_mises else 'von_mises'
-    max_shear = 9 if not is_von_mises else 'max_shear'
-
-    if is_stress:
-        #['oxx', 'oyy', 'ozz', 'txy', 'tyz', 'txz', 'omax', 'omid', 'omin', von_mises]
-        iresult_to_title_annotation_map = {
-            # iresult: (sidebar_label, annotation)
-            0 : ('Normal XX', 'XX'),
-            1 : ('Normal YY', 'YY'),
-            2 : ('Normal ZZ', 'ZZ'),
-            3 : ('Shear XY', 'XY'),
-            4 : ('Shear YZ', 'YZ'),
-            5 : ('Shear XZ', 'XZ'),
-
-            6 : ('Max Principal', 'Max Principal'),
-            8 : ('Min Principal', 'Min Principal'),
-            7 : ('Mid Principal', 'Mid Principal'),
-            #'abs_principal' : ('sAbs Principal', 'Abs Principal'),
-            von_mises : ('von Mises', 'von Mises'), # the magnitude is large
-            max_shear : ('Max Shear', 'Max Shear'), # the magnitude is large
-        }
-        word = 'Stress'
-    else:
-        iresult_to_title_annotation_map = {
-            # iresult: (sidebar_label, annotation)
-            0 : ('Normal XX', 'XX'),
-            1 : ('Normal YY', 'YY'),
-            2 : ('Normal ZZ', 'ZZ'),
-            3 : ('Shear XY', 'XY'),
-            4 : ('Shear YZ', 'YZ'),
-            5 : ('Shear XZ', 'XZ'),
-
-            6 : ('Max Principal', 'Max Principal'),
-            8 : ('Min Principal', 'Min Principal'),
-            7 : ('Mid Principal', 'Mid Principal'),
-            von_mises : ('von Mises', 'von Mises'), # the magnitude is small
-            max_shear : ('Max Shear', 'Max Shear'), # the magnitude is small
-        }
-        word = 'Strain'
+    solid_case = solid_cases[0]
+    iresult_to_title_annotation_map, word, max_sheari = solid_cases_to_iresult(solid_cases, is_stress)
 
     if not use_new_terms:
-        del iresult_to_title_annotation_map[max_shear]
+        del iresult_to_title_annotation_map[max_sheari]
         #del iresult_to_title_annotation_map['abs_principal']
 
     title = f'Solid {word}'
@@ -1460,41 +1287,6 @@ def get_solid_stress_strains2(cases: CasesDict,
             icase += 1
     return icase
 
-def _get_solids(results: OP2,
-                key,
-                is_stress: bool,
-                prefix: str) -> tuple[str, list, int, int]:
-    analysis_code = key[1]
-    #print("***stress eids=", eids)
-    subcase_id = key[0]
-    #if prefix == 'modal_contribution':
-        #results = model.op2_results.modal_contribution
-        #preword = 'Modal Contribution '
-    #elif prefix == '':
-        #results = model
-        #preword = ''
-    #else:  # pragma: no cover
-        #raise NotImplementedError(prefix)
-
-    if is_stress:
-        stress = results.op2_results.stress
-        cards = [
-            stress.ctetra_stress, stress.cpenta_stress, stress.chexa_stress, # stress.cpyram_stress,
-        ]
-        word = 'Stress'
-    else:
-        strain = results.op2_results.strain
-        cards = [
-            strain.ctetra_strain, strain.cpenta_strain, strain.chexa_strain, # strain.cpyram_strain,
-        ]
-        word = 'Strain'
-
-    cards2 = []
-    for result in cards:
-        if key not in result:
-            continue
-        cards2.append(result[key])
-    return cards2, word, subcase_id, analysis_code
 
 @nocrash_log
 def get_solid_stress_strains(cases: CasesDict,

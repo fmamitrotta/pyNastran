@@ -506,6 +506,7 @@ class DIT:
         struct_f = Struct(op2._endian + b'f') if size == 4 else Struct(op2._endian + b'd')
         ntotal1 = 40 * self.factor
         ntotal2 = 36 * self.factor
+        edata = b''
         try:
             while ndata - n >= ntotal1:
                 edata = data[n:n + ntotal1]
@@ -567,12 +568,12 @@ class DIT:
             #20.0    100      30.0    120     60.0    130    ENDT
         #TABLED5 2000
             #20.0    200      30.0    220     60.0    230    ENDT
-
+        edata = b''
         try:
             while ndata - n >= ntotal1:
                 edata = data[n:n + ntotal1]
                 out = struct1.unpack(edata)
-                print(out)
+                #print(out)
                 (tid, x1, x2, x3, x4, unused_a, unused_b, unused_c) = out
                 #print(f'tid = {tid}')
                 data_in = [tid, x1, x2, x3, x4]

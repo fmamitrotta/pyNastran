@@ -24,11 +24,10 @@ import warnings
 import traceback
 
 from typing import (
-    Sequence, Optional, Union, Any, TYPE_CHECKING)
+    Sequence, Callable, Optional, Any, TYPE_CHECKING)
 from pickle import load, dump, dumps  # type: ignore
 
 import numpy as np  # type: ignore
-in1d = np.in1d
 from cpylog import get_logger2
 
 from pyNastran.utils import object_attributes, check_path, PathLike
@@ -102,7 +101,7 @@ from .cards.elements.thermal import BDYOR
 #from pyNastran.bdf.cards.constraints import SPCAX, SESUP, GMSPC
 #from .cards.coordinate_systems import (#CORD3G,
                                        #transform_coords_vectorized,
-                                       #CORDx)
+                                       #Coord)
 #from .cards.coordinate_systems.msgmesh import CGEN, GMCORD, GMLOAD
 from .cards.deqatn import DEQATN
 from pyNastran.bdf.cards.dynamic import (
@@ -517,7 +516,7 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
     #: required for sphinx bug
     #: http://stackoverflow.com/questions/11208997/autoclass-and-instance-attributes
     #__slots__ = ['_is_dynamic_syntax']
-    def __init__(self, debug: Union[str, bool, None]=True,
+    def __init__(self, debug: str | bool | None=True,
                  log: Optional[SimpleLogger]=None,
                  mode: str='msc') -> None:
         """
@@ -652,6 +651,7 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
 
             ## plotels
             'PLOTEL', 'PLOTEL3', 'PLOTEL4', 'PLOTEL6', 'PLOTEL8',
+            'PLOTTET', 'PLOTHEX', 'PLOTPEN', 'PLOTPYR',
 
             ## properties
             'PMASS',
@@ -1308,7 +1308,9 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
                          consider_superelements=self.is_superelements,
                          log=self.log, debug=self.debug)
         main_lines = obj.get_main_lines(self.bdf_filename)
-        all_lines, ilines = obj.lines_to_deck_lines(main_lines, make_ilines=make_ilines)
+        all_lines, ilines = obj.lines_to_deck_lines(main_lines)
+        if not make_ilines:
+            ilines = None
         self._set_pybdf_attributes(obj, save_file_structure=False)
         return all_lines, ilines
 
@@ -2357,6 +2359,11 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
             'PLOTEL6': partial(self._prepare_card, self.plotel6),
             'PLOTEL8': partial(self._prepare_card, self.plotel8),
 
+            'PLOTTET': partial(self._prepare_card, self.plottet),
+            'PLOTHEX': partial(self._prepare_card, self.plothex),
+            'PLOTPEN': partial(self._prepare_card, self.plotpen),
+            'PLOTPYR': partial(self._prepare_card, self.plotpyr),
+
             'GRID': partial(self._prepare_card, self.grid),
             'SPOINT': partial(self._prepare_card, self.spoint),
             'EPOINT': partial(self._prepare_card, self.epoint),
@@ -2673,24 +2680,23 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
             'BCSURF': (RuntimeCrash, None),
             'BCRGSRF': (RuntimeCrash, None),
 
-            'BCRGSRF': (RuntimeCrash, None),
             'BCTABL1': (RuntimeCrash, None),
             'BWIDTH': (RuntimeCrash, None),
 
             # mpcs
             'MPC': partial(self._prepare_card, self.mpc),
-            'MPCADD' : partial(self._prepare_card, self.mpcadd),
+            'MPCADD': partial(self._prepare_card, self.mpcadd),
 
             'SPC': partial(self._prepare_card, self.spc),
             'SPC1': partial(self._prepare_card, self.spc1),
-            'SPCADD' : partial(self._prepare_card, self.spcadd),
-            'SPCOFF' : partial(self._prepare_card_by_method, self.spcoff.add_set_card),
-            'SPCOFF1' : partial(self._prepare_card_by_method, self.spcoff.add_set1_card),
-            'BNDFIX' : partial(self._prepare_card_by_method, self.bndfix.add_set_card),
-            'BNDFIX1' : partial(self._prepare_card_by_method, self.bndfix.add_set1_card),
-            'BNDFREE' : partial(self._prepare_card_by_method, self.bndfree.add_set_card),
-            'BNDFREE1' : partial(self._prepare_card_by_method, self.bndfree.add_set1_card),
-            'BNDGRID' : partial(self._prepare_card_by_method, self.bndgrid.add_set1_card),
+            'SPCADD': partial(self._prepare_card, self.spcadd),
+            'SPCOFF': partial(self._prepare_card_by_method, self.spcoff.add_set_card),
+            'SPCOFF1': partial(self._prepare_card_by_method, self.spcoff.add_set1_card),
+            'BNDFIX': partial(self._prepare_card_by_method, self.bndfix.add_set_card),
+            'BNDFIX1': partial(self._prepare_card_by_method, self.bndfix.add_set1_card),
+            'BNDFREE': partial(self._prepare_card_by_method, self.bndfree.add_set_card),
+            'BNDFREE1': partial(self._prepare_card_by_method, self.bndfree.add_set1_card),
+            'BNDGRID': partial(self._prepare_card_by_method, self.bndgrid.add_set1_card),
 
             #'BNDFIX' : (Crash, None),
             #'BNDFIX1' : (Crash, None),
@@ -2699,32 +2705,32 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
             'ROTORG' : partial(self._prepare_card_by_method, self.rotorg.add_card),
 
             # nx-contact
-            'BSURF' : partial(self._prepare_card_by_method, self.bsurf.add_card),     # shell contact by element id
-            'BSURFS' : partial(self._prepare_card_by_method, self.bsurfs.add_card),   # solid contact by element id
-            'BCPROP' : partial(self._prepare_card_by_method, self.bcprop.add_card),   # shell contact by property id
-            'BCPROPS' : partial(self._prepare_card_by_method, self.bcprops.add_card), # solid contact by property id
+            'BSURF': partial(self._prepare_card_by_method, self.bsurf.add_card),     # shell contact by element id
+            'BSURFS': partial(self._prepare_card_by_method, self.bsurfs.add_card),   # solid contact by element id
+            'BCPROP': partial(self._prepare_card_by_method, self.bcprop.add_card),   # shell contact by property id
+            'BCPROPS': partial(self._prepare_card_by_method, self.bcprops.add_card), # solid contact by property id
             'BOUTPUT': partial(self._prepare_card_by_method, self.boutput.add_card),  # output for sideline contact
 
             # nx glue contact
-            'BGSET' : partial(self._prepare_card_by_method, self.bgset.add_card),     # glue set
-            'BGADD' : partial(self._prepare_card_by_method, self.bgadd.add_card),     # glue add set
-            'BEDGE' : partial(self._prepare_card, self.bedge),
+            'BGSET': partial(self._prepare_card_by_method, self.bgset.add_card),     # glue set
+            'BGADD': partial(self._prepare_card_by_method, self.bgadd.add_card),     # glue add set
+            'BEDGE': partial(self._prepare_card, self.bedge),
 
             # nx general contact
-            'BCTSET' : partial(self._prepare_card_by_method, self.bctset.add_card),
-            'BCTADD' : partial(self._prepare_card_by_method, self.bctadd.add_card),
+            'BCTSET': partial(self._prepare_card_by_method, self.bctset.add_card),
+            'BCTADD': partial(self._prepare_card_by_method, self.bctadd.add_card),
 
             # msc contact
-            'BCBODY' : partial(self._prepare_card, self.bcbody),
-            'BCBODY1' : partial(self._prepare_card, self.bcbody1),
+            'BCBODY': partial(self._prepare_card, self.bcbody),
+            'BCBODY1': partial(self._prepare_card, self.bcbody1),
 
             # ??? contact
-            #'BCPARA' : (BCPARA, add_methods._add_bcpara_object),
-            'BCONP' : partial(self._prepare_card, self.bconp),
-            'BFRIC' : partial(self._prepare_card, self.bfric),
-            'BLSEG' : partial(self._prepare_card, self.blseg),
-            'BCRPARA' : partial(self._prepare_card, self.bcrpara),
-            'BCTPARA' : (BCTPARA, add_methods._add_bctpara_object),
+            #'BCPARA': (BCPARA, add_methods._add_bcpara_object),
+            'BCONP': partial(self._prepare_card, self.bconp),
+            'BFRIC': partial(self._prepare_card, self.bfric),
+            'BLSEG': partial(self._prepare_card, self.blseg),
+            'BCRPARA': partial(self._prepare_card, self.bcrpara),
+            'BCTPARA': (BCTPARA, add_methods._add_bctpara_object),
 
             # cohesive zone
             'CIFQDX': (RuntimeCrash, None),
@@ -3015,7 +3021,8 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
                 self._dmig_temp[name].append((card_obj, comment))
         return dmig
 
-    def _prepare_dmix(self, class_obj, add_method, card_obj, comment='') -> Union[DMI, DMIJ, DMIJI, DMIK]:
+    def _prepare_dmix(self, class_obj, add_method, card_obj,
+                      comment: str='') -> DMI | DMIJ | DMIJI | DMIK:
         """adds a DMI, DMIJ, DMIJI, or DMIK"""
         field2 = integer(card_obj, 2, 'flag')
         if field2 == 0:
@@ -3074,7 +3081,7 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
         return card_obj
 
     def add_card(self, card_lines: list[str], card_name: str,
-                 comment: str='', ifile=None,
+                 comment: str='', ifile: Optional[int]=None,
                  is_list: bool=True, has_none: bool=True) -> Any:
         """
         Adds a card object to the BDF object.
@@ -3240,7 +3247,7 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
             msg += 'all_nodes=%s' % (all_nodes)
             raise RuntimeError(msg)
         if npoints == 0:
-            msg = 'nnodes=%s nspoints=%s nepoints=%s' % (nnodes, nspoints, nepoints)
+            msg = f'nnodes={nnodes} nspoints={nspoints} nepoints={nepoints}'
             raise ValueError(msg)
         return npoints, nids, all_nodes
 
@@ -3474,7 +3481,7 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
             #raise RuntimeError(card_obj)
             self.reject_cards.append(card_obj)
 
-    def get_bdf_stats(self, return_type: str='string') -> Union[str, list[str]]:
+    def get_bdf_stats(self, return_type: str='string') -> str | list[str]:
         """
         Print statistics for the BDF
 
@@ -3611,13 +3618,13 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
             if cd in [0, -1]:
                 continue
             nids = np.array(nids)
-            icd_transform[cd] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cd] = np.where(np.isin(nids_all, nids))[0]
 
         for cp, nids in sorted(nids_cp_transform.items()):
             if cp in [-1]:
                 continue
             nids = np.array(nids)
-            icp_transform[cp] = np.where(in1d(nids_all, nids))[0]
+            icp_transform[cp] = np.where(np.isin(nids_all, nids))[0]
         return icd_transform, icp_transform, xyz_cp, nid_cp_cd
 
     def get_xyz_in_coord_array(self, cid: int=0,
@@ -3900,7 +3907,7 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
         nids_all = np.array(sorted(self.point_ids))
         for cid in sorted(nids_transform.keys()):
             nids = np.array(nids_transform[cid])
-            icd_transform[cid] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cid] = np.where(np.isin(nids_all, nids))[0]
         return nids_all, nids_transform, icd_transform
 
     def increase_card_count(self, card_name: str, count_num: int=1) -> None:
@@ -4241,7 +4248,7 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
                 #return False
         #return True
 
-    def _parse_primary_file_header(self, bdf_filename: Union[str, StringIO]) -> None:
+    def _parse_primary_file_header(self, bdf_filename: str | StringIO) -> None:
         """
         Extract encoding, nastran_format, and punch from the primary BDF.
 
@@ -4325,7 +4332,8 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
         card_parser['PARAM'] = (PARAM_NASA95, self._add_methods._add_param_object)
         self.add_param = self._add_param_nasa95
 
-    def _check_pynastran_header(self, lines: list[str], check_header: bool=True) -> None:
+    def _check_pynastran_header(self, lines: list[str],
+                                check_header: bool=True) -> None:
         """updates the $pyNastran: key=value variables"""
         if not check_header:
             return
@@ -4456,7 +4464,7 @@ class BDF(AddCards, WriteMesh): # BDFAttributes
         self.case_control_deck.rsolmap_to_str = self.rsolmap_to_str
         return cards_out
 
-    def create_subcases(self, subcase_ids: Union[int, list[int], None]=None) -> dict[int, Subcase]:
+    def create_subcases(self, subcase_ids: int | list[int] | None=None) -> dict[int, Subcase]:
         """creates a series of subcases"""
         if subcase_ids is None:
             subcase_ids = []
@@ -4912,8 +4920,8 @@ def _bool(value):
     return True if value == 'true' else False
 
 
-#def _get_coords_to_update(coords: dict[int, Union[CORD1R, CORD1C, CORD1S,
-                                                  #CORD2R, CORD2C, CORD2S]],
+#def _get_coords_to_update(coords: dict[int, CORD1R | CORD1C | CORD1S |
+                                            #CORD2R | CORD2C | CORD2S],
                           #cps_to_check: list[int],
                           #cps_checked: list[int],
                           #nids_checked: list[int]) -> tuple[int, list[int], list[int], list[int]]:
@@ -4969,7 +4977,7 @@ def _bool(value):
         ##raise RuntimeError(msg)
     #return ncoords, cord1s_to_update_list, cord2s_to_update_list, nids_checked
 
-class Zona():
+class Zona:
     def __init__(self):
         pass
     def update_for_zona(self):

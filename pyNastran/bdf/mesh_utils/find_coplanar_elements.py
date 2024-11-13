@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Union, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 import numpy as np
 from pyNastran.bdf.mesh_utils.internal_utils import get_bdf_model
@@ -7,7 +7,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import BDF
 
 
-def find_coplanar_triangles(bdf_filename: Union[BDF, str],
+def find_coplanar_triangles(bdf_filename: BDF | str,
                             eids: Optional[list[int]]=None) -> list[int]:
     """
     Finds coplanar triangles

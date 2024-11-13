@@ -12,7 +12,6 @@ defines:
 import os
 import sys
 from copy import deepcopy
-from typing import Union
 
 import numpy as np
 from numpy import (zeros, array, vstack, hstack, where,
@@ -31,7 +30,7 @@ def read_bedge(bedge_filename, beta_reverse=179.7, log=None, debug=False):
 
 class AFLR2:
     """defines methods for reading interfacing with AFLR2"""
-    def __init__(self, log=None, debug: Union[str, bool, None]=False):
+    def __init__(self, log=None, debug: str | bool | None=False):
         """
         Initializes the AFLR2 object
 
@@ -263,7 +262,7 @@ class AFLR2:
                 #L1 = norm(v1, axis=1)
                 #L2 = norm(v2, axis=1)
 
-                #c = cross(v1, v2)
+                #c = np.cross(v1, v2)
                 #cn = norm(c, axis=1)
 
                 #L1L2 = (L1 * L2)
@@ -494,7 +493,7 @@ def export_to_bedge(bedge_filename,
         log.debug('nsubcurves = %s?' % nsubcurves)
         if nsubcurves > 30:
             msg = 'Are you sure you are merging model.grid_bc and not model.grid_bcs?\n'
-            msg += 'nsubcurves=%s' % (nsubcurves)
+            msg += f'nsubcurves={nsubcurves:d}'
             raise RuntimeError(msg)
         #assert nsubcurves == len(nsubcurves_list) #  wrong check...
 

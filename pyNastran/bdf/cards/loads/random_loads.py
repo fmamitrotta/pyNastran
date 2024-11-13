@@ -50,7 +50,7 @@ class RANDPS(RandomLoad):
 
     def __init__(self, sid: int,
                  j: int, k: int, x: float=0., y: float=0.,
-                 tid: Union[int, float]=0, comment: str=''):
+                 tid: int | float=0, comment: str=''):
         """
         Creates a RANDPS card
 
@@ -131,7 +131,7 @@ class RANDPS(RandomLoad):
 
         """
         if self.tid and isinstance(self.tid, integer_types):
-            msg = ', which is required by RANDPS sid=%s' % (self.sid)
+            msg = f', which is required by RANDPS sid={self.sid:d}'
             #self.tid = model.Table(self.tid, msg=msg)
             self.tid_ref = model.RandomTable(self.tid, msg=msg)
 

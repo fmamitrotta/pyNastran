@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Union, Optional, Any, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 import numpy as np
 
 from .abaqus_cards import (
@@ -88,7 +88,7 @@ def read_cload(iline: int, line0: str,
     buoyancy at various nodes or node sets.
     """
     log.debug(f'read_cload {line0!r}')
-    cload: list[tuple[Union[int, str], int, float]] = []
+    cload: list[tuple[int | str, int, float]] = []
     while '*' not in line0:
         sline = line0.split(',')
         assert len(sline) == 3, sline
@@ -577,7 +577,7 @@ def read_material(iline: int, word: str,
             key = 'damage initiation'
             #log.debug('  damage0 %s' % line0)
             sline = line0.split(',')
-            log.debug(sline)
+            log.debug(str(sline))
             assert len(sline) == 3, sline
             iline += 1
         elif word.startswith('damage evolution'):

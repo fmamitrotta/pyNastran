@@ -3,7 +3,7 @@
 import sys
 import os
 from struct import pack, unpack, Struct
-from typing import TextIO, BinaryIO, Optional, Union, cast
+from typing import TextIO, BinaryIO, Optional, cast
 
 import numpy as np
 from numpy import float32, float64, complex64, complex128
@@ -599,7 +599,7 @@ class OP4:
         if self.debug:
             self.log.debug("idummy=%s irow=%s" % (idummy, irow))
             assert irow < 100, irow
-        return (irow, idummy - 1)
+        return irow, idummy - 1
 
 #--------------------------------------------------------------------------
     def read_op4_binary(self, op4_filename: PathLike,
@@ -669,7 +669,7 @@ class OP4:
                 self.log.info("a=%s icol=%s irow=%s nwords=%s" % (a, icol, irow, nwords))
         else:
             raise NotImplementedError('record_length=%s' % record_length)
-        return (a, icol, irow, nwords)
+        return a, icol, irow, nwords
 
     def _read_matrix_binary(self, op4: BinaryIO, precision: str,
                             matrix_names: list[str]) -> tuple[str, Matrix]:
@@ -1464,7 +1464,7 @@ def _get_start_end_row(A: np.ndarray, nrows: int) -> tuple[Optional[int], Option
         if abs(A[irow]) > 0.0:
             iend = irow
             break
-    return (istart, iend)
+    return istart, iend
 
 
 def _write_dense_matrix_ascii(log: SimpleLogger,
@@ -1773,7 +1773,7 @@ def _get_matrix_info(matrix_type: int,
         log.info('  nwords_per_value = %s' % nwords_per_value)
         log.info('  nbytes_per_value = %s' % nbytes_per_value)
         log.info('  dtype = %s ' % dtype)
-    return (nwords_per_value, nbytes_per_value, data_format, dtype)
+    return nwords_per_value, nbytes_per_value, data_format, dtype
 
 def get_dtype(matrix_type: int, precision: str='default') -> str:
     """Reset the type if 'default' not selected"""
@@ -1905,7 +1905,7 @@ def _prepare_name_order(matrices: dict[str, Matrix], name_order) -> list[str]:
     return name_order
 
 def _write_form_matrix_helper(matrices: dict[str, Matrix],
-                              name: str) -> tuple[int, Union[np.ndarray, coo_matrix]]:
+                              name: str) -> tuple[int, np.ndarray | coo_matrix]:
     """Helper method for OP4 writing"""
     try:
         mat_form = matrices[name]
