@@ -428,7 +428,9 @@ class ACOORD(CoordBase):  # not done
     def rid(self):
         return None
 
-    def __init__(self, cid, origin, delta, theta, comment=''):
+    def __init__(self, cid: int,
+                 origin: np.ndarray, delta: np.ndarray, theta: np.ndarray,
+                 comment: str=''):
         """
         Defines the CORD3G card
 
@@ -455,7 +457,7 @@ class ACOORD(CoordBase):  # not done
         self.theta = theta
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a ACOORD card from ``BDF.add_card(...)``
 
@@ -493,6 +495,9 @@ class ACOORD(CoordBase):  # not done
 
         """
         pass
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        self.cross_reference(model)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -624,7 +629,7 @@ class AESURFZ(BaseCard):
         self.aero_element_ids = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds an AESURF card from ``BDF.add_card(...)``
 
@@ -892,7 +897,7 @@ class AEROZ(Aero):
         self.rcsid_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds an AEROZ card from ``BDF.add_card(...)``
 
@@ -1123,7 +1128,7 @@ class MKAEROZ(BaseCard):
         self.print_flag = print_flag
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         sid = integer(card, 1, 'IDMK')
         mach = double(card, 2, 'MACH')
         method = integer(card, 3, 'METHOD')

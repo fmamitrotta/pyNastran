@@ -11,7 +11,7 @@ import os
 import sys
 import traceback
 import warnings
-from typing import Optional, Any, cast
+from typing import Optional, Any
 from io import StringIO
 
 import numpy as np
@@ -78,12 +78,16 @@ def run_lots_of_files(filenames: list[str], folder: str='',
                       encoding: Optional[str]=None,
                       size: int | list[int] | None=None,
                       post: int | list[int] | None=None,
+                      is_lax_parser: list[bool] | None=None,
                       is_double: bool | list[bool] | None=None,
                       sum_load: bool=True,
                       run_mass: bool=True,
+                      run_mcid: bool=True,
+                      run_export_caero: bool=True,
+                      run_skin_solids: bool=True,
                       dev: bool=True,
                       crash_cards: Optional[list[str]]=None,
-                      pickle_obj: bool=True, quiet: bool=False) -> list[str]:
+                      run_pickle: bool=True, quiet: bool=False) -> list[str]:
     """
     Runs multiple BDFs
 
@@ -122,7 +126,7 @@ def run_lots_of_files(filenames: list[str], folder: str='',
         False : doesn't crash; useful for running many tests
     crash_cards : list[str, str, ...]
         list of cards that are invalid and automatically crash the run
-    pickle_obj : bool; default=True
+    run_pickle : bool; default=True
         tests pickling
 
     Usage
@@ -152,6 +156,11 @@ def run_lots_of_files(filenames: list[str], folder: str='',
     else:
         is_doubles = is_double
 
+    if is_lax_parser is None:
+        is_lax_parser = [False]
+    else:
+        assert isinstance(is_lax_parser, list), is_lax_parser
+
     if post is None:
         posts = [-1]
     elif isinstance(post, integer_types):
@@ -161,8 +170,8 @@ def run_lots_of_files(filenames: list[str], folder: str='',
 
     size_doubles_post = []
     #print('posts=%s' % posts)
-    for sizei, is_doublei, posti in zip(sizes, is_doubles, posts):
-        size_doubles_post.append((sizei, is_doublei, posti))
+    for sizei, is_doublei, posti, is_lax_parseri in zip(sizes, is_doubles, posts, is_lax_parser):
+        size_doubles_post.append((sizei, is_doublei, posti, is_lax_parseri))
 
     #debug = True
     filenames2 = []
@@ -185,7 +194,7 @@ def run_lots_of_files(filenames: list[str], folder: str='',
                 print(f'filename = {abs_filename}')
             is_passed = False
             try:
-                for sizei, is_doublei, posti in size_doubles_post:
+                for sizei, is_doublei, posti, is_lax_parseri in size_doubles_post:
                     fem1, fem2, unused_diff_cards2 = run_bdf(
                         folder, filename, debug=debug,
                         xref=xref, check=check, punch=punch,
@@ -194,13 +203,16 @@ def run_lots_of_files(filenames: list[str], folder: str='',
                         nastran=nastran, size=sizei, is_double=is_doublei,
                         nerrors=0,
                         post=posti,
-                        sum_load=sum_load, run_mass=run_mass,
+                        is_lax_parser=is_lax_parseri,
+                        sum_load=sum_load, run_mass=run_mass, run_mcid=run_mcid,
                         run_extract_bodies=False,
+                        run_export_caero=run_export_caero,
+                        run_skin_solids=run_skin_solids,
 
                         dev=dev,
                         crash_cards=crash_cards,
                         limit_mesh_opt=True,
-                        pickle_obj=pickle_obj,
+                        run_pickle=run_pickle,
                         hdf5=write_hdf5, quiet=quiet, log=log)
                     del fem1
                     del fem2
@@ -261,22 +273,25 @@ def run_lots_of_files(filenames: list[str], folder: str='',
 def run_bdf(folder: str, bdf_filename: str,
             debug: bool=False, xref: bool=True, check: bool=True,
             punch: bool=False,
-            mesh_form='separate', is_folder=False, print_stats=False,
+            mesh_form: str='separate', is_folder: bool=False,
+            print_stats: bool=False,
             encoding=None,
-            size=8, is_double=False,
-            hdf5=False,
+            size: int=8, is_double: bool=False,
+            hdf5: bool=False,
             is_lax_parser: bool=False,
-            stop=False, nastran='', post=-1, dynamic_vars=None,
-            quiet=False, dumplines=False, dictsort=False,
+            stop: bool=False, nastran: str='', post: int=-1,
+            dynamic_vars=None,
+            quiet: bool=False, dumplines: bool=False, dictsort: bool=False,
             limit_mesh_opt: bool=False,
             sum_load: bool=True,
             run_mass: bool=True,
+            run_mcid: bool=True,
             run_extract_bodies: bool=False,
             run_skin_solids: bool=True,
             run_export_caero: bool=True,
             save_file_structure: bool=False,
             nerrors=0, dev: bool=False, crash_cards=None,
-            safe_xref: bool=False, pickle_obj: bool=False,
+            safe_xref: bool=False, run_pickle: bool=False,
             version: Optional[str]=None,
             validate_case_control: bool=True,
             stop_on_failure: bool=True, log=None, name: str=''):
@@ -337,7 +352,7 @@ def run_bdf(folder: str, bdf_filename: str,
     dev : bool; default=False
         True : crashes if an Exception occurs
         False : doesn't crash; useful for running many tests
-    pickle_obj : bool; default=True
+    run_pickle : bool; default=True
         tests pickling
 
     """
@@ -374,8 +389,9 @@ def run_bdf(folder: str, bdf_filename: str,
         run_skin_solids=run_skin_solids,
         run_export_caero=run_export_caero,
         run_mass=run_mass,
+        run_mcid=run_mcid,
         save_file_structure=save_file_structure,
-        pickle_obj=pickle_obj,
+        run_pickle=run_pickle,
         validate_case_control=validate_case_control,
         stop_on_failure=stop_on_failure,
         log=log,
@@ -416,7 +432,8 @@ def run_and_compare_fems(
         run_skin_solids: bool=True,
         run_export_caero: bool=True,
         run_mass: bool=True,
-        pickle_obj: bool=False,
+        run_mcid: bool=True,
+        run_pickle: bool=False,
         validate_case_control: bool=True,
         stop_on_failure: bool=True,
         log: Optional[SimpleLogger]=None,
@@ -454,11 +471,12 @@ def run_and_compare_fems(
             run_extract_bodies=run_extract_bodies,
             run_skin_solids=run_skin_solids,
             run_export_caero=run_export_caero,
+            run_mcid=run_mcid,
             save_file_structure=save_file_structure,
             hdf5=hdf5,
             encoding=encoding, crash_cards=crash_cards, safe_xref=safe_xref,
             limit_mesh_opt=limit_mesh_opt,
-            pickle_obj=pickle_obj, stop=stop, name=name)
+            run_pickle=run_pickle, stop=stop, name=name)
 
         if stop:
             if not quiet:
@@ -629,11 +647,12 @@ def run_fem1(fem1: BDF, bdf_filename: str, out_model: str, mesh_form: str,
              size: int, is_double: bool,
              run_extract_bodies: bool=False, run_skin_solids: bool=True,
              run_export_caero: bool=True,
+             run_mcid: bool=True,
              save_file_structure: bool=False, hdf5: bool=False,
              encoding: Optional[str]=None,
              crash_cards: Optional[list[str]]=None,
              limit_mesh_opt: bool=False,
-             safe_xref: bool=True, pickle_obj: bool=False, stop: bool=False,
+             safe_xref: bool=True, run_pickle: bool=False, stop: bool=False,
              name: str='') -> BDF:
     """
     Reads/writes the BDF
@@ -665,6 +684,8 @@ def run_fem1(fem1: BDF, bdf_filename: str, out_model: str, mesh_form: str,
         ???
     run_extract_bodies : bool; default=False
         isolate the fem bodies; typically 1 body; code is still buggy
+    run_mcid: bool; default=True
+        export the material coordinate systems
     encoding : str; default=None
         the file encoding
     crash_cards : ???
@@ -704,6 +725,7 @@ def run_fem1(fem1: BDF, bdf_filename: str, out_model: str, mesh_form: str,
 
             if limit_mesh_opt:
                 limit_mesh_optimization(fem1)
+
             if xref:
                 if run_extract_bodies:
                     log.info('fem1-run_extract_bodies')
@@ -725,20 +747,21 @@ def run_fem1(fem1: BDF, bdf_filename: str, out_model: str, mesh_form: str,
                     log.debug('fem1.cross_reference()')
                     fem1.cross_reference()
 
-                _fem_xref_methods_check(fem1)
+                _fem_xref_methods_check(fem1, run_mcid=run_mcid)
 
                 fem1._xref = True
-                if fem1._nastran_format not in ['optistruct', 'mystran']:
-                    log.info(f'fem1.bdf_filename = {fem1.bdf_filename}')
-                    log.info('trying read_bdf from the raw filename')
-                    read_bdf(fem1.bdf_filename, encoding=encoding, xref=False,
-                             debug=fem1.debug, log=fem1.log)
+                #what was this for???
+                #if fem1._nastran_format not in ['optistruct', 'mystran']:
+                    #log.info(f'fem1.bdf_filename = {fem1.bdf_filename}')
+                    #log.info('trying read_bdf from the raw filename')
+                    #read_bdf(fem1.bdf_filename, encoding=encoding, xref=False,
+                             #debug=fem1.debug, log=fem1.log)
                 if safe_xref:
                     fem1.safe_cross_reference()
                 elif xref:
                     fem1.cross_reference()
 
-                fem1 = remake_model(bdf_filename, fem1, pickle_obj)
+                fem1 = remake_model(bdf_filename, fem1, run_pickle)
                 #fem1.geom_check(geom_check=True, xref=True)
                 #fem1.uncross_reference()
                 #fem1.cross_reference()
@@ -824,7 +847,7 @@ def _test_hdf5(fem1: BDF, hdf5_filename: str) -> None:
             raise RuntimeError(hdf5_msg)
     #sys.exit('hdf5')
 
-def _fem_xref_methods_check(fem1: BDF) -> None:
+def _fem_xref_methods_check(fem1: BDF,run_mcid: bool) -> None:
     """
     testing that these methods work with xref
     """
@@ -846,8 +869,9 @@ def _fem_xref_methods_check(fem1: BDF) -> None:
                    consider_1d=True, consider_2d=True, consider_3d=True)
     get_dependent_nid_to_components(fem1)
 
-    fem1.get_pid_to_node_ids_and_elements_array(pids=None, etypes=None, idtype='int32',
-                                                msg=' which is required by test_bdf')
+    fem1.get_pid_to_node_ids_and_elements_array(
+        pids=None, etypes=None, idtype='int32',
+        msg=' which is required by test_bdf')
     fem1.get_property_id_to_element_ids_map(msg=' which is required by test_bdf')
     fem1.get_material_id_to_property_ids_map(msg=' which is required by test_bdf')
     fem1.get_element_ids_list_with_pids(pids=None)
@@ -856,36 +880,36 @@ def _fem_xref_methods_check(fem1: BDF) -> None:
     fem1.get_node_id_to_element_ids_map()
     fem1.get_node_id_to_elements_map()
 
-    export_mcids(fem1, csv_filename=None, eids=None,
-                 export_xaxis=True, export_yaxis=False, iply=0, log=None, debug=False)
+    if run_mcid:
+        export_mcids(fem1, csv_filename=None, eids=None,
+                     export_xaxis=True, export_yaxis=False, iply=0, log=None, debug=False)
+        export_mcids_all(fem1)
 
-    export_mcids_all(fem1)
-
-def remake_model(bdf_model: str, fem1: BDF, pickle_obj: bool) -> BDF:
+def remake_model(bdf_model: str, fem1: BDF, run_pickle: bool) -> BDF:
     """reloads the model if we're testing pickling"""
-    remake = pickle_obj
-    if remake:
-        #log = fem1.log
-        model_name = os.path.splitext(bdf_model)[0]
-        obj_model = f'{model_name}.test_bdf.obj'
-        #out_model_8 = '%s.test_bdf.bdf' % (model_name)
-        #out_model_16 = '%s.test_bdf.bdf' % (model_name)
+    if not run_pickle:
+        return fem1
+    #log = fem1.log
+    model_name = os.path.splitext(bdf_model)[0]
+    obj_model = f'{model_name}.test_bdf.obj'
+    #out_model_8 = '%s.test_bdf.bdf' % (model_name)
+    #out_model_16 = '%s.test_bdf.bdf' % (model_name)
 
-        fem1.save(obj_model)
-        fem1.save(obj_model, unxref=False)
-        #fem1.write_bdf(out_model_8)
-        fem1.get_bdf_stats()
+    fem1.save(obj_model)
+    fem1.save(obj_model, unxref=False)
+    #fem1.write_bdf(out_model_8)
+    fem1.get_bdf_stats()
 
-        fem1 = BDF(debug=fem1.debug, log=fem1.log)
-        fem1.load(obj_model)
-        #fem1.write_bdf(out_model_8)
-        #fem1.log = log
-        os.remove(obj_model)
-        fem1.get_bdf_stats()
+    fem1 = BDF(debug=fem1.debug, log=fem1.log)
+    fem1.load(obj_model)
+    #fem1.write_bdf(out_model_8)
+    #fem1.log = log
+    os.remove(obj_model)
+    fem1.get_bdf_stats()
 
-        fem1.cross_reference()
-        #fem1.get_bdf_stats()
-        fem1._xref = True
+    fem1.cross_reference()
+    #fem1.get_bdf_stats()
+    fem1._xref = True
     return fem1
 
 def check_for_cd_frame(fem1: BDF) -> None:
@@ -1065,7 +1089,8 @@ def _validate_case_control(fem: BDF, p0: Any, sol_base: int,
             stop_on_failure=stop_on_failure)
     return ierror
 
-def check_for_flag_in_subcases(fem2: BDF, subcase: Any, parameters: list[str]) -> None:
+def check_for_flag_in_subcases(fem2: BDF, subcase: Any,
+                               parameters: list[str]) -> None:
     """
     For a multi-subcase deck, you can define specific required cards
     (e.g., TSTEP) in secondary cases, but not primary cases.  This
@@ -1098,8 +1123,8 @@ def stop_if_max_error(msg: str, error: Any, ierror: int, nerrors: int) -> int:
     ierror += 1
     return ierror
 
-def check_for_optional_param(keys: list[str], subcase: Any,
-                             msg: str, error: Any, log: Any,
+def check_for_optional_param(keys: list[str], subcase: Subcase,
+                             msg: str, error: Any, log: SimpleLogger,
                              ierror: int, nerrors: int) -> int:
     """one or more must be True"""
     if not any(subcase.has_parameter(*keys)):
@@ -1489,7 +1514,7 @@ def _check_gust_case(fem2: BDF, log: SimpleLogger, sol: int, subcase: Subcase,
 def _check_case_sol_200(sol: int,
                         subcase: Subcase,
                         fem2: BDF,
-                        p0: Any,
+                        p0: np.ndarray,
                         isubcase: int,
                         subcases: dict[int, Subcase],
                         log: SimpleLogger) -> None:
@@ -2091,9 +2116,9 @@ def test_bdf_argparse(argv=None):
             version, action='store_true',
             help=help_msg)
 
-    parent_parser.add_argument(
-        '-L', '--loads', action='store_false',
-        help='Disables forces/moments summation for the different subcases (default=True)')
+    #parent_parser.add_argument(
+       #'-L', '--loads', action='store_false',
+        #help='Disables forces/moments summation for the different subcases (default=True)')
 
     parent_parser.add_argument('-e', '--nerrors', default=100, type=int,
                                help='Allow for cross-reference errors (default=100)')
@@ -2164,7 +2189,7 @@ def log_error(sol: int, error_solutions, msg: str, log: SimpleLogger) -> None:
     else:
         log.warning(msg)
 
-def _set_version(args: Any):
+def _set_version(args: dict[str, Any]):
     """sets the version flag"""
     if args['msc']:
         version = 'msc'
@@ -2240,7 +2265,7 @@ def get_test_bdf_usage_args_examples(encoding):
         '                 card is fully not supported (default=False)\n'
         '  -l, --large    writes the BDF in large field, single precision format (default=False)\n'
         '  -d, --double   writes the BDF in large field, double precision format (default=False)\n'
-        '  --loads        Disables forces/moments summation for the different subcases (default=True)\n'
+        #'  --loads        Disables forces/moments summation for the different subcases (default=True)\n'
         #'  --filter       Filters unused cards\n'
 
         '  -e E, --nerrors E  Allow for cross-reference errors (default=100)\n'
@@ -2343,7 +2368,7 @@ def main(argv=None):
             nerrors=data['nerrors'],
             encoding=data['encoding'],
             crash_cards=crash_cards,
-            pickle_obj=data['pickle'],
+            run_pickle=data['pickle'],
             safe_xref=data['safe'],
             hdf5=data['hdf5'],
             version=data['version'],
@@ -2393,7 +2418,7 @@ def main(argv=None):
             nerrors=data['nerrors'],
             encoding=data['encoding'],
             crash_cards=crash_cards,
-            pickle_obj=data['pickle'],
+            run_pickle=data['pickle'],
             safe_xref=data['safe'],
             hdf5=data['hdf5'],
             version=data['version'],

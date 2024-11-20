@@ -42,7 +42,7 @@ def get_bdf_stats(model: BDF, return_type: str='string',
         'MATT1', 'MATT2', 'MATT3', 'MATT4', 'MATT5',
         'MATT8', 'MATT9', 'MATT11',
         'MATS1', 'MATS3', 'MATS8',
-        'MATCID', 'MATDMG',
+        'matcid', 'MATDMG',
 
         # axisysmmetric
         'ringaxs', 'ringfl',
@@ -147,6 +147,7 @@ def get_bdf_stats(model: BDF, return_type: str='string',
         'rsolmap_to_str', 'nastran_format', 'nid_map', 'bdf_filename',
         'initial_superelement_models',
         'type_slot_str', 'dict_of_vars', 'code_block',
+        'xref_obj',
 
         # handled below
         'mpcadds', 'mpcs', 'spcadds', 'spcs',

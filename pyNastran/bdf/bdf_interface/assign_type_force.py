@@ -44,7 +44,8 @@ def _force_integer(svalue: str) -> int:
             return avalue
 
 
-def force_double(card: BDFCard, ifield: int, fieldname: str) -> float:
+def force_double(card: BDFCard, ifield: int, fieldname: str,
+                 end: str='') -> float:
     """see ``double``"""
     svalue = card.field(ifield)
 
@@ -53,12 +54,12 @@ def force_double(card: BDFCard, ifield: int, fieldname: str) -> float:
     elif isinstance(svalue, integer_types):
         dtype = _get_dtype(svalue)
         warnings.warn('%s = %r (field #%s) on card must be a float (not %s).\n'
-                      'card=%s' % (fieldname, svalue, ifield, dtype, card))
+                      'card=%s%s' % (fieldname, svalue, ifield, dtype, card, end))
         return float(svalue)
     elif svalue is None or len(svalue) == 0:  ## None
         dtype = _get_dtype(svalue)
         raise SyntaxError('%s = %r (field #%s) on card must be a float (not %s).\n'
-                          'card=%s' % (fieldname, svalue, ifield, dtype, card))
+                          'card=%s%s' % (fieldname, svalue, ifield, dtype, card, end))
 
     #if svalue.isdigit():  # 1, not +1, or -1
         ## if only int
@@ -71,7 +72,7 @@ def force_double(card: BDFCard, ifield: int, fieldname: str) -> float:
     except TypeError:
         dtype = _get_dtype(svalue)
         raise SyntaxError('%s = %r (field #%s) on card must be a float (not %s).\n'
-                          'card=%s' % (fieldname, svalue, ifield, dtype, card))
+                          'card=%s%s' % (fieldname, svalue, ifield, dtype, card, end))
     except ValueError:
         # 1D+3, 1D-3, 1-3
         try:
@@ -95,7 +96,7 @@ def force_double(card: BDFCard, ifield: int, fieldname: str) -> float:
         except ValueError:
             dtype = _get_dtype(svalue)
             raise SyntaxError('%s = %r (field #%s) on card must be a float (not %s).\n'
-                              'card=%s' % (fieldname, svalue, ifield, dtype, card))
+                              'card=%s%s' % (fieldname, svalue, ifield, dtype, card, end))
     return value
 
 def force_integer_or_blank(card: BDFCard, ifield: int, fieldname: str,
@@ -146,6 +147,7 @@ def force_double_or_blank(card: BDFCard, ifield: int, fieldname: str,
         return fvalue
     elif isinstance(svalue, str):
         try:
+            # if it casts as an integer, it's not typed right
             ivalue = int(svalue)
             fvalue = float(ivalue)
             warnings.warn('%s = %r (field #%s) on card must be a float or blank (not an integer) -> %s.\n'

@@ -37,7 +37,7 @@ class CONM2(VectorizedCard):
             self.x = zeros((ncards, 3), float_fmt)
             self.I = zeros((ncards, 6), float_fmt)
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         eid = integer(card, 1, 'element_id')
         if comment:
             self.set_comment(eid, comment)
@@ -56,7 +56,7 @@ class CONM2(VectorizedCard):
                         double_or_blank(card, 12, 'I31', 0.0),
                         double_or_blank(card, 13, 'I32', 0.0),
                         double_or_blank(card, 14, 'I33', 0.0)]
-        assert len(card) <= 15, 'len(CONM2 card) = %i\ncard=%s' % (len(card), card)
+        assert len(card) <= 15, f'len(CONM2 card) = {len(card):d}\ncard={card}'
         self.i += 1
 
     def build(self):

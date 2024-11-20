@@ -6,8 +6,10 @@ defines:
  - PLOAD4v
 
 """
+from __future__ import annotations
 from collections import defaultdict
 from itertools import count
+from typing import TYPE_CHECKING
 import numpy as np
 
 from pyNastran.bdf.bdf_interface.assign_type import (
@@ -21,7 +23,8 @@ from pyNastran.bdf.field_writer_double import print_scientific_double
 from pyNastran.bdf.cards.base_card import _format_comment
 from pyNastran.bdf.cards.base_card import expand_thru
 from pyNastran.dev.bdf_vectorized2.cards.loads.loads import BaseLoad
-
+if TYPE_CHECKING:
+    from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 
 class PLOADv(BaseLoad):
     """
@@ -75,7 +78,7 @@ class PLOADv(BaseLoad):
         self._pressure.append(pressure)
         self._nids.append(nids)
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         """
         Adds a PLOAD card from ``BDF.add_card(...)``
 
@@ -212,7 +215,7 @@ class PLOAD1v(BaseLoad):
         self._p12.append((p1, p2))
         self._x12.append((x1, x2))
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         """
         Adds a PLOAD1 card from ``BDF.add_card(...)``
 
@@ -327,7 +330,7 @@ class PLOAD2v(BaseLoad):
         self._pressure.append(pressure)
         self._eid.append(eids)
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         """
         Adds a PLOAD2 card from ``BDF.add_card(...)``
 
@@ -490,7 +493,7 @@ class PLOAD4v(BaseLoad):
         self._surf_or_line.append(surf_or_line)
         self._line_load_dir.append(line_load_dir)
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         """
         Adds a PLOAD4 card from ``BDF.add_card(...)``
 

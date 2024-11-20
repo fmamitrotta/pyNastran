@@ -22,15 +22,14 @@ from typing import TYPE_CHECKING
 import numpy as np
 from numpy.linalg import norm  # type: ignore
 
-if TYPE_CHECKING:  # pragma: no cover
-    from pyNastran.nptyping_interface import NDArray3float
-    from pyNastran.bdf.bdf import BDF
-    from typing import Optional
 from pyNastran.utils.numpy_utils import integer_types
 from pyNastran.bdf.field_writer_8 import set_blank_if_default
 from pyNastran.bdf.cards.base_card import BaseCard
 from pyNastran.bdf.bdf_interface.assign_type import (
-    integer, integer_or_blank, double_or_blank, string_or_blank, integer_or_string)
+    integer, integer_or_blank, double_or_blank,
+    string_or_blank, integer_or_string)
+from pyNastran.bdf.bdf_interface.assign_type_force import (
+    force_double_or_blank)
 from pyNastran.bdf.field_writer_8 import print_card_8
 from pyNastran.bdf.field_writer_16 import print_card_16
 from pyNastran.bdf.field_writer_double import print_card_double
@@ -40,7 +39,11 @@ from pyNastran.femutils.coord_transforms import (
     rtz_to_xyz_array, rtp_to_xyz_array, # xxx to xyz transforms
     #rtz_to_rtp_array, rtp_to_rtz_array, # rtp/rtz and rtz/rtp transforms
 )
-
+if TYPE_CHECKING:  # pragma: no cover
+    from pyNastran.nptyping_interface import NDArray3float
+    from pyNastran.bdf.bdf import BDF
+    from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
+    from typing import Optional
 
 def global_to_basic_rectangular(coord, unused_xyz_global, dtype='float64'):
     coord_transform = coord.local_to_global
@@ -1259,7 +1262,7 @@ def define_coord_ijk(model, cord2_type, cid, origin, rid=0, i=None, j=None, k=No
     return coord
 
 
-class MATCID:
+class MATCID(BaseCard):
     """
     Initializes the MATCID card
 
@@ -1296,12 +1299,12 @@ class MATCID:
     .. note :: no type checking
     """
     type = 'MATCID'
-    # Type = 'M'
-
-    def __init__(self, cid, form: int,
+    def __init__(self, cid: int,
                  eids=None,
-                 start: Optional[int] = None, thru: Optional[int] = None, by: Optional[int] = None,
-                 comment=''):
+                 start: Optional[int]=None,
+                 end: Optional[int]=None,
+                 by: Optional[int]=1,
+                 comment: str=''):
         """
         Creates the MATCID card, which defines the Material Coordinate System for Solid Elements
 
@@ -1323,9 +1326,9 @@ class MATCID:
             Array of element identification numbers
         start: int
             used in format alternative 2 and 3, indicates starting eID
-        thru : int
+        end : int
             used in format alternative 2 and 3
-        by : int
+        by : int; default=1
             used in format alternative 3
         comment : str; default=''
             a comment for the card
@@ -1360,50 +1363,22 @@ class MATCID:
             | MATCID |  CID  | "ALL"  |       |       |      |      |      |      |
             +--------+-------+--------+-------+-------+------+------+------+------+
         """
+        if comment:
+            self.comment = comment
         self.cid = cid
-        self.form = form
-
-        if form == 1:
-            assert eids is not None, f'cid={cid}'
-            assert start is thru is by is None, f'cid={cid}, start={start}, thru={thru}, by={by}'
-
-            self.eids = eids
-            self.start = self.thru = self.by = None
-
-        elif form == 2:
-            assert eids is by is None, f'cid={cid}, eids={eids}, by={by}'
-            assert type(start) is int, f'cid={cid}, start={start}'
-            assert type(thru) is int, f'cid={cid}, thru={thru}'
-
-            self.start = start
-            self.thru = thru
-
-            self.eids = self.by = None
-
-        elif form == 3:
-            assert eids is None, f'cid={cid}, eids={eids}'
-            assert type(start) is int, f'cid={cid}, start={start}'
-            assert type(thru) is int, f'cid={cid}, thru={thru}'
-            assert type(by) is int, f'cid={cid}, thru={by}'
-
-            self.start = start
-            self.thru = thru
-            self.by = by
-
-            self.eids = None
-
-        elif form == 4:
-            assert eids is start is by is thru is None, f'cid={cid}, eids={eids}, start={start}, thru={thru}, by={by}'
-
-            self.eids = self.start = self.thru = self.by = None
-
+        if eids is not None:
+            assert eids is not None, f'eids={eids}, start={start}, end={end}, by={by}'
+            assert start is None and end is None and (by is None or by == 1), f'eids={eids}, start={start}, end={end}, by={by}'
         else:
-            raise RuntimeError(f'Form can only take a value of 1, 2, 3 or 4; form = {form}')
-
-        self.comment = comment
+            assert eids is None, f'cid={cid}, eids={eids}'
+            assert isinstance(start, int) and isinstance(end, int) and isinstance(by, int), f'cid={cid}, start={start} end={end} by={by}'
+        self.start = start
+        self.end = end
+        self.by = by
+        self.eids = eids
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Material Coordinate System for Solid Elements
 
@@ -1450,49 +1425,33 @@ class MATCID:
         cid = integer(card, 1, 'cid')
 
         # first field, either "ALL" or an integer (eID1)
-        field2 = integer_or_string(card, 2, 'field2')
-        if type(field2) is str:
-            assert field2 == 'ALL', f'{field2}'
+        field2 = integer_or_string(card, 2, 'ALL/eid1')
+        by = 1
+        if field2 == 'ALL':
+            eids = None
+            start = 1
+            end = -1
+            return cls(cid, eids, start, end, by, comment=comment)
 
-            form = 4
-            return cls(cid, form, None, None, None, None, comment=comment)
-        else:
-            assert field2 > 0, f'{field2}'
+        assert field2 > 0, f'{field2}'
+        n_fields = len(card)
+        thru_eid2 = integer_or_string(card, 3, 'THRU/eid2')
+        if isinstance(thru_eid2, str):  # THRU
+            eids = None
+            assert thru_eid2 == 'THRU', f'{thru_eid2}'
+            start = integer(card, 2, 'start')
+            end = integer(card, 4, 'end')
+            assert end > start, f'start={start}, end={end}'
 
-            n_fields = len(card)
-
-            if n_fields > 3:  # More than 1 eID referenced
-                field3 = integer_or_string(card, 3, 'pos3')
-                if type(field3) is str:  # THRU
-                    assert field3 == 'THRU', f'{field3}'
-
-                    start = integer(card, 2, 'start')
-                    thru = integer(card, 4, 'thru')
-                    assert thru > start, f'start={start}, thru={thru}'
-
-                    if n_fields > 5:  # BY
-                        form = 3
-                        by = integer(card, 6, 'by')
-
-                        assert by > 0, f'{by}'
-
-                        return cls(cid, form, None, start, thru, by, comment=comment)
-
-                    else:
-                        form = 2
-                        return cls(cid, form, None, start, thru, None, comment=comment)
-                else:  # Multiple eIDs referenced without using THRU / BY
-                    form = 1
-                    eids = np.empty([n_fields - 2], dtype=int)
-                    for i in range(2, n_fields):
-                        eids[i-2] = integer(card, i, 'eid')
-                    return cls(cid, form, eids, None, None, None, comment=comment)
-
-            else:  # Single eID referenced
-                form = 1
-                eids = np.array([field2], dtype=int)
-
-                return cls(cid, form, eids, None, None, None, comment=comment)
+            if n_fields > 5:  # BY
+                by = integer_or_blank(card, 6, 'by', default=1)
+                assert by > 0, f'{by}'
+            return cls(cid, eids, start, end, by, comment=comment)
+        else:  # Multiple eIDs referenced without using THRU / BY
+            eids = np.empty([n_fields - 2], dtype=int)
+            for i in range(2, n_fields):
+                eids[i-2] = integer(card, i, 'eid')
+            return cls(cid, eids, comment=comment)
 
     def Cid(self) -> int:
         return self.cid
@@ -1516,17 +1475,17 @@ class MATCID:
         return self.raw_fields()
 
     def raw_fields(self):
-
-        if self.form == 1:
-            return ['MATCID', self.cid] + list(self.eids)
-        elif self.form == 2:
-            return ['MATCID', self.cid, self.start, 'THRU', self.thru]
-        elif self.form == 3:
-            return ['MATCID', self.cid, self.start, 'THRU', self.thru, 'BY', self.by]
-        elif self.form == 4:
-            return ['MATCID', self.cid, 'ALL']
+        assert self.cid is not None, self.cid
+        if self.eids is not None:
+            list_fields = ['MATCID', self.cid] + list(self.eids)
+        elif self.start == 1 and self.end == -1 and self.by == 1:
+            list_fields = ['MATCID', self.cid, 'ALL']
         else:
-            raise RuntimeError(f'cid={self.cid}, form={self.form}')
+            assert self.start is not None and self.start > 0, (self.start, self.end, self.by)
+            list_fields = ['MATCID', self.cid, self.start, 'THRU', self.end]
+            if self.by != 1:
+                list_fields.extend(['BY', self.by])
+        return list_fields
 
     # Not working
     def _verify(self, xref):
@@ -1827,7 +1786,10 @@ class Cord2x(CoordBase):
      - CORD2C
      - CORD2S
     """
-    def __init__(self, cid: int, origin, zaxis, xzplane, rid: int=0, setup: bool=True, comment: str=''):
+    def __init__(self, cid: int, origin: np.ndarray,
+                 zaxis: np.ndarray,
+                 xzplane: np.ndarray,
+                 rid: int=0, setup: bool=True, comment: str=''):
         """
         This method emulates the CORD2x card.
 
@@ -1892,7 +1854,7 @@ class Cord2x(CoordBase):
         return new_coood
 
     @classmethod
-    def export_to_hdf5(cls, h5_file, model, cids):
+    def export_to_hdf5(cls, h5_file, model: BDF, cids: np.ndarray):
         """exports the coords in a vectorized way"""
         comments = []
         rid = []
@@ -2096,28 +2058,57 @@ class Cord2x(CoordBase):
         return cls(cid, e1, e2, e3, rid=rid, setup=False, comment=comment)
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """Defines the CORD2x class"""
         #: coordinate system ID
         cid = integer(card, 1, 'cid')
         #: reference coordinate system ID
-        rid = integer_or_blank(card, 2, 'rid', 0)
+        rid = integer_or_blank(card, 2, 'rid', default=0)
 
         #: origin in a point relative to the rid coordinate system
-        origin = np.array([double_or_blank(card, 3, 'e1x', 0.0),
-                           double_or_blank(card, 4, 'e1y', 0.0),
-                           double_or_blank(card, 5, 'e1z', 0.0)],
+        origin = np.array([double_or_blank(card, 3, 'e1x', default=0.0),
+                           double_or_blank(card, 4, 'e1y', default=0.0),
+                           double_or_blank(card, 5, 'e1z', default=0.0)],
                           dtype='float64')
         #: z-axis in a point relative to the rid coordinate system
-        zaxis = np.array([double_or_blank(card, 6, 'e2x', 0.0),
-                          double_or_blank(card, 7, 'e2y', 0.0),
-                          double_or_blank(card, 8, 'e2z', 0.0)],
+        zaxis = np.array([double_or_blank(card, 6, 'e2x', default=0.0),
+                          double_or_blank(card, 7, 'e2y', default=0.0),
+                          double_or_blank(card, 8, 'e2z', default=0.0)],
                          dtype='float64')
         #: a point on the xz-plane relative to the rid coordinate system
-        xzplane = np.array([double_or_blank(card, 9, 'e3x', 0.0),
-                            double_or_blank(card, 10, 'e3y', 0.0),
-                            double_or_blank(card, 11, 'e3z', 0.0)],
+        xzplane = np.array([double_or_blank(card, 9, 'e3x', default=0.0),
+                            double_or_blank(card, 10, 'e3y', default=0.0),
+                            double_or_blank(card, 11, 'e3z', default=0.0)],
                            dtype='float64')
+        return cls(cid, origin, zaxis, xzplane, rid=rid, comment=comment)
+        #self._finish_setup()
+
+    @classmethod
+    def add_card_lax(cls, card: BDFCard, comment: str=''):
+        """Defines the CORD2x class"""
+        #: coordinate system ID
+        cid = integer(card, 1, 'cid')
+        #: reference coordinate system ID
+        rid = integer_or_blank(card, 2, 'rid', default=0)
+
+        #: origin in a point relative to the rid coordinate system
+        origin = np.array([
+            force_double_or_blank(card, 3, 'e1x', default=0.0),
+            force_double_or_blank(card, 4, 'e1y', default=0.0),
+            force_double_or_blank(card, 5, 'e1z', default=0.0),
+        ], dtype='float64')
+        #: z-axis in a point relative to the rid coordinate system
+        zaxis = np.array([
+            force_double_or_blank(card, 6, 'e2x', default=0.0),
+            force_double_or_blank(card, 7, 'e2y', default=0.0),
+            force_double_or_blank(card, 8, 'e2z', default=0.0),
+        ],dtype='float64')
+        #: a point on the xz-plane relative to the rid coordinate system
+        xzplane = np.array([
+            force_double_or_blank(card, 9, 'e3x', default=0.0),
+            force_double_or_blank(card, 10, 'e3y', default=0.0),
+            force_double_or_blank(card, 11, 'e3z', default=0.0),
+        ], dtype='float64')
         return cls(cid, origin, zaxis, xzplane, rid=rid, comment=comment)
         #self._finish_setup()
 
@@ -2232,6 +2223,24 @@ class Cord2x(CoordBase):
             msg = ', which is required by %s cid=%s' % (self.type, self.cid)
             self.rid_ref = model.Coord(self.rid, msg=msg)
 
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross-links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        .. warning:: Doesn't set rid to the coordinate system if it's in the
+                    global.  This isn't a problem.  It's meant to speed up the
+                    code in order to resolve extra coordinate systems.
+
+        """
+        if self.Rid() != 0:
+            msg = ', which is required by %s cid=%s' % (self.type, self.cid)
+            self.rid_ref = model.safe_coord(self.rid, self.cid, xref_errors, msg=msg)
+
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
         if self.rid == 0:
@@ -2239,7 +2248,7 @@ class Cord2x(CoordBase):
         self.rid = self.Rid()
         self.rid_ref = None
 
-    def Rid(self):
+    def Rid(self) -> int:
         """Gets the reference coordinate system self.rid"""
         if self.rid_ref is not None:
             return self.rid_ref.cid
@@ -2256,7 +2265,7 @@ class Cord1x(CoordBase):
     rid = 0  # used only for transform to global
 
     @classmethod
-    def export_to_hdf5(cls, h5_file, model, cids):
+    def export_to_hdf5(cls, h5_file, model: BDF, cids: np.ndarray):
         """exports the coords in a vectorized way"""
         unused_comments = []
         nodes = []
@@ -2422,6 +2431,24 @@ class Cord1x(CoordBase):
         self.g2_ref = model.Node(self.g2, msg=msg)
         #: grid point 3
         self.g3_ref = model.Node(self.g3, msg=msg)
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by %s cid=%s' % (self.type, self.cid)
+        #: grid point 1
+        self.g1_ref = model.safe_node(self.g1, self.cid, xref_errors, msg=msg)
+        #: grid point 2
+        self.g2_ref = model.safe_node(self.g2, self.cid, xref_errors, msg=msg)
+        #: grid point 3
+        self.g3_ref = model.safe_node(self.g3, self.cid, xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
