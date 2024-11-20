@@ -14,7 +14,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import BDF
 
 # dict[key] : [value1, value2, ...]
-dict_int_list_obj_attrs = [
+dict_int_list_obj_attrs: list[str] = [
     'spcs', 'spcadds',
     'mpcs', 'mpcadds',
     'loads', 'load_combinations',
@@ -30,7 +30,7 @@ dict_int_list_obj_attrs = [
 ]
 
 # dict[key] : value
-dict_int_obj_attrs = [
+dict_int_obj_attrs: list[str] = [
     # are handled explicitly----
     #'elements',
     #'nodes',
@@ -107,7 +107,7 @@ dict_int_obj_attrs = [
     'cyjoin',
 ]
 
-scalar_obj_keys = [
+scalar_obj_keys: list[str] = [
     # required----
     'aero', 'aeros', 'axic', 'axif', 'cyax', 'baror', 'beamor',
     'acmodl', 'modtrak',
@@ -117,7 +117,7 @@ scalar_obj_keys = [
     #'zona',
 ]
 
-scalar_keys = [
+scalar_keys: list[str] = [
     # handled separately----
     #'cards_to_read',
 
@@ -126,7 +126,7 @@ scalar_keys = [
     '_auto_reject', '_encoding', '_iparse_errors', '_is_axis_symmetric', '_is_cards_dict',
     '_is_dynamic_syntax', '_is_long_ids', '_ixref_errors', '_nastran_format', '_nparse_errors',
     '_nxref_errors', '_sol', '_stop_on_duplicate_error', '_stop_on_parsing_error',
-    '_stop_on_xref_error',
+    #'_stop_on_xref_error',
     '_xref', 'active_filename',
     'dumplines', 'echo', 'force_echo_off', 'include_dir',
     'is_msc', 'is_nx', 'punch',
@@ -156,8 +156,8 @@ LIST_KEYS = [
 
     # maybe...
     #'_duplicate_coords', '_duplicate_elements', '_duplicate_masses', '_duplicate_materials',
-    '_duplicate_nodes', '_duplicate_properties',
-    '_duplicate_thermal_materials', '_stored_parse_errors',
+    #'_duplicate_nodes', '_duplicate_properties',
+    #'_duplicate_thermal_materials', '_stored_parse_errors',
     #'_stored_xref_errors',
     #'units', 'xyz_limits',
 
@@ -166,7 +166,7 @@ LIST_KEYS = [
     #'special_cards',
 ]
 
-LIST_OBJ_KEYS = [  ## TODO: not done
+LIST_OBJ_KEYS: list[str] = [  ## TODO: not done
     # TODO: required
     'asets', 'bsets', 'csets', 'omits', 'qsets',
     'mkaeros',

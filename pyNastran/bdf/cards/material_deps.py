@@ -26,6 +26,7 @@ from pyNastran.bdf.field_writer_8 import print_card_8
 from pyNastran.bdf.field_writer_16 import print_card_16
 if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import BDF
+    from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 
 
 class MaterialDependence(BaseCard):
@@ -49,10 +50,17 @@ class MaterialDependenceThermal(MaterialDependence):
     def __init__(self):
         MaterialDependence.__init__(self)
 
-    def _xref_table(self, model, key, msg):
+    def _xref_table(self, model, key: str, msg):
         slot = getattr(self, key)
         if slot is not None:
-            setattr(self, key + '_ref', model.TableM(slot, msg + f' for {key}'))
+            mid_ref = model.TableM(slot, msg + f' for {key}')
+            setattr(self, key + '_ref', mid_ref)
+
+    def _safe_xref_table(self, model, key: str, xref_errors, msg):
+        slot = getattr(self, key)
+        if slot is not None and slot in model.tables_m:
+            mid_ref = model.safe_tablem(slot, self.mid, xref_errors, msg)
+            setattr(self, key + '_ref', mid_ref)
 
 class MATS1(MaterialDependence):
     """
@@ -64,7 +72,9 @@ class MATS1(MaterialDependence):
     """
     type = 'MATS1'
 
-    def __init__(self, mid, tid, Type, h, hr, yf, limit1, limit2, comment=''):
+    def __init__(self, mid: int, tid: int, Type: Optional[str],
+                 h: float, hr: float, yf: float,
+                 limit1: float, limit2: float, comment: str=''):
         MaterialDependence.__init__(self)
         if comment:
             self.comment = comment
@@ -127,7 +137,7 @@ class MATS1(MaterialDependence):
             raise ValueError('MATS1 Type must be [NLELAST, PLASTIC, PLSTRN]; Type=%r' % self.Type)
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a MATS1 card from ``BDF.add_card(...)``
 
@@ -196,7 +206,7 @@ class MATS1(MaterialDependence):
                                '2=PLASTIC, or 3=PLSTRN')
         return MATS1(mid, tid, Type, h, hr, yf, limit1, limit2, comment=comment)
 
-    def Yf(self):
+    def Yf(self) -> str:
         d = {1: 'VonMises', 2: 'Tresca', 3: 'MohrCoulomb', 4: 'Drucker-Prager'}
         return d[self.yf]
 
@@ -237,6 +247,21 @@ class MATS1(MaterialDependence):
         """
         msg = ', which is required by MATS1 mid=%s' % self.mid
         self.mid_ref = model.Material(self.mid, msg=msg)
+        if self.tid:  # then self.h is used
+            self.tid_ref = model.Table(self.tid, msg=msg) # TABLES1 or TABLEST
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by MATS1 mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.mid, xref_errors, msg=msg)
         if self.tid:  # then self.h is used
             self.tid_ref = model.Table(self.tid, msg=msg) # TABLES1 or TABLEST
 
@@ -656,6 +681,29 @@ class MATT1(MaterialDependenceThermal):
         self._xref_table(model, 'sc_table', msg=msg)
         self._xref_table(model, 'ss_table', msg=msg)
 
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by MATT1 mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.mid, xref_errors, msg=msg)
+
+        self._safe_xref_table(model, 'e_table', msg=msg)
+        self._safe_xref_table(model, 'g_table', msg=msg)
+        self._safe_xref_table(model, 'nu_table', msg=msg)
+        self._safe_xref_table(model, 'rho_table', msg=msg)
+        self._safe_xref_table(model, 'a_table', msg=msg)
+        self._safe_xref_table(model, 'ge_table', msg=msg)
+        self._safe_xref_table(model, 'st_table', msg=msg)
+        self._safe_xref_table(model, 'sc_table', msg=msg)
+        self._safe_xref_table(model, 'ss_table', msg=msg)
+
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
         self.mid = self.Mid()
@@ -823,20 +871,20 @@ class MATT2(MaterialDependenceThermal):
         self.ss_table_ref = None
 
     def validate(self):
-        assert self.g11_table is None or self.g11_table > 0
-        assert self.g12_table is None or self.g12_table > 0
-        assert self.g13_table is None or self.g13_table > 0
-        assert self.g22_table is None or self.g22_table > 0
-        assert self.g23_table is None or self.g23_table > 0
-        assert self.g33_table is None or self.g33_table > 0
-        assert self.rho_table is None or self.rho_table > 0
-        assert self.a1_table is None or self.a1_table > 0
-        assert self.a2_table is None or self.a2_table > 0
-        assert self.a3_table is None or self.a3_table > 0
-        assert self.ge_table is None or self.ge_table > 0
-        assert self.st_table is None or self.st_table > 0
-        assert self.sc_table is None or self.sc_table > 0
-        assert self.ss_table is None or self.ss_table > 0
+        assert self.g11_table is None or self.g11_table > 0, self.g11_table
+        assert self.g12_table is None or self.g12_table > 0, self.g12_table
+        assert self.g13_table is None or self.g13_table > 0, self.g13_table
+        assert self.g22_table is None or self.g22_table > 0, self.g22_table
+        assert self.g23_table is None or self.g23_table > 0, self.g23_table
+        assert self.g33_table is None or self.g33_table > 0, self.g33_table
+        assert self.rho_table is None or self.rho_table > 0, self.rho_table
+        assert self.a1_table is None or self.a1_table > 0, self.a1_table
+        assert self.a2_table is None or self.a2_table > 0, self.a2_table
+        assert self.a3_table is None or self.a3_table > 0, self.a3_table
+        assert self.ge_table is None or self.ge_table > 0, self.ge_table
+        assert self.st_table is None or self.st_table > 0, self.st_table
+        assert self.sc_table is None or self.sc_table > 0, self.sc_table
+        assert self.ss_table is None or self.ss_table > 0, self.ss_table
 
     @classmethod
     def add_card(cls, card, comment=''):
@@ -901,6 +949,34 @@ class MATT2(MaterialDependenceThermal):
         self._xref_table(model, 'st_table', msg=msg)
         self._xref_table(model, 'sc_table', msg=msg)
         self._xref_table(model, 'ss_table', msg=msg)
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by MATT2 mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.mid, xref_errors, msg=msg)
+
+        self._safe_xref_table(model, 'g11_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'g12_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'g13_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'g22_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'g23_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'g33_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'rho_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'a1_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'a2_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'a3_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'ge_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'st_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'sc_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'ss_table', xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -1073,29 +1149,36 @@ class MATT3(MaterialDependenceThermal):
         self.mid_ref = model.Material(self.mid, msg=msg)
 
         #self._get_table('ex_table')
-        if self.ex_table is not None:
-            self.ex_table_ref = model.TableM(self.ex_table)
-        if self.eth_table is not None:
-            self.eth_table_ref = model.TableM(self.eth_table)
-        if self.ez_table is not None:
-            self.ez_table_ref = model.TableM(self.ez_table)
-        if self.nuth_table is not None:
-            self.nuth_table_ref = model.TableM(self.nuth_table)
-        if self.nuxz_table is not None:
-            self.nuxz_table_ref = model.TableM(self.nuxz_table)
-        if self.rho_table is not None:
-            self.rho_table_ref = model.TableM(self.rho_table)
+        self._xref_table(model, 'ex_table', msg=msg)
+        self._xref_table(model, 'eth_table', msg=msg)
+        self._xref_table(model, 'ez_table', msg=msg)
+        self._xref_table(model, 'nuth_table', msg=msg)
+        self._xref_table(model, 'nuxz_table', msg=msg)
+        self._xref_table(model, 'rho_table', msg=msg)
 
-        if self.gzx_table is not None:
-            self.gzx_table_ref = model.TableM(self.gzx_table)
-        if self.ax_table is not None:
-            self.ax_table_ref = model.TableM(self.ax_table)
-        if self.ath_table is not None:
-            self.ath_table_ref = model.TableM(self.ath_table)
-        if self.az_table is not None:
-            self.az_table_ref = model.TableM(self.az_table)
-        if self.ge_table is not None:
-            self.ge_table_ref = model.TableM(self.ge_table)
+        self._xref_table(model, 'gzx_table', msg=msg)
+        self._xref_table(model, 'ax_table', msg=msg)
+        self._xref_table(model, 'ath_table', msg=msg)
+        self._xref_table(model, 'az_table', msg=msg)
+        self._xref_table(model, 'ge_table', msg=msg)
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        msg = ', which is required by MATT3 mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.mid, xref_errors, msg=msg)
+
+        #self._get_table('ex_table')
+        self._safe_xref_table(model, 'ex_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'eth_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'ez_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'nuth_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'nuxz_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'rho_table', xref_errors, msg=msg)
+
+        self._safe_xref_table(model, 'gzx_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'ax_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'ath_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'az_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'ge_table', xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -1127,7 +1210,7 @@ class MATT3(MaterialDependenceThermal):
         self.ge_table_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a MATT3 card from ``BDF.add_card(...)``
 
@@ -1343,6 +1426,25 @@ class MATT4(MaterialDependenceThermal):
         self._xref_table(model, 'mu_table', msg=msg)
         self._xref_table(model, 'hgen_table', msg=msg)
 
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by MATT4 mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.mid, xref_errors, msg=msg)
+
+        self._safe_xref_table(model, 'k_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'cp_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'h_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'mu_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'hgen_table', xref_errors, msg=msg)
+
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
         self.mid = self.Mid()
@@ -1527,6 +1629,28 @@ class MATT5(MaterialDependenceThermal):
         self._xref_table(model, 'kzz_table', msg=msg)
         self._xref_table(model, 'cp_table', msg=msg)
         self._xref_table(model, 'hgen_table', msg=msg)
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by MATT5 mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.mid, xref_errors, msg=msg)
+
+        self._safe_xref_table(model, 'kxx_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'kxy_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'kxz_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'kyy_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'kyz_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'kzz_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'cp_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'hgen_table', xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -1737,7 +1861,6 @@ class MATT8(MaterialDependenceThermal):
                      xc_table, yt_table, yc_table,
                      s_table, ge_table, f12_table,
                      comment=comment)
-
     def cross_reference(self, model: BDF) -> None:
         """
         Cross links the card so referenced cards can be extracted directly
@@ -1751,33 +1874,52 @@ class MATT8(MaterialDependenceThermal):
         msg = ', which is required by MATT8 mid=%s' % self.mid
         self.mid_ref = model.Material(self.mid, msg=msg)
 
-        if self.e1_table is not None:
-            self.e1_table_ref = model.TableM(self.e1_table)
-        if self.e2_table is not None:
-            self.e2_table_ref = model.TableM(self.e2_table)
-        if self.nu12_table is not None:
-            self.nu12_table_ref = model.TableM(self.nu12_table)
-        if self.g12_table is not None:
-            self.g12_table_ref = model.TableM(self.g12_table)
-        if self.g1z_table is not None:
-            self.g1z_table_ref = model.TableM(self.g1z_table)
-        if self.g2z_table is not None:
-            self.g2z_table_ref = model.TableM(self.g2z_table)
-        if self.rho_table is not None:
-            self.rho_table_ref = model.TableM(self.rho_table)
+        self._xref_table(model, 'e1_table', msg=msg)
+        self._xref_table(model, 'e2_table', msg=msg)
+        self._xref_table(model, 'nu12_table', msg=msg)
+        self._xref_table(model, 'g12_table', msg=msg)
+        self._xref_table(model, 'g1z_table', msg=msg)
+        self._xref_table(model, 'g2z_table', msg=msg)
+        self._xref_table(model, 'rho_table', msg=msg)
+        self._xref_table(model, 'a1_table', msg=msg)
+        self._xref_table(model, 'a2_table', msg=msg)
+        self._xref_table(model, 'xt_table', msg=msg)
+        self._xref_table(model, 'xc_table', msg=msg)
+        self._xref_table(model, 'yt_table', msg=msg)
+        self._xref_table(model, 'yc_table', msg=msg)
+        self._xref_table(model, 's_table', msg=msg)
+        self._xref_table(model, 'ge_table', msg=msg)
+        self._xref_table(model, 'f12_table', msg=msg)
 
-        if self.a1_table is not None:
-            self.a1_table_ref = model.TableM(self.a1_table)
-        if self.a2_table is not None:
-            self.a2_table_ref = model.TableM(self.a2_table)
-        if self.xt_table is not None:
-            self.xt_table_ref = model.TableM(self.xt_table)
-        if self.xc_table is not None:
-            self.xc_table_ref = model.TableM(self.xc_table)
-        if self.yt_table is not None:
-            self.yt_table_ref = model.TableM(self.yt_table)
-        if self.s_table is not None:
-            self.s_table_ref = model.TableM(self.s_table)
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        """
+        msg = ', which is required by MATT8 mid=%s' % self.mid
+        self.mid_ref = model.safe_material(self.mid, self.mid, xref_errors, msg=msg)
+
+        self._safe_xref_table(model, 'e1_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'e2_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'nu12_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'g12_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'g1z_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'g2z_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'rho_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'a1_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'a2_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'xt_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'xc_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'yt_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'yc_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 's_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'ge_table', xref_errors, msg=msg)
+        self._safe_xref_table(model, 'f12_table', xref_errors, msg=msg)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -2073,6 +2215,8 @@ class MATT9(MaterialDependenceThermal):
             #self.e1_table_ref = model.TableM(self.e1_table)
         #if self.e2_table is not None:
             #self.e2_table_ref = model.TableM(self.e2_table)
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        self.cross_reference(model)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
@@ -2226,6 +2370,9 @@ class MATT11(MaterialDependenceThermal):
             #self.e1_table_ref = model.TableM(self.e1_table)
         #if self.e2_table is not None:
             #self.e2_table_ref = model.TableM(self.e2_table)
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        self.cross_reference(model)
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""

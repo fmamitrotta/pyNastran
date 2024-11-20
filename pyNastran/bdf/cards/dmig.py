@@ -133,7 +133,7 @@ class DTI_UNITS(BaseCard):
             'force' : force,
             'length' : length,
             'time' : time,
-            'temp_stress' : temp_stress
+            'temp_stress' : temp_stress,
         }
         return DTI_UNITS(name, fields, comment=comment)
 
@@ -197,6 +197,9 @@ class DTI(BaseCard):
         #    None if np.isnan(valuei) else valuei)
         #          for valuei in values]
         self.fields = {key : value for key, value in zip(keys, values_str)}
+        print('values_str', values_str)
+        print('fields', self.fields)
+        asdf
 
     @classmethod
     def export_to_hdf5(cls, h5_file, model: BDF, encoding: str):
@@ -253,7 +256,8 @@ class DTI(BaseCard):
             raise RuntimeError(f'failed copying {bad_attrs}')
         return result
 
-    def __init__(self, name: str, fields: dict[int, list], comment=''):
+    def __init__(self, name: str, fields: dict[int, list],
+                 comment: str=''):
         """
         Creates a DTI card
 
@@ -275,11 +279,12 @@ class DTI(BaseCard):
             assert isinstance(fieldsi, list), fieldsi
             for fieldi in fieldsi:
                 assert not isinstance(fieldi, bytes), fieldsi
+                #assert not isinstance(fieldi, np.ndarray), fieldsi
         assert len(fields) > 0, fields
         assert name != 'UNITS', name
 
     @classmethod
-    def add_card(cls, card, comment):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a DTI card from ``BDF.add_card(...)``
 
@@ -317,6 +322,8 @@ class DTI(BaseCard):
         for irecord, fields in sorted(self.fields.items()):
             nfields = len(fields)
             list_fields += ['DTI', self.name] + fields
+            print('dti-tree', fields)
+
             nleftover = nfields % 8
             if nleftover:
                 list_fields += [None] * nleftover
@@ -326,7 +333,12 @@ class DTI(BaseCard):
         msg = self.comment
         for irecord, fields in sorted(self.fields.items()):
             assert isinstance(fields, list), fields
-            list_fields = ['DTI', self.name, irecord, ] + fields
+            list_fields = ['DTI', self.name, irecord, ] #+ fields
+            for fieldsi in fields:
+                if isinstance(fieldsi, (list, tuple, np.ndarray)):
+                    list_fields += list(fieldsi)
+                else:
+                    list_fields.append(fieldsi)
             msg += print_card_8(list_fields)
         return msg
 
@@ -503,7 +515,7 @@ class NastranMatrix(BaseCard):
             #   equal to the index of the highest numbered non-null column (in
             #   internal sort). Trailing null columns of the g- or p-size matrix
             #   will be truncated.
-            ncols = integer_or_blank(card, 8, 'matrix_form=%s; ncol' % (matrix_form))
+            ncols = integer_or_blank(card, 8, f'matrix_form={matrix_form}; ncol')
         else:
             # technically right, but nulling this will fix bad decks
             #self.ncols = blank(card, 8, 'matrix_form=%s; ncol' % self.matrix_form)
@@ -1953,7 +1965,7 @@ class DMI(NastranMatrix):
 
     @property
     def shape(self) -> tuple[int, int]:
-        return (self.nrows, self.ncols)
+        return self.nrows, self.ncols
 
     @property
     def ifo(self) -> int:
@@ -2801,7 +2813,7 @@ def get_matrix(self: DMIG,
             #assert isinstance(self, (DMIG, DMIK, DMIJ, DMIJI)), type(self)
             M = _fill_dense_rectangular_matrix(self, nrows, ncols, ndim, rows, cols, apply_symmetry)
             assert isinstance(M, np.ndarray), type(M)
-    return (M, rows_reversed, cols_reversed)
+    return M, rows_reversed, cols_reversed
 
 
 def _export_dmig_to_hdf5(h5_file, model: BDF, dict_obj, encoding: str) -> None:

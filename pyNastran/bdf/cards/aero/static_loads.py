@@ -24,6 +24,7 @@ from pyNastran.bdf.bdf_interface.assign_type import (
 )
 if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import BDF
+    from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 
 
 class AEROS(Aero):
@@ -184,7 +185,7 @@ class AEROS(Aero):
         self.rcsid_ref = model.safe_coord(self.rcsid, None, xref_errors, msg=msg)
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds an AEROS card from ``BDF.add_card(...)``
 
@@ -377,9 +378,10 @@ class CSSCHD(Aero):
     """
     type = 'CSSCHD'
     _field_map = {
-        1: 'sid', 2:'aesid', 3:'lalpha', 4:'lmach', 5:'lschd',
+        1: 'sid', 2:'aesurf_id', 3:'lalpha', 4:'lmach', 5:'lschd',
     }
-    _properties = ['is_anti_symmetric_xy', 'is_anti_symmetric_xz', 'is_symmetric_xy', 'is_symmetric_xz'] ## TODO: remove these
+    _properties = ['is_anti_symmetric_xy', 'is_anti_symmetric_xz',
+                   'is_symmetric_xy', 'is_symmetric_xz'] ## TODO: remove these
 
     @classmethod
     def _init_from_empty(cls):
@@ -423,21 +425,7 @@ class CSSCHD(Aero):
         self.lmach_ref = None
         self.lschd_ref = None
 
-    @property
-    def aesid(self) -> int:
-        return self.aesurf_id
-    @aesid.setter
-    def aesid(self, aesid: int) -> None:
-        self.aesurf_id = aesid
-
-    @property
-    def aesid_ref(self):
-        return self.aesurf_ref
-    @aesid_ref.setter
-    def aesid_ref(self, aesid_ref: int) -> None:
-        self.aesurf_ref = aesid_ref
-
-    def validate(self):
+    def validate(self) -> None:
         if not(self.lalpha is None or isinstance(self.lalpha, integer_types)):
             raise TypeError('lalpha=%r must be an int or None' % self.lalpha)
 
@@ -450,7 +438,7 @@ class CSSCHD(Aero):
             raise RuntimeError(msg)
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a CSSCHD card from ``BDF.add_card(...)``
 
@@ -471,7 +459,7 @@ class CSSCHD(Aero):
         return CSSCHD(sid, aesurf_id, lalpha, lmach, lschd, comment=comment)
 
     @classmethod
-    def add_op2_data(cls, data, comment=''):
+    def add_op2_data(cls, data, comment: str=''):
         sid = data[0]
         aesurf_id = data[1]   # AESURF
         lalpha = data[2]      # AEFACT
@@ -508,36 +496,36 @@ class CSSCHD(Aero):
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
-        self.aesurf_id = self.AESid()
+        self.aesurf_id = self.AESurf()
         self.lalpha = self.LAlpha()
         self.lmach = self.LMach()
         self.lschd = self.LSchd()
-        self.aesid_ref = None
+        self.aesurf_ref = None
         self.lalpha_ref = None
         self.lmach_ref = None
         self.lschd_ref = None
 
-    def AESid(self):
-        if self.aesid_ref is not None:
-            return self.aesid_ref.aesid
-        return self.aesid
+    def AESurf(self) -> int:
+        if self.aesurf_ref is not None:
+            return self.aesurf_ref.aesurf_id
+        return self.aesurf_id
 
-    def LAlpha(self):
+    def LAlpha(self) -> int:
         if self.lalpha_ref is not None:
             return self.lalpha_ref.sid
         return self.lalpha
 
-    def LMach(self):
+    def LMach(self) -> int:
         if self.lmach_ref is not None:
             return self.lmach_ref.sid
         return self.lmach
 
-    def LSchd(self):
+    def LSchd(self) -> int:
         if self.lschd_ref is not None:
             return self.lschd_ref.sid
         return self.lschd
 
-    def raw_fields(self):
+    def raw_fields(self) -> list:
         """
         Gets the fields in their unmodified form
 
@@ -547,7 +535,7 @@ class CSSCHD(Aero):
             the fields that define the card
 
         """
-        list_fields = ['CSSCHD', self.sid, self.AESid(), self.LAlpha(),
+        list_fields = ['CSSCHD', self.sid, self.AESurf(), self.LAlpha(),
                        self.LMach(), self.LSchd()]
         return list_fields
 
@@ -730,7 +718,9 @@ class TRIM(BaseCard):
         uxs = [1.0]
         return TRIM(sid, mach, q, labels, uxs, aeqr=1.0, comment='')
 
-    def __init__(self, sid, mach, q, labels, uxs, aeqr=1.0, comment=''):
+    def __init__(self, sid: int, mach: float, q: float,
+                 labels: list[str], uxs: list[float], aeqr: float=1.0,
+                 comment: str=''):
         """
         Creates a TRIM card for a static aero (144) analysis.
 
@@ -783,11 +773,13 @@ class TRIM(BaseCard):
             msg = 'not all labels are unique; labels=%s' % str(self.labels)
             raise RuntimeError(msg)
         if len(self.labels) != len(self.uxs):
-            msg = 'nlabels=%s != nux=%s; labels=%s uxs=%s' % (
+            msg = 'nlabels=%d != nux=%d; labels=%s uxs=%s' % (
                 len(self.labels), len(self.uxs), str(self.labels), str(self.uxs))
             raise RuntimeError(msg)
 
-    def verify_trim(self, suport, suport1, aestats, aeparms, aelinks, aesurf, xref=True):
+    def verify_trim(self, suport, suport1,
+                    aestats, aeparms, aelinks,
+                    aesurf, xref=True):
         """
         Magic function that makes TRIM cards not frustrating.
 
@@ -901,34 +893,37 @@ class TRIM(BaseCard):
                     nsuport1_dofs += 1
             suport_dof_msg2 = '\nsuport_dofs (nid, comp):\n%s\n' % suport_dof_msg.rstrip(',')
 
+        trim_labels = self.labels
         aesurf_names = [aesurfi.label for aesurfi in aesurf.values()]
         aestat_labels = [aestat.label for aestat in aestats.values()]
         aeparm_labels = [aeparm.label for aeparm in aeparms.values()]
         naestat = len(aestat_labels)
-        ntrim = len(self.labels)
-        trim_aesurf_common = list(set(self.labels).intersection(set(aesurf_names)))
+        ntrim = len(trim_labels)
+        trim_aesurf_common = list(set(trim_labels).intersection(set(aesurf_names)))
         trim_aesurf_common.sort()
         ntrim_aesurfs = len(trim_aesurf_common)
         naesurf = len(aesurf_names)
         naeparm = len(aeparm_labels)
 
-        aelinksi = []
+        aelink_labels = []
         if 0 in aelinks:
-            aelinksi += [aelink.label for aelink in aelinks[0]]
+            aelink_labels += [aelink.label for aelink in aelinks[0]]
         #if 'ALWAYS' in aelinks:
-            #aelinksi += [aelink.label for aelink in aelinks['ALWAYS']]
+            #aelink_labels += [aelink.label for aelink in aelinks['ALWAYS']]
 
         if self.sid in aelinks:
-            aelinksi += [aelink.label for aelink in aelinks[self.sid]]
-        naelink = len(aelinksi)
+            aelink_labels += [aelink.label for aelink in aelinks[self.sid]]
+        naelink = len(aelink_labels)
 
 
         ntrim_aesurf = 0
         labels = aestat_labels + aesurf_names + aeparm_labels
         msg = ''
-        for label in self.labels:
+        for label in trim_labels:
             if label not in labels:
-                msg += 'TRIM label=%r is not defined\n' % label
+                msg += f'TRIM label={label!r} is not defined\n'
+            if label in aelink_labels:
+                msg += f'TRIM label={label!r} is dependent on an AELINK and indepedent on the TRIM card\n'
 
             if label in aesurf_names:
                 #print('AESTAT/AESURF label = %r' % label)
@@ -984,8 +979,8 @@ class TRIM(BaseCard):
                 f'  +naesurf = {naesurf}; {aesurf_names}\n'
                 f'  +naeparm = {naeparm}; {aeparm_labels}\n'
                 f'  +0*2*ntrim_aesurf? = {2*ntrim_aesurf} -> 0; {trim_aesurf_common}\n'
-                f'  -ntrim = {ntrim}; {self.labels}\n'
-                f'  -naelink = {naelink}; {aelinksi}\n'
+                f'  -ntrim = {ntrim}; {trim_labels}\n'
+                f'  -naelink = {naelink}; {aelink_labels}\n'
                 f'  -nsuport_dofs = {nsuport_dofs}\n'
                 f'  -nsuport1_dofs = {nsuport1_dofs}\n'
                 f'{suport_dof_msg2}\n\n'
@@ -1116,7 +1111,7 @@ class TRIM2(TRIM):
         TRIM.__init__(self, sid, mach, q, labels, uxs, aeqr=aeqr, comment=comment)
 
     @classmethod
-    def add_card(cls, card, comment=''):  # TODO: not done...
+    def add_card(cls, card: BDFCard, comment: str=''):  # TODO: not done...
         """
         Adds a TRIM2 card from ``BDF.add_card(...)``
 

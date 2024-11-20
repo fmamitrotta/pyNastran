@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Union, Callable, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 import numpy as np
 import h5py
 from ..h5_utils import get_tree, passer
@@ -348,7 +348,10 @@ def read_dresp1(name: str, group: h5py._hl.group.Group, geom_model: BDF) -> None
         obj.validate()
         str(obj)
 
-def get_attb_from_atti(response_type: str, atta: int, attb_integer: int, attb_real: float) -> Union[int, float, None]:
+def get_attb_from_atti(response_type: str,
+                       atta: int,
+                       attb_integer: int,
+                       attb_real: float) -> int | float | None:
     # 0,1
     if response_type in {'DISP', 'STRAIN', 'STRESS', 'ESE', 'FORCE', 'CSTRESS', 'CSTRAIN', 'CFAILURE', 'TOTSE',
                          'RMSDISP', 'RMSVELO', 'RMSACCL', 'STABDER'}:

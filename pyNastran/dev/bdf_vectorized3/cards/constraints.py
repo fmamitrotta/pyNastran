@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from collections import defaultdict
 from itertools import count
 import numpy as np
@@ -1105,7 +1105,7 @@ class BNDGRID(CommonSet):
 
 
 def spc_cards_to_nid_dof(spc_id: int,
-                         cards: list[Union[SPC, SPC1]],
+                         cards: list[SPC | SPC1],
                          ) -> tuple[bool, np.ndarray, np.ndarray]:
     """helper for making SPCs/SPCADD node/component"""
     comp_list = []
@@ -1144,5 +1144,4 @@ def spc_cards_to_nid_dof(spc_id: int,
     is_failed = False
     return is_failed, nids, comp
 
-SPCs = Union[SPC, SPC1]
-
+SPCs = SPC | SPC1

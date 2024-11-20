@@ -238,6 +238,7 @@ def run_op2(op2_filename: str, make_geom: bool=False, combine: bool=True,
     else:
         sort_methods = is_sort2
 
+    op2_filename: str = str(op2_filename)
     base, ext = os.path.splitext(op2_filename.lower())
     assert ext in {'.op2', '.h5'}, f'op2_filename={op2_filename} is not an OP2'
     is_passed = False
@@ -385,7 +386,7 @@ def run_op2(op2_filename: str, make_geom: bool=False, combine: bool=True,
         #print(op2.case_control_deck.get_op2_data())
         #print(op2.case_control_deck.get_op2_data())
         is_passed = True
-    except MemoryError:
+    except MemoryError:  # pragma: no cover
         raise
     except KeyboardInterrupt:
         sys.stdout.flush()
@@ -629,7 +630,7 @@ def set_versions(op2s: list[OP2],
 
 def main(argv=None, show_args: bool=True) -> None:
     """the interface for test_op2"""
-    if argv is None:
+    if argv is None:  # pragma: no cover
         argv = sys.argv
     data = get_test_op2_data(argv)
 

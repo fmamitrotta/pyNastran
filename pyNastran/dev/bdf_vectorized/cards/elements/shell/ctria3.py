@@ -31,7 +31,7 @@ class CTRIA3(ShellElement):
                 #self.element_id = array([], dtype='int32')
                 #self.property_id = array([], dtype='int32')
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         i = self.i
         self.element_id[i] = integer(card, 1, 'element_id')
         self.property_id[i] = integer(card, 2, 'property_id')
@@ -331,7 +331,7 @@ class CTRIA3(ShellElement):
             [nu, 1, 0],
             [0, 0, (1-nu)/2.],
         ], dtype='float64')
-        k = cross(b.T, cross(D, b))
+        k = np.cross(b.T, cross(D, b))
 
         #====
         # bending
@@ -395,7 +395,7 @@ class CTRIA3(ShellElement):
 def _ctria3_normal_A(n1, n2, n3, calculate_area=True, normalize=True):
     v12 = n2 - n1
     v13 = n3 - n1
-    normal = cross(v12, v13)
+    normal = np.cross(v12, v13)
 
     A = None
     if calculate_area:

@@ -30,9 +30,12 @@ from pyNastran.bdf.field_writer_8 import set_blank_if_default
 from pyNastran.bdf.cards.base_card import BaseCard, expand_thru, expand_thru_by #  _node_ids,
 from pyNastran.bdf.cards.collpase_card import collapse_thru_by
 
+from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 from pyNastran.bdf.bdf_interface.assign_type import (
     integer, integer_or_blank, double, double_or_blank, string, string_or_blank,
     integer_or_string, fields, integer_string_or_blank, integer_or_double)
+from pyNastran.bdf.bdf_interface.assign_type_force import (
+    force_double, force_double_or_blank)
 from pyNastran.bdf.field_writer_8 import print_card_8, print_float_8, set_string8_blank_if_default
 from pyNastran.bdf.field_writer_16 import (
     print_card_16, print_float_16, set_string16_blank_if_default)
@@ -167,7 +170,7 @@ class LOAD(LoadCombination):
                     msg = ('%s is not supported in get_reduced_loads method'
                            % load.__class__.__name__)
                     raise NotImplementedError(msg)
-        return (scale_factors, loads)
+        return scale_factors, loads
 
     def cross_reference(self, model: BDF) -> None:
         """
@@ -180,7 +183,7 @@ class LOAD(LoadCombination):
 
         """
         load_ids2 = []
-        msg = ', which is required by LOAD=%s' % (self.sid)
+        msg = f', which is required by LOAD={self.sid:d}'
         for load_id in self.load_ids:
             if load_id == self.sid:
                 msg = 'Type=%s sid=%s load_id=%s creates a recursion error' % (
@@ -193,7 +196,7 @@ class LOAD(LoadCombination):
 
     def safe_cross_reference(self, model: BDF, xref_errors, debug=True):
         load_ids2 = []
-        msg = ', which is required by LOAD=%s' % (self.sid)
+        msg = f', which is required by LOAD={self.sid:d}'
         for load_id in self.load_ids:
             try:
                 load_id2 = model.Load(load_id, consider_load_combinations=True, msg=msg)
@@ -262,7 +265,7 @@ class CLOAD(LoadCombination):
 
         """
         load_ids2 = []
-        msg = ', which is required by CLOAD=%s' % (self.sid)
+        msg = f', which is required by CLOAD={self.sid:d}'
         for load_id in self.load_ids:
             if load_id == self.sid:
                 msg = 'Type=%s sid=%s load_id=%s creates a recursion error' % (
@@ -329,6 +332,7 @@ class CLOAD(LoadCombination):
             return self.comment + print_card_8(card)
         return self.comment + print_card_16(card)
 
+
 class GRAV(BaseCard):
     """
     Defines acceleration vectors for gravity or other acceleration loading.
@@ -351,7 +355,8 @@ class GRAV(BaseCard):
         N = [1., 1., 1.]
         return GRAV(sid, scale, N, cid=0, mb=0, comment='')
 
-    def __init__(self, sid, scale, N, cid=0, mb=0, comment=''):
+    def __init__(self, sid: int, scale: float, N: np.ndarray,
+                 cid: int=0, mb: int=0, comment: str=''):
         """
         Creates an GRAV card
 
@@ -404,7 +409,7 @@ class GRAV(BaseCard):
             raise TypeError(msg)
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDF, comment: str=''):
         """
         Adds a GRAV card from ``BDF.add_card(...)``
 
@@ -417,12 +422,35 @@ class GRAV(BaseCard):
 
         """
         sid = integer(card, 1, 'sid')
-        cid = integer_or_blank(card, 2, 'cid', 0)
+        cid = integer_or_blank(card, 2, 'cid', default=0)
         scale = double(card, 3, 'scale')
-        N = array([double_or_blank(card, 4, 'N1', 0.0),
-                   double_or_blank(card, 5, 'N2', 0.0),
-                   double_or_blank(card, 6, 'N3', 0.0)])
-        mb = integer_or_blank(card, 7, 'mb', 0)
+        N = array([double_or_blank(card, 4, 'N1', default=0.0),
+                   double_or_blank(card, 5, 'N2', default=0.0),
+                   double_or_blank(card, 6, 'N3', default=0.0)])
+        mb = integer_or_blank(card, 7, 'mb', default=0)
+        assert len(card) <= 8, f'len(GRAV card) = {len(card):d}\ncard={card}'
+        return GRAV(sid, scale, N, cid=cid, mb=mb, comment=comment)
+
+    @classmethod
+    def add_card_lax(cls, card: BDF, comment: str=''):
+        """
+        Adds a GRAV card from ``BDF.add_card(...)``
+
+        Parameters
+        ----------
+        card : BDFCard()
+            a BDFCard object
+        comment : str; default=''
+            a comment for the card
+
+        """
+        sid = integer(card, 1, 'sid')
+        cid = integer_or_blank(card, 2, 'cid', default=0)
+        scale = force_double(card, 3, 'scale')
+        N = array([force_double_or_blank(card, 4, 'N1', default=0.0),
+                   force_double_or_blank(card, 5, 'N2', default=0.0),
+                   force_double_or_blank(card, 6, 'N3', default=0.0)])
+        mb = integer_or_blank(card, 7, 'mb', default=0)
         assert len(card) <= 8, f'len(GRAV card) = {len(card):d}\ncard={card}'
         return GRAV(sid, scale, N, cid=cid, mb=mb, comment=comment)
 
@@ -464,8 +492,8 @@ class GRAV(BaseCard):
         msg = ', which is required by GRAV sid=%s' % self.sid
         self.cid_ref = model.Coord(self.cid, msg=msg)
 
-    def safe_cross_reference(self, model: BDF, xref_errors, debug=True):
-        # msg = "Couldn't find CORDx=%s which is required by GRAV sid=%s" % (self.cid, self.sid)
+    def safe_cross_reference(self, model: BDF, xref_errors, debug: bool=True):
+        # msg = "Couldn't find Coord=%s which is required by GRAV sid=%s" % (self.cid, self.sid)
         msg = ', which is required by GRAV sid=%s' % self.sid
         self.cid_ref = model.safe_coord(self.cid, self.sid, xref_errors, msg=msg)
 
@@ -1481,7 +1509,7 @@ class Load2(BaseCard):
             msg += 'g3.get_position()=%s\n' % xyz3
             msg += 'g4.get_position()=%s' % xyz4
             raise FloatingPointError(msg)
-        xyz = cross(v21, v2)
+        xyz = np.cross(v21, v2)
 
         self.xyz = xyz
 
@@ -1552,7 +1580,7 @@ class Load2(BaseCard):
                 msg += 'g3.get_position()=%s\n' % xyz3
                 msg += 'g4.get_position()=%s' % xyz4
                 raise FloatingPointError(msg)
-            self.xyz = cross(v21, v43)
+            self.xyz = np.cross(v21, v43)
 
             #msgi = 'xyz1=%s xyz2=%s xyz3=%s xyz4=%s\nv21=%s v43 (or v31)=%s\nxyz=%s' % (
                 #xyz1, xyz2, xyz3, xyz4, v21, v2, self.xyz)
@@ -2224,7 +2252,7 @@ class PLOAD2(Load):
         self.eids_ref = None
 
     @classmethod
-    def add_card(cls, card, comment: str=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a PLOAD2 card from ``BDF.add_card(...)``
 
@@ -2701,7 +2729,8 @@ class PLOAD4(Load):
         if self.eids:
             self.eids_ref = model.Elements(self.eids, msg=msg)
 
-    def safe_cross_reference(self, model: BDF, xref_errors, debug=True):
+    def safe_cross_reference(self, model: BDF, xref_errors,
+                             debug: bool=True):
         msg = ', which is required by PLOAD4 sid=%s' % self.sid
         #self.eid = model.Element(self.eid, msg=msg)
         if self.cid is not None:

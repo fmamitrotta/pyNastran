@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Union
+from typing import Any
 from pyNastran.bdf.bdf import BDF, LOAD, PLOAD2, PLOAD4
 
 
@@ -241,9 +241,9 @@ def remove_rbe_chain(model: BDF, nodes: list[int]) -> tuple[set[int], list[int]]
 
 def remove_element_chain(model: BDF,
                          nodes_all: set[int],
-                         element_types: Union[str, set[str]]) -> tuple[set[int], list[int]]:
+                         element_types: str | set[str]) -> tuple[set[int], list[int]]:
     if isinstance(element_types, str):
-        element_types = set([element_types])
+        element_types = {element_types}
     eids_to_delete = []
     nodes_all2 = set([])
     for eid, elem in model.elements.items():

@@ -11,7 +11,6 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import TYPE_CHECKING
 import numpy as np  # type: ignore
-from numpy import cross, dot  # type: ignore
 
 from pyNastran.utils import deprecated
 from pyNastran.utils.numpy_utils import integer_types
@@ -30,6 +29,11 @@ def parse_femap_syntax(lines: list[str]) -> np.ndarray:
     Add            1646           0           1
     Add            1422        1502           1
     Add            1505        1645           1
+
+    Returns
+    -------
+    out : (n,) int np.ndarray
+        sorted ids
 
     .. note:: A list of lines is expected
     """
@@ -62,11 +66,13 @@ def parse_femap_syntax(lines: list[str]) -> np.ndarray:
     return values2
 
 
-
 def get_femap_property_comments_dict(data_dict):
     return _get_femap_comments_dict(data_dict, word='Femap Property')
+
+
 def get_femap_material_comments_dict(data_dict):
     return _get_femap_comments_dict(data_dict, word='Femap Material')
+
 
 def _get_femap_comments_dict(data_dict, word: str):
     word = word.lower()
@@ -80,6 +86,7 @@ def _get_femap_comments_dict(data_dict, word: str):
                 break
         comment_dict[pid] = commenti.strip()
     return comment_dict
+
 
 def Position(xyz: NDArray3float, cid: int, model: BDF) -> np.ndarray:
     """
@@ -105,8 +112,8 @@ def Position(xyz: NDArray3float, cid: int, model: BDF) -> np.ndarray:
     return xyz2
 
 
-
-def transform_load(F, M, cid: int, cid_new: int, model: BDF) -> tuple[np.ndarray, np.ndarray]:
+def transform_load(F: np.ndarray, M: np.ndarray,
+                   cid: int, cid_new: int, model: BDF) -> tuple[np.ndarray, np.ndarray]:
     """
     Transforms a force/moment from an arbitrary coordinate system to another
     coordinate system.
@@ -132,7 +139,7 @@ def transform_load(F, M, cid: int, cid_new: int, model: BDF) -> tuple[np.ndarray
         the force in an arbitrary coordinate system
 
     """
-    if cid == cid_new: # same coordinate system
+    if cid == cid_new:  # same coordinate system
         return F, M
 
     # find the vector r for doing:
@@ -159,8 +166,8 @@ def transform_load(F, M, cid: int, cid_new: int, model: BDF) -> tuple[np.ndarray
     Fxyz_local_2 = (Fxyz_local_1 @ cp_ref.beta()) @ coord_to_ref.beta().T
 
     # find the moment about the new origin due to the force
-    unused_Mxyz_global = cross(r, Fxyz_global)
-    dMxyz_local_2 = cross(r, Fxyz_local_2)
+    unused_Mxyz_global = np.cross(r, Fxyz_global)
+    dMxyz_local_2 = np.cross(r, Fxyz_local_2)
     Mxyz_local_2 = Mxyz_local_1 + dMxyz_local_2
 
     # rotate the delta moment into the local frame
@@ -191,7 +198,7 @@ def PositionWRT(xyz: NDArray3float, cid: int, cid_new: int, model: BDF) -> NDArr
         the position of the GRID in an arbitrary coordinate system
 
     """
-    if cid == cid_new: # same coordinate system
+    if cid == cid_new:  # same coordinate system
         return xyz
 
     cp_ref = _coord(model, cid)
@@ -248,6 +255,7 @@ def get_xyz_cid0_dict(model: BDF,
         xyz = xyz_cid0
     return xyz
 
+
 def split_eids_along_nids(model: BDF, eids: list[int], nids: list[int]) -> None:
     """
     Disassociate a list of elements along a list of nodes.
@@ -297,6 +305,7 @@ def split_eids_along_nids(model: BDF, eids: list[int], nids: list[int]) -> None:
                 nodes.append(nidi)
             assert len(np.unique(nodes)) == len(nodes), 'nodes=%s' % nodes
         elem.nodes = nodes
+
 
 def _coord(model: BDF, cid: int) -> Coord:
     """helper method"""

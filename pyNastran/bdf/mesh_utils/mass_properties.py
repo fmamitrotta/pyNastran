@@ -9,7 +9,7 @@ Defines:
 from __future__ import annotations
 from itertools import count
 from collections import defaultdict
-from typing import cast, Optional, Union, Any, TYPE_CHECKING
+from typing import cast, Optional, Any, TYPE_CHECKING
 
 from numpy import array, cross, dot
 from numpy.linalg import norm  # type: ignore
@@ -21,8 +21,7 @@ from pyNastran.utils.mathematics import integrate_positive_unit_line
 CHECK_MASS = False  # should additional checks be done
 
 if TYPE_CHECKING:  # pragma: no cover
-    from pyNastran.bdf.bdf import BDF, NSM1, CQUAD4, CBAR, CBEAM, CROD, CONROD, CTRIA3
-    Element = Union[CQUAD4, CBAR, CBEAM, CROD, CONROD, CTRIA3]
+    from pyNastran.bdf.bdf import BDF, NSM1, CQUAD4, CBAR, CBEAM, CROD, CONROD, CTRIA3, Element
 
 NO_MASS = {
     # has mass
@@ -2137,7 +2136,7 @@ def _apply_mass_symmetry(model, sym_axis, scale, mass, cg, inertia):
             model.log.info('WTMASS scale = %r' % scale)
     mass *= scale
     inertia *= scale
-    return (mass, cg, inertia)
+    return mass, cg, inertia
 
 #-------------------------------------------------------------------------------
 def mass_properties_breakdown(model: BDF, element_ids=None, mass_ids=None, nsm_id=None,
@@ -2806,7 +2805,7 @@ def _breakdown_ctetra(xyz_cid0: np.ndarray, nids: np.ndarray,
     p4 = xyz_cid0[inids[:, 3], :]
     centroid = (p1 + p2 + p3 + p4) / 4.
     a = p1 - p4
-    b = cross(p2 - p4, p3 - p4)
+    b = np.cross(p2 - p4, p3 - p4)
     #volume = -dot(a, b) / 6.
     #volume = -np.tensordot(a, b, axes=1)
     volume = -np.einsum('ij,ij->i', a, b) / 6.

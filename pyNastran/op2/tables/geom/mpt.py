@@ -293,7 +293,7 @@ class MPT:
         #    op2.card_count['MAT2'] = ncards
         #return n
 
-    def _read_mat2_68(self, material: MAT2, data: bytes, n: int) -> tuple[int, MAT2]:
+    def _read_mat2_68(self, material: MAT2, data: bytes, n: int) -> tuple[int, list[MAT2]]:
         op2: OP2Geom = self.op2
         ntotal = 68 * self.factor  # 17*4
         s = Struct(op2._endian + mapfmt(b'i15fi', self.size))
@@ -322,7 +322,7 @@ class MPT:
         return n, mats
 
 
-    def _read_mat2_92(self, material: MAT2, data: bytes, n: int) -> tuple[int, MAT2]:
+    def _read_mat2_92(self, material: MAT2, data: bytes, n: int) -> tuple[int, list[MAT2]]:
         """
         MAT2 MID   G11  G12  G13  G22  G23  G33  RHO
              A1    A2   A3   TREF GE   ST   SC   SS
@@ -504,11 +504,11 @@ class MPT:
         #return len(data)
         materials = []
         ndatai = len(data) - n
-        s2 = Struct(op2._endian + b'i 30f iiii')
-        ntotal = 140
+        size = self.size
+        s2 = Struct(mapfmt(op2._endian + b'i 30f iifi', size))
+        ntotal = 35 * size
         nmaterials = ndatai // ntotal
         assert ndatai % ntotal == 0, f'ndatai={ndatai} ntotal={ntotal} nmaterials={nmaterials} leftover={ndatai % ntotal}'
-
         if op2.is_debug_file:
             op2.binary_debug.write(
                 '  MAT9=(mid, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, '
@@ -529,11 +529,14 @@ class MPT:
             assert blank2 == 0, blank2
             assert blank3 == 0, blank3
             assert blank4 == 0, blank4
-            data_in = [mid, [g1, g2, g3, g4, g5, g6, g7, g8, g9, g10,
-                             g11, g12, g13, g14, g15, g16, g17, g18, g19, g20, g21],
-                       rho, [a1, a2, a3, a4, a5, a6],
-                       tref, ge]
+            g = [g1, g2, g3, g4, g5, g6, g7, g8, g9, g10,
+                 g11, g12, g13, g14, g15, g16, g17, g18, g19, g20, g21]
+            a = [a1, a2, a3, a4, a5, a6]
+            data_in = [mid, g, rho, a, tref, ge]
+            #print(f'mid={mid} g={g} rho={rho} a={a} tref={tref} ge={ge}')
+
             mat = MAT9.add_op2_data(data_in)
+            #print(mat)
             materials.append(mat)
             n += ntotal
         return n, materials
@@ -544,8 +547,9 @@ class MPT:
         #return len(data)
         materials = []
         ndatai = len(data) - n
-        ntotal = (35 + 21) * 4 # 56*4
-        s2 = Struct(op2._endian + b'i 30f iiii 21f')
+        size = self.size
+        ntotal = (35 + 21) * size # 56*4
+        s2 = Struct(mapfmt(op2._endian + b'i 30f iiii 21f', size))
         #s2 = Struct(op2._endian + b'i 30f iiii 3f 3i 2f 3i f 3i f 2i f if')
         nmaterials = ndatai // ntotal
         assert ndatai % ntotal == 0, f'ndatai={ndatai} ntotal={ntotal} nmaterials={nmaterials} leftover={ndatai % ntotal}'
@@ -625,7 +629,7 @@ class MPT:
                                   #'CTRIA6', CTRIA6, self.add_op2_element)
         return n
 
-    def _read_mat10_20(self, material: MAT10, data: bytes, n: int) -> tuple[int, MAT10]:
+    def _read_mat10_20(self, material: MAT10, data: bytes, n: int) -> tuple[int, list[MAT10]]:
         op2: OP2Geom = self.op2
         ntotal = 20 * self.factor # 5*4
         s = Struct(mapfmt(op2._endian + b'i4f', self.size))
@@ -650,7 +654,7 @@ class MPT:
             materials.append(mat)
         return n, materials
 
-    def _read_mat10_24(self, material: MAT10, data: bytes, n: int) -> tuple[int, MAT10]:
+    def _read_mat10_24(self, material: MAT10, data: bytes, n: int) -> tuple[int, list[MAT10]]:
         """
         1 MID   I  Material identification number
         2 BULK  RS Bulk modulus
@@ -1199,7 +1203,7 @@ class MPT:
 
         return n
 
-    def _read_matt9_224(self, card_obj, data: bytes, n: int) -> int:
+    def _read_matt9_224(self, card_obj, data: bytes, n: int) -> tuple[int, list[MATT9]]:
         r"""
         Word Name Type Description
         1 MID    I Material identification number
@@ -1285,7 +1289,7 @@ class MPT:
             n += ntotal
         return n, materials
 
-    def _read_matt9_140(self, card_obj, data: bytes, n: int) -> int:
+    def _read_matt9_140(self, card_obj, data: bytes, n: int) -> tuple[int, list[MATT9]]:
         """
         Word Name Type Description
         1 MID    I Material identification number
@@ -1565,7 +1569,7 @@ class MPT:
             number, = struct_i.unpack(edata)
             n += 4
 
-            iformat = b'i %if' % (number)
+            iformat = b'i %if' % number
             struct_i_nf = Struct(op2._endian + iformat)
             #mid, absorb, emiss1, emiss2, ...
             ndata_per_pack = 1 + number

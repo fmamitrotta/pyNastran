@@ -1,6 +1,9 @@
 """Unlinks up the various cards in the BDF."""
-from typing import Any
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from pyNastran.bdf.bdf_interface.safe_cross_reference import SafeXrefMesh
+if TYPE_CHECKING:
+    from pyNastran.bdf.bdf import BDF
 
 class UnXrefMesh(SafeXrefMesh):
     """
@@ -48,7 +51,7 @@ class UnXrefMesh(SafeXrefMesh):
             point.uncross_reference()
 
     def _uncross_reference_coords(self) -> None:
-        """uncross references the CORDx objects"""
+        """uncross references the Coord objects"""
         for cid, coord in self.coords.items():
             if cid == 0:
                 continue
@@ -276,3 +279,11 @@ class UnXrefMesh(SafeXrefMesh):
             desvar.uncross_reference()
         for unused_key, topvar in self.topvar.items():
             topvar.uncross_reference()
+
+    def _uncross_reference_contact(self) -> None:
+        """uncross references the contact objects"""
+        model: BDF = self
+        for blseg in model.blseg.values():
+            blseg.uncross_reference()
+        for bconp in model.bconp.values():
+            bconp.uncross_reference()

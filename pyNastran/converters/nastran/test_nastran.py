@@ -2,10 +2,12 @@
 import os
 import unittest
 import numpy as np
+from pathlib import Path
 from cpylog import SimpleLogger
 
 import pyNastran
 from pyNastran.bdf.bdf import BDF, read_bdf
+from pyNastran.op2.op2 import read_op2
 
 from pyNastran.converters.format_converter import cmd_line_format_converter
 from pyNastran.converters.nastran.nastran_to_cart3d import nastran_to_cart3d, nastran_to_cart3d_filename
@@ -20,9 +22,400 @@ from pyNastran.bdf.mesh_utils.skin_solid_elements import write_skin_solid_faces
 import pyNastran.converters.nastran.nastran_to_ugrid3d
 from pyNastran.converters.tecplot.tecplot_to_nastran import nastran_tables_to_tecplot_filenames
 
+from pyNastran.converters.nastran.gui.result_objects.simple_table_results import SimpleTableResults
+from pyNastran.converters.nastran.gui.result_objects.layered_table_results import LayeredTableResults
+from pyNastran.converters.nastran.gui.result_objects.composite_stress_results import CompositeStrainStressResults2, _composite_method_map
+
+from pyNastran.converters.nastran.gui.result_objects.force_results import ForceResults2
+from pyNastran.converters.nastran.gui.result_objects.displacement_results import DisplacementResults2
+from pyNastran.converters.nastran.gui.result_objects.plate_stress_results import PlateStrainStressResults2, DERIVATION_METHODS as shell_derivation_methods
+from pyNastran.converters.nastran.gui.result_objects.solid_stress_results import SolidStrainStressResults2
+
+
 PKG_PATH = pyNastran.__path__[0]
-MODEL_PATH = os.path.join(PKG_PATH, '..', 'models')
+MODEL_PATH = Path(os.path.join(PKG_PATH, '..', 'models'))
 DIRNAME = os.path.dirname(__file__)
+RED = (1., 0., 0.)
+
+
+class TestNastranGUIObjects(unittest.TestCase):
+    """tests:
+    - real
+     - CompositeStrainStressResults2
+     - LayeredTableResults (old)
+    - complex
+     - DisplacementResults2
+     - ForceResults2
+    """
+    def test_displacement_results(self):
+        """tests:
+        - complex
+         - DisplacementResults2
+         - ForceResults2
+        """
+        bdf_filename = os.path.join(MODEL_PATH, 'aero', '2_mode_flutter', '0012_flutter.bdf')
+        op2_filename = os.path.join(MODEL_PATH, 'aero', '2_mode_flutter', '0012_flutter.op2')
+        model = read_bdf(bdf_filename, debug=False)
+
+        out = model.get_displacement_index_xyz_cp_cd()
+        icd_transform, icp_transform, xyz_cp, nid_cp_cd = out
+        node_ids = nid_cp_cd[:, 0]
+        xyz_cid0 = xyz_cp
+
+        results = read_op2(op2_filename, debug=None)
+        real_mode = (1, 2, 1, 0, 0, '', '')
+        complex_mode = (1, 9, 1, 0, 0, '', '')
+        subcase_id = 1
+        #print(list(results.eigenvectors.keys()))
+        disp = results.eigenvectors[complex_mode]
+        dxyz = disp #.data
+
+        obj = DisplacementResults2(
+            subcase_id,
+            node_ids,
+            xyz_cid0,
+            dxyz,
+            title='title',
+            t123_offset=0,
+            dim_max=1.0,
+            data_format='%g',
+            is_variable_data_format=False, # ???
+            nlabels=None, labelsize=None, ncolors=None,
+            colormap='',
+            set_max_min=False,
+            uname='DisplacementResults2',
+        )
+        str(obj)
+        scale = 1.0
+        phase = 0.0
+        itime = 0
+        res_name = 'asdf'
+        xyz, deflected_xyz = obj.get_vector_result_by_scale_phase(
+            itime, res_name, scale, phase)
+        xyz, deflected_xyz = obj.get_vector_result(itime, res_name, return_dense=True)
+        xyz, deflected_xyz = obj.get_vector_result(itime, res_name, return_dense=False)
+        assert obj.deflects(itime, res_name) == True, obj.deflects(itime, res_name)
+        obj.has_output_checks(itime, res_name)
+        assert obj.is_complex == True, obj.is_complex
+        xyz, deflected_xyz = obj.get_force_vector_result(itime, res_name)
+        mini, maxi = obj.get_default_min_max(itime, res_name)
+        imini, imaxi = obj.get_default_min_max(itime, res_name)
+        mini, maxi = obj.get_min_max(itime, res_name)
+        methods = obj.get_methods(itime, res_name)
+        arrow_scale = obj.get_default_arrow_scale(itime, res_name)
+        assert np.allclose(arrow_scale, 1.3849555), arrow_scale
+        #-------------------------------------------------------------
+
+        methods_txyz_rxyz = [
+            'a', 'b', 'c',
+            'd', 'e', 'f',
+        ]
+        #dict[int, tuple[str, str]],
+        index_to_base_title_annotation = {
+           # 0 : ('abc', 'def'),
+            0: {
+                'title':' mytitle',
+                'corner': 'mycorner',
+            },
+        }
+        force_obj = ForceResults2(
+            subcase_id,
+            node_ids,
+            xyz_cid0,
+            dxyz,
+            methods_txyz_rxyz=methods_txyz_rxyz,
+            index_to_base_title_annotation=index_to_base_title_annotation,
+            title='title',
+            t123_offset=0,
+            dim_max=1.0,
+            data_format='%g',
+            is_variable_data_format=False, # ???
+            nlabels=None, labelsize=None, ncolors=None,
+            colormap='',
+            set_max_min=False,
+            uname='ForceResults2',
+        )
+        str(force_obj)
+        #fxyz, deflected_xyz = force_obj.get_vector_result_by_scale_phase(
+        #    itime, res_name, scale, phase)
+        fxyz, deflected_xyz = force_obj.get_vector_result(itime, res_name)
+        #fxyz, deflected_xyz = force_obj.get_vector_result(itime, res_name, return_dense=False)
+        assert force_obj.deflects(itime, res_name) is False, force_obj.deflects(itime, res_name)
+        force_obj.has_output_checks(itime, res_name)
+        assert force_obj.is_complex is True, force_obj.is_complex
+        fxyz, deflected_xyz = force_obj.get_force_vector_result(itime, res_name)
+        mini, maxi = force_obj.get_default_min_max(itime, res_name)
+        imini, imaxi = force_obj.get_default_min_max(itime, res_name)
+        mini, maxi = force_obj.get_min_max(itime, res_name)
+        methods = force_obj.get_methods(itime, res_name)
+        arrow_scale = force_obj.get_default_arrow_scale(itime, res_name)
+        assert np.allclose(arrow_scale, 1.3849555), arrow_scale
+
+        force_obj.get_imin_imax(itime, res_name)
+
+        force_obj.get_default_phase(itime, res_name)
+        force_obj.set_phase(itime, res_name, 90.)
+
+        force_obj.set_data_format(itime, res_name, '%g')
+        force_obj.get_default_data_format(itime, res_name)
+
+        force_obj.get_nlabels_labelsize_ncolors_colormap(itime, res_name)
+        force_obj.set_nlabels_labelsize_ncolors_colormap(
+            itime, res_name, nlabels=8, labelsize=8, ncolors=8, colormap='jet')
+
+        force_obj.get_default_legend_title(itime, res_name)
+        force_obj.get_annotation(itime, res_name)
+
+        force_obj.get_fringe_result_dense(itime, res_name)
+        force_obj.get_fringe_vector_result(itime, res_name)
+
+        force_obj.get_scale(itime, res_name)
+        force_obj.get_arrow_scale(itime, res_name)
+        force_obj.set_arrow_scale(itime, res_name, 4.0)
+
+    def test_plate_wingbox(self):
+        dirname = MODEL_PATH / 'wingbox'
+        bdf_filename = dirname / 'wingbox_stitched_together-000.bdf'
+        op2_filename = dirname / 'wingbox_stitched_together-000.op2'
+        model = read_bdf(bdf_filename, debug=False)
+        element_id = np.array(list(model.elements), dtype='int32')
+
+        model_results = read_op2(op2_filename, debug=None)
+        subcase_id = 1
+
+        eid_to_nid_map = {}
+        for eid, elem in model.elements.items():
+            eid_to_nid_map[eid] = elem.nodes
+
+        is_stress = False
+        obj2 = PlateStrainStressResults2.load_from_code(
+            subcase_id, model, model_results, element_id,
+            is_stress, eid_to_nid_map,
+            #is_variable_data_format=False,
+            require_results=True,
+        )
+        str(obj2)
+
+        is_stress = True
+        obj = PlateStrainStressResults2.load_from_code(
+            subcase_id, model, model_results, element_id,
+            is_stress, eid_to_nid_map,
+            #is_variable_data_format=False,
+            require_results=True,
+        )
+        str(obj)
+        assert obj.is_complex == False
+        itime = 0
+        res_name = (itime, 2, 'header')
+        obj.get_fringe_vector_result(itime, res_name)
+        obj.get_default_min_max(itime, res_name)
+        obj.get_min_max(itime, res_name)
+        obj.get_methods(itime, res_name)
+        obj.get_phase(itime, res_name)
+        obj.get_scale(itime, res_name)
+        obj.get_annotation(itime, res_name)
+        obj.get_case_flag(itime, res_name)
+        obj.get_default_legend_title(itime, res_name)
+        obj.get_default_phase(itime, res_name)
+        obj.get_default_scale(itime, res_name)
+        obj.get_default_arrow_scale(itime, res_name)
+        obj.get_case_flag(itime, res_name)
+        all_ids, ids = obj.get_location_arrays()
+
+        for method in shell_derivation_methods:
+            obj.set_centroid(top_bottom_both='Both',
+                             min_max_method=method)
+            assert obj.nodal_combine == 'Centroid', obj.nodal_combine
+            obj.get_fringe_result(itime, res_name)
+
+        obj.set_centroid(top_bottom_both='Top',
+                         min_max_method='Absolute Max')  # doesn't matter
+        assert obj.nodal_combine == 'Centroid', obj.nodal_combine
+        obj.get_fringe_result(itime, res_name)
+
+        obj.set_centroid(top_bottom_both='Bottom',
+                         min_max_method='Absolute Max')  # doesn't matter
+        assert obj.nodal_combine == 'Centroid', obj.nodal_combine
+        obj.get_fringe_result(itime, res_name)
+
+        obj.set_corner(top_bottom_both='both',
+                       min_max_method='absolute max',
+                       nodal_combine_method='mean')
+        assert obj.nodal_combine == 'Mean', obj.nodal_combine
+        obj.get_fringe_result(itime, res_name)
+
+        for method in shell_derivation_methods:
+            obj.set_corner(top_bottom_both='Both',
+                           min_max_method=method,
+                           nodal_combine_method=method)
+            obj.get_fringe_result(itime, res_name)
+
+        obj.set_sidebar_args(
+             itime, res_name,
+             min_max_method='', # Absolute Max
+             transform='', # Material
+             methods_keys=None,
+             # unused
+             nodal_combine='', # Centroid
+        )
+
+    def test_solid_bending(self):
+        bdf_filename = os.path.join(MODEL_PATH, 'solid_bending', 'solid_bending.bdf')
+        op2_filename = os.path.join(MODEL_PATH, 'solid_bending', 'solid_bending.op2')
+        model = read_bdf(bdf_filename, debug=False)
+        node_id = np.array(list(model.nodes), dtype='int32')
+        element_id = np.array(list(model.elements), dtype='int32')
+
+        model_results = read_op2(op2_filename, debug=None)
+        subcase_id = 1
+
+        cases = [
+            model_results.op2_results.stress.ctetra_stress[subcase_id],
+        ]
+        result = {2 : 'asdf'}
+        title = '???'
+        obj = SolidStrainStressResults2(
+            subcase_id,
+            model,
+            node_id,
+            element_id,
+            cases,
+            result,
+            title,
+            #data_format: str = '%g',
+            #is_variable_data_format=False,
+            #nlabels=None, labelsize=None, ncolors=None,
+            #colormap='',
+            #set_max_min=False,
+            #uname='SolidStressStrainResults2',
+        )
+        str(obj)
+        is_stress = True
+        obj = SolidStrainStressResults2.load_from_code(
+            subcase_id, model, model_results, element_id,
+            is_stress,
+            #is_variable_data_format=False,
+            require_results=True,
+        )
+
+        assert obj.is_complex == False
+        itime = 0
+        res_name = (itime, 2, 'header')
+        obj.get_fringe_vector_result(itime, res_name)
+        obj.get_default_min_max(itime, res_name)
+        obj.get_min_max(itime, res_name)
+        obj.get_methods(itime, res_name)
+        obj.get_phase(itime, res_name)
+        obj.get_scale(itime, res_name)
+        obj.get_annotation(itime, res_name)
+        obj.get_case_flag(itime, res_name)
+        obj.get_default_legend_title(itime, res_name)
+        obj.get_default_phase(itime, res_name)
+        obj.get_default_scale(itime, res_name)
+        obj.get_default_arrow_scale(itime, res_name)
+        obj.get_case_flag(itime, res_name)
+        all_ids, ids = obj.get_location_arrays()
+        obj.get_fringe_result(itime, res_name)
+
+    def test_layered_table2(self):
+        """tests CompositeStrainStressResults2"""
+        bdf_filename = os.path.join(MODEL_PATH, 'elements', 'static_elements.bdf')
+        op2_filename = os.path.join(MODEL_PATH, 'elements', 'static_elements.op2')
+        model = read_bdf(bdf_filename, debug=False)
+
+        #out = model.get_displacement_index_xyz_cp_cd()
+        #icd_transform, icp_transform, xyz_cp, nid_cp_cd = out
+        #node_ids = nid_cp_cd[:, 0]
+        #xyz_cid0 = xyz_cp
+
+        model_results = read_op2(op2_filename, debug=None)
+        title = 'title'
+        subcase_id = 1
+        element_id = np.array(list(model.elements))
+        result = {
+            0: 'aaa',
+            1: 'bbb',
+        }
+        case = model_results.op2_results.strain.cquad4_composite_strain[subcase_id]
+        obj = CompositeStrainStressResults2(
+            subcase_id,
+            model_results,
+            element_id, # : np.ndarray
+            case, # RealCompositePlateArray
+            result, # str
+            title, # : str
+            data_format='%g',
+            is_variable_data_format=False,
+            nlabels=None, labelsize=None, ncolors=None,
+            colormap='',
+            set_max_min=False,
+            uname='CompositeStressResults2')
+        str(obj)
+
+        itime = 0
+        ilayer = 1
+        #imethod = 1
+        header = 'asdf'
+        i = 0
+        res_name = (itime, ilayer, header)
+        obj.get_fringe_result(i, res_name)
+
+        obj.get_fringe_vector_result(itime, res_name)
+        obj.get_default_min_max(itime, res_name)
+        obj.get_min_max(itime, res_name)
+        obj.get_methods(itime, res_name)
+        obj.get_phase(itime, res_name)
+        obj.get_scale(itime, res_name)
+        obj.get_annotation(itime, res_name)
+        obj.get_default_legend_title(itime, res_name)
+        obj.get_default_phase(itime, res_name)
+        obj.get_default_scale(itime, res_name)
+        obj.get_default_arrow_scale(itime, res_name)
+
+
+    def test_layered_table(self):
+        """tests LayeredTableResults"""
+
+        word, method_map = _composite_method_map(is_stress=True)
+        word, method_map = _composite_method_map(is_stress=False)
+
+        subcase_id = 1
+        eid_max = 5
+        nlayers = 2
+        headers = ['asdf']
+        eids = np.arange(1, eid_max + 1)
+        ntimes = 1
+        neids = eid_max
+        nmethods = 2
+        scalars = np.random.random((ntimes, neids, nlayers, nmethods))
+        methods = ['a', 'b']
+        obj = LayeredTableResults(subcase_id, headers, eids, eid_max, scalars,
+                 methods,
+                 data_formats=None,
+                 nlabels=None, labelsize=None, ncolors=None, colormap='jet',
+                 set_max_min=False, uname='LayeredTableResults')
+        str(obj)
+
+        itime = 0
+        ilayer = 1
+        imethod = 1
+        header = 'asdf'
+        i = 0
+        res_name = (itime, ilayer, imethod, header)
+        obj.get_fringe_result(i, res_name)
+
+        obj.get_fringe_vector_result(itime, res_name)
+        obj.get_default_min_max(itime, res_name)
+        obj.get_min_max(itime, res_name)
+        obj.get_methods(itime, res_name)
+        obj.get_phase(itime, res_name)
+        obj.get_scale(itime, res_name)
+        obj.get_annotation(itime, res_name)
+        obj.get_default_legend_title(itime, res_name)
+        obj.get_default_phase(itime, res_name)
+        obj.get_default_scale(itime, res_name)
+        obj.get_default_arrow_scale(itime, res_name)
+        #ll_ids, ids = obj.get_location_arrays()
 
 class FakeCase:
     def __init__(self, times: np.ndarray):
@@ -110,9 +503,16 @@ class TestNastran(unittest.TestCase):
         assert len(cart3d.elements) == 1
 
         bdf_filename = os.path.join(DIRNAME, 'nastran_to_cart3d.bdf')
+        bdf_filename2 = os.path.join(DIRNAME, 'nastran_to_cart3d_2.bdf')
         model.write_bdf(bdf_filename)
         cart3d_filename = os.path.join(DIRNAME, 'nastran_to_cart3d.tri')
         nastran_to_cart3d_filename(bdf_filename, cart3d_filename)
+
+        args = ['format_converter', 'nastran', bdf_filename, 'cart3d', cart3d_filename, '--scale', '2.0']
+        cmd_line_format_converter(args, quiet=True)
+
+        args = ['format_converter', 'nastran', bdf_filename, 'nastran', bdf_filename2]
+        cmd_line_format_converter(args, quiet=True)
 
     def test_nastran_to_tecplot(self):
         """tests a large number of elements and results in SOL 101"""

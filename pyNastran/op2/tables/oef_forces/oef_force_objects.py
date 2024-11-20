@@ -5,7 +5,6 @@ import copy
 import warnings
 from abc import abstractmethod
 import inspect
-from typing import Union
 
 import numpy as np
 from numpy import zeros, searchsorted, allclose
@@ -807,7 +806,7 @@ class RealSpringDamperForceArray(RealForceObject):
         return msg
 
     def get_f06_header(self, is_mag_phase=True, is_sort1=True):
-        raise NotImplementedError('this should be overwritten by %s' % (self.__class__.__name__))
+        raise NotImplementedError(f'this should be overwritten by {self.__class__.__name__}')
 
     def write_csv(self, csv_file: TextIO,
                   is_exponent_format: bool=False,
@@ -1180,7 +1179,7 @@ class RealRodForceArray(RealForceObject):
             data_frame.columns.names = ['Static']
         self.data_frame = data_frame
 
-    def add_sort1(self, dt: Union[int, float], eid: int, axial: float, torque: float) -> None:
+    def add_sort1(self, dt: int | float, eid: int, axial: float, torque: float) -> None:
         """unvectorized method for adding SORT1 transient data"""
         assert self.sort_method == 1, self
         assert isinstance(eid, integer_types) and eid > 0, 'dt=%s eid=%s' % (dt, eid)
@@ -1191,7 +1190,7 @@ class RealRodForceArray(RealForceObject):
         if self.ielement == self.nelements:
             self.ielement = 0
 
-    def add_sort2(self, dt: Union[int, float], eid: int, axial: float, torque: float) -> None:
+    def add_sort2(self, dt: int | float, eid: int, axial: float, torque: float) -> None:
         """unvectorized method for adding SORT2 transient data"""
         assert self.is_sort2, self
         assert isinstance(eid, integer_types) and eid > 0, 'dt=%s eid=%s' % (dt, eid)

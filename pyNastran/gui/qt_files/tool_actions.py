@@ -2,7 +2,7 @@
 from __future__ import annotations
 import os
 #import traceback
-from typing import Union, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 import numpy as np
 
@@ -49,7 +49,7 @@ class ToolActions:
         self.itext = 0
 
     #---------------------------------------------------------------------------
-    def get_icases(self, icases: Union[int, list[int], None]=None) -> list[int]:
+    def get_icases(self, icases: int | list[int] | None=None) -> list[int]:
         gui = self.gui
         if icases is None:
             icases = gui.result_cases.keys()
@@ -787,7 +787,7 @@ def _export_case(name: str,
                   f'for {fname!r}')
         return is_failed, ''
     try:
-        np.savetxt(fname, out_data, delimiter=',', header=header, fmt=b'%s')
+        np.savetxt(fname, out_data, delimiter=',', header=header, fmt='%s')
     except UnicodeEncodeError:  # pragma: no cover
         try:
             np.savetxt(fname, out_data, delimiter=',', header=header, fmt='%s')

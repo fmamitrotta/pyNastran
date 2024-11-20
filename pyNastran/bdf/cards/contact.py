@@ -52,7 +52,7 @@ glue:
 
 """
 from __future__ import annotations
-from typing import Union, Any, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 
 from pyNastran.bdf.cards.base_card import BaseCard, expand_thru_by, _node_ids
 from pyNastran.bdf.bdf_interface.assign_type import (
@@ -63,6 +63,7 @@ from pyNastran.bdf.field_writer_8 import print_card_8
 from pyNastran.bdf.field_writer_16 import print_card_16
 if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import BDF
+    from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 
 
 class BFRIC(BaseCard):
@@ -156,7 +157,7 @@ class BLSEG(BaseCard):
         self.nodes_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a BLSEG card from ``BDF.add_card(...)``
 
@@ -245,7 +246,7 @@ class BCBODY(BaseCard):
 
     def __init__(self, contact_id: int, bsid: int,
                  dim: str='3D', behav: str='DEFORM',
-                 istype: int=0, fric: Union[int, float]=0, idispl: int=0, comment=''):
+                 istype: int=0, fric: int | float=0, idispl: int=0, comment=''):
         if comment:
             self.comment = comment
         self.contact_id = contact_id
@@ -677,7 +678,7 @@ class BSURF(BaseCard):
         self.eids = eids
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a BSURF card from ``BDF.add_card(...)``
 
@@ -754,7 +755,7 @@ class BSURFS(BaseCard):
         self.g3s = g3s
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a BSURFS card from ``BDF.add_card(...)``
 
@@ -1050,7 +1051,7 @@ class BCPARA(BaseCard):
         self.params = params
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a BCPARA card from ``BDF.add_card(...)``
 
@@ -1359,7 +1360,7 @@ class BCTPARM(BaseCard):
             self.params[key] = value
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a BCTPARM card from ``BDF.add_card(...)``
 
@@ -1517,7 +1518,7 @@ class BCTPARA(BaseCard):
         self.params = params
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a BCTPARA card from ``BDF.add_card(...)``
 
@@ -1647,7 +1648,7 @@ class BCTADD(BaseCard):
         self.contact_sets = contact_sets
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a BCTADD card from ``BDF.add_card(...)``
 
@@ -1711,7 +1712,7 @@ class BGADD(BaseCard):
         self.contact_sets = contact_sets
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a BGADD card from ``BDF.add_card(...)``
 

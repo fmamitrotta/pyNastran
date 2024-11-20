@@ -13,7 +13,7 @@ class CTRIAX6(Element):
     def __init__(self, model):
         Element.__init__(self, model)
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         i = self.i
         self.element_id[i] = integer(card, 1, 'element_id')
         self.material_id[i] = integer(card, 2, 'material_id')
@@ -224,7 +224,7 @@ class CTRIAX6(Element):
 
         v12 = p2 - p1
         v13 = p3 - p1
-        v123 = cross(v12, v13)
+        v123 = np.cross(v12, v13)
         normi = np.linalg.norm(v123)
         if calculate_normal or calculate_area:
             normal = v123 / normi

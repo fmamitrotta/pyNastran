@@ -3,7 +3,7 @@ defines readers for BDF objects in the OP2 EDOM/EDOMS table
 """
 from __future__ import annotations
 from struct import Struct
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import numpy as np
 
 from pyNastran.op2.tables.geom.geom_common import GeomCommon
@@ -1505,7 +1505,7 @@ class EDOM(GeomCommon):
 
         size = self.size
 
-        def _pick_attbi_attbf(attbi: int, attbf: float) -> Union[float, str]:
+        def _pick_attbi_attbf(attbi: int, attbf: float) -> float | str:
             """
             9 ATTB  RS Frequency value; -1 (integer) spawn for all
             frequencies in set; -1.10000E+08 for SUM;

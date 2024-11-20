@@ -2,7 +2,7 @@ from __future__ import annotations
 from io import StringIO
 from itertools import zip_longest
 from collections import Counter, defaultdict
-from typing import Callable, Any, TYPE_CHECKING
+from typing import Callable, Optional, Any, TYPE_CHECKING
 import numpy as np
 from pyNastran.bdf.field_writer_8 import set_blank_if_default, print_card_8
 from pyNastran.bdf.field_writer_16 import print_scientific_16
@@ -14,7 +14,7 @@ from pyNastran.bdf.bdf_interface.assign_type import (
     integer, integer_or_blank, double_or_blank, components_or_blank,
     integer_or_string, blank)
 from pyNastran.bdf.bdf_interface.assign_type_force import (
-    force_double_or_blank, lax_double_or_blank)
+    lax_double_or_blank) # force_double_or_blank,
 
 #from pyNastran.dev.bdf_vectorized3.bdf_interface.geom_check import geom_check
 from pyNastran.dev.bdf_vectorized3.cards.write_utils import (
@@ -747,7 +747,7 @@ class GRID(VectorizedBaseCard):
             #nnodes = len(icp)
 
             icid = np.where(coord_ids == cp)[0]
-            assert len(icid) == 1, f'CORDx={cp} not found; referenced by CP field of GRID'
+            assert len(icid) == 1, f'Coord={cp} not found; referenced by CP field of GRID'
             #coord_type = np.asscalar(coord_types[icid])  #deprecated in numpy 1.16
             coord_type = coord_types[icid].item()
 

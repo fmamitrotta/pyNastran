@@ -10,15 +10,12 @@ import sys
 import traceback
 from pickle import load, dump
 from collections import defaultdict
-from typing import List, Union, Optional
+from typing import Optional
 
 import numpy as np
-in1d = np.in1d
-#if not hasattr(np, 'in'):  # pragma: no cover
-    #np.in = np.in1d
 from cpylog import SimpleLogger, get_logger2, __version__ as CPYLOG_VERSION
 
-from pyNastran.utils import object_attributes, check_path # _filename
+from pyNastran.utils import object_attributes, check_path, PathLike
 from pyNastran.bdf.bdf_interface.utils import (
     to_fields, _parse_pynastran_header, parse_executive_control_deck)
 
@@ -223,7 +220,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
     #: required for sphinx bug
     #: http://stackoverflow.com/questions/11208997/autoclass-and-instance-attributes
     #__slots__ = ['_is_dynamic_syntax']
-    def __init__(self, debug: Union[str, bool, None],
+    def __init__(self, debug: str | bool | None,
                  log: Optional[SimpleLogger]=None, mode: str='msc'):
         """
         Initializes the BDF object
@@ -551,8 +548,10 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             disable_set = set(cards)
         self.cards_to_read = self.cards_to_read.difference(disable_set)
 
-    def set_error_storage(self, nparse_errors=100, stop_on_parsing_error=True,
-                          nxref_errors=100, stop_on_xref_error=True):
+    def set_error_storage(self, nparse_errors: int=100,
+                          stop_on_parsing_error: bool=True,
+                          nxref_errors: int=100,
+                          stop_on_xref_error: bool=True):
         """
         Catch parsing errors and store them up to print them out all at once
         (not all errors are caught).
@@ -572,12 +571,18 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             should an error be raised if there
             are cross-reference errors (default=True)
         """
+        self.xref_obj.set_error_storage(
+            nparse_errors=nparse_errors,
+            stop_on_parsing_error=stop_on_parsing_error,
+            nxref_errors=nxref_errors,
+            stop_on_xref_error=stop_on_xref_error,
+        )
         assert isinstance(nparse_errors, int), type(nparse_errors)
-        assert isinstance(nxref_errors, int), type(nxref_errors)
+        #assert isinstance(nxref_errors, int), type(nxref_errors)
         self._nparse_errors = nparse_errors
-        self._nxref_errors = nxref_errors
+        #self._nxref_errors = nxref_errors
         self._stop_on_parsing_error = stop_on_parsing_error
-        self._stop_on_xref_error = stop_on_xref_error
+        #self._stop_on_xref_error = stop_on_xref_error
 
     def validate(self):
         """runs some checks on the input data beyond just type checking"""
@@ -904,7 +909,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
 
         self._parse_primary_file_header(bdf_filename)
 
-        self.log.debug('---starting BDF.read_bdf of %s---' % self.bdf_filename)
+        self.log.debug(f'---starting BDF.read_bdf of {self.bdf_filename}---')
 
         #executive_control_lines, case_control_lines, \
             #bulk_data_lines = self.get_lines(self.bdf_filename, self.punch)
@@ -964,7 +969,9 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
         self.active_filename = obj.active_filename
         self.include_dir = obj.include_dir
 
-    def _read_bdf_helper(self, bdf_filename, encoding, punch, read_includes):
+    def _read_bdf_helper(self, bdf_filename: Optional[PathLike],
+                         encoding: Optional[str],
+                         punch: bool, read_includes: bool):
         """creates the file loading if bdf_filename is None"""
         #self.set_error_storage(nparse_errors=None, stop_on_parsing_error=True,
         #                       nxref_errors=None, stop_on_xref_error=True)
@@ -1023,6 +1030,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
 
     def pop_parse_errors(self):
         """raises an error if there are parsing errors"""
+        xref_obj = self.xref_obj
         if self._stop_on_parsing_error:
             if self._iparse_errors == 1 and self._nparse_errors == 0:
                 raise
@@ -1110,7 +1118,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             if is_error:
                 msg = 'There are duplicate cards.\n\n' + msg
 
-            if self._stop_on_xref_error:
+            if xref_obj._stop_on_xref_error:
                 msg += 'There are parsing errors.\n\n'
                 for (card, an_error) in self._stored_parse_errors:
                     msg += '%scard=%s\n' % (an_error[0], card)
@@ -1123,18 +1131,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
 
     def pop_xref_errors(self):
         """raises an error if there are cross-reference errors"""
-        is_error = False
-        if self._stop_on_xref_error:
-            if self._ixref_errors == 1 and self._nxref_errors == 0:
-                raise
-            if self._stored_xref_errors:
-                msg = 'There are cross-reference errors.\n\n'
-                for (card, an_error) in self._stored_xref_errors:
-                    msg += '%scard=%s\n' % (an_error[0], card)
-                    is_error = True
-
-                if is_error and self._stop_on_xref_error:
-                    raise CrossReferenceError(msg.rstrip())
+        self.xref_obj.pop_xref_errors()
 
     def get_bdf_cards(self, bulk_data_lines):
         """Parses the BDF lines into a list of card_lines"""
@@ -2325,7 +2322,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             nodes[ngrids+nspoints:] = self.epoint.points
         return nodes
 
-    def get_xyz_in_coord(self, cid=0, fdtype='float64', sort_ids=True, dtype='float64'):
+    def get_xyz_in_coord(self, cid=0, fdtype='float64', sort_ids=True):
         """
         Gets the xyz points (including SPOINTS) in the desired coordinate frame
 
@@ -2358,7 +2355,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             raise NotImplementedError('EPOINT')
 
         assert ngrids + nspoints + nepoints > 0, 'ngrids=%s nspoints=%s nepoints=%s' % (ngrids, nspoints, nepoints)
-        xyz_cid0 = np.zeros((ngrids + nspoints + nepoints, 3), dtype=dtype)
+        xyz_cid0 = np.zeros((ngrids + nspoints + nepoints, 3), dtype=fdtype)
         if cid == 0:
             xyz_cid0 = self.grid.get_position_by_node_index()
             assert nspoints == 0, nspoints
@@ -2548,9 +2545,10 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
         unsupported_types = ignored_types.union(ignored_types2)
         all_params = object_attributes(self, keys_to_skip=unsupported_types)
 
-        msg = ['---BDF Statistics---']
-        # sol
-        msg.append('SOL %s\n' % self.sol)
+        msg = [
+            '---BDF Statistics---',
+            'SOL %s\n' % self.sol,
+        ]
 
         # loads
         for (lid, loads) in sorted(self.loads.items()):
@@ -2643,9 +2641,9 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
 
         Parameters
         ----------
-        fdtype : str
+        fdtype : str; default='float64'
             the type of xyz_cp
-        int32 : str
+        idtype : str; default='int32'
             the type of nid_cp_cd
 
         Returns
@@ -2706,7 +2704,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
                 #raise NotImplementedError('EPOINTs')
 
         if nnodes + nspoints + nepoints == 0:
-            msg = 'nnodes=%s nspoints=%s nepoints=%s' % (nnodes, nspoints, nepoints)
+            msg = f'nnodes={nnodes:d} nspoints={nspoints:d} nepoints={nepoints:d}'
             raise ValueError(msg)
 
         #xyz_cid0 = np.zeros((nnodes + nspoints, 3), dtype=dtype)
@@ -2743,7 +2741,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             if cd in [0, -1]:
                 continue
             nids = np.array(nids)
-            icd_transform[cd] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cd] = np.where(np.isin(nids_all, nids))[0]
             if cd in nids_cp_transform:
                 icp_transform[cd] = icd_transform[cd]
         for cp, nids in sorted(nids_cd_transform.items()):
@@ -2752,7 +2750,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
             if cp in icd_transform:
                 continue
             nids = np.array(nids)
-            icd_transform[cd] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cd] = np.where(np.isin(nids_all, nids))[0]
 
         return icd_transform, icp_transform, xyz_cp, nid_cp_cd
 
@@ -2859,7 +2857,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
         nids_all = np.array(sorted(self.point_ids))
         for cid in sorted(nids_transform.keys()):
             nids = np.array(nids_transform[cid])
-            icd_transform[cid] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cid] = np.where(np.isin(nids_all, nids))[0]
         return nids_all, nids_transform, icd_transform
 
     def get_displacement_index_transforms(self):
@@ -2916,7 +2914,7 @@ class BDF(AddCard, CrossReference, WriteMesh, GetMethods):
         nids_all = np.array(sorted(self.point_ids))
         for cid in sorted(nids_transform.keys()):
             nids = np.array(nids_transform[cid])
-            icd_transform[cid] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cid] = np.where(np.isin(nids_all, nids))[0]
             beta_transforms[cid] = self.coords[cid].beta()
         return icd_transform, beta_transforms
 

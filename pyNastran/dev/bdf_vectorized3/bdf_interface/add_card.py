@@ -2,7 +2,7 @@ from __future__ import annotations
 import sys
 from itertools import count
 from collections import defaultdict
-from typing import Union, Optional, Any, cast, TYPE_CHECKING
+from typing import Optional, Any, cast, TYPE_CHECKING
 
 import numpy as np
 
@@ -72,9 +72,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class AddCoords(BDFAttributes):
     def add_cord2r(self, cid: int,
-                   origin: Optional[Union[list[float], NDArray3float]],
-                   zaxis: Optional[Union[list[float], NDArray3float]],
-                   xzplane: Optional[Union[list[float], NDArray3float]],
+                   origin: Optional[list[float] | NDArray3float],
+                   zaxis: Optional[list[float] | NDArray3float],
+                   xzplane: Optional[list[float] | NDArray3float],
                    rid: int=0, setup: bool=True, comment: str='') -> int:
         """
         Creates the CORD2R card, which defines a rectangular coordinate
@@ -102,9 +102,9 @@ class AddCoords(BDFAttributes):
         return coord
 
     def add_cord2c(self, cid: int,
-                   origin: Optional[Union[list[float], NDArray3float]],
-                   zaxis: Optional[Union[list[float], NDArray3float]],
-                   xzplane: Optional[Union[list[float], NDArray3float]],
+                   origin: Optional[list[float] | NDArray3float],
+                   zaxis: Optional[list[float] | NDArray3float],
+                   xzplane: Optional[list[float] | NDArray3float],
                    rid: int=0, setup: bool=True, comment: str='') -> int:
         """
         Creates the CORD2C card, which defines a cylindrical coordinate
@@ -133,9 +133,9 @@ class AddCoords(BDFAttributes):
         return coord
 
     def add_cord2s(self, cid: int,
-                   origin: Optional[Union[list[float], NDArray3float]],
-                   zaxis: Optional[Union[list[float], NDArray3float]],
-                   xzplane: Optional[Union[list[float], NDArray3float]],
+                   origin: Optional[list[float] | NDArray3float],
+                   zaxis: Optional[list[float] | NDArray3float],
+                   xzplane: Optional[list[float] | NDArray3float],
                    rid: int=0, setup: bool=True, comment: str='') -> int:
         """
         Creates the CORD2C card, which defines a spherical coordinate
@@ -1771,7 +1771,7 @@ class Add2dElements(BDFAttributes):
         return elem
 
     def add_cquad4(self, eid: int, pid: int, nids: list[int],
-                   theta_mcid: Union[int, float]=0.0, zoffset: float=None,
+                   theta_mcid: int | float=0.0, zoffset: float=None,
                    tflag: int=0, T1=None, T2=None, T3=None, T4=None,
                    comment: str='') -> int:
         """
@@ -1846,7 +1846,7 @@ class Add2dElements(BDFAttributes):
         return elem
 
     def add_cquad8(self, eid: int, pid: int, nids: list[int],
-                   theta_mcid: Union[int, float]=0., zoffset: float=0.,
+                   theta_mcid: int | float=0., zoffset: float=0.,
                    tflag: int=0, T1=None, T2=None, T3=None, T4=None, comment: str='') -> int:
         """
         Creates a CQUAD8 card
@@ -1883,7 +1883,7 @@ class Add2dElements(BDFAttributes):
         return elem
 
     def add_cquad(self, eid: int, pid: int, nids: list[int],
-                  theta_mcid: Union[int, float]=0., comment: str='') -> int:
+                  theta_mcid: int | float=0., comment: str='') -> int:
         """
         Creates a CQUAD card
 
@@ -1909,7 +1909,7 @@ class Add2dElements(BDFAttributes):
         return elem
 
     def add_ctriar(self, eid: int, pid: int, nids: list[int],
-                   theta_mcid: Union[int, float]=0.0, zoffset: float=0.0,
+                   theta_mcid: int | float=0.0, zoffset: float=0.0,
                    tflag: int=0, T1=None, T2=None, T3=None, comment: str='') -> int:
         """
         Creates a CTRIAR card
@@ -1946,7 +1946,7 @@ class Add2dElements(BDFAttributes):
         return elem
 
     def add_cquadr(self, eid: int, pid: int, nids: list[int],
-                   theta_mcid: Union[int, float]=0.0, zoffset: float=0., tflag: int=0,
+                   theta_mcid: int | float=0.0, zoffset: float=0., tflag: int=0,
                    T1=None, T2=None, T3=None, T4=None, comment: str='') -> int:
         """
         Creates a CQUADR card
@@ -3310,7 +3310,7 @@ class AddAero(BDFAttributes):
         flfact = self.flfact.add(sid, factors, comment=comment)
         return flfact
 
-    def add_aecomp(self, name: str, list_type: list[str], lists: Union[int, list[int]],
+    def add_aecomp(self, name: str, list_type: list[str], lists: int | list[int],
                    comment: str='') -> int:
         """
         Creates an AECOMP card
@@ -3671,9 +3671,9 @@ class AddOptimization(BDFAttributes):
 
     def add_dresp1(self, dresp_id: int, label: str,
                    response_type: str, property_type: str, region: str,
-                   atta: Union[int, float, str, None],
-                   attb: Union[int, float, str, None],
-                   atti: list[Union[int, float, str]],
+                   atta: Optional[int | float | str],
+                   attb: Optional[int | float | str],
+                   atti: list[int | float | str],
                    validate: bool=True, comment: str='') -> int:
         """
         Creates a DRESP1 card.
@@ -3879,7 +3879,7 @@ class AddOptimization(BDFAttributes):
                                   validate=validate, comment=comment)
         return dvcrel
 
-    def add_dvprel1(self, dvprel_id: int, prop_type: str, pid: int, pname_fid: Union[int, str],
+    def add_dvprel1(self, dvprel_id: int, prop_type: str, pid: int, pname_fid: int | str,
                     desvar_ids: list[int],
                     coeffs: list[float],
                     p_min=None, p_max: float=1e20, c0: float=0.0,
@@ -3919,7 +3919,7 @@ class AddOptimization(BDFAttributes):
         return dvprel
 
     def add_dvprel2(self, dvprel_id: int, prop_type: str, pid: int,
-                    pname_fid: Union[int, str], deqation: int,
+                    pname_fid: int | str, deqation: int,
                     dvids: list[int]=None,
                     labels: list[str]=None,
                     p_min: Optional[float]=None, p_max: float=1.0e20,
@@ -4132,7 +4132,7 @@ class AddOptimization(BDFAttributes):
         dconadd = self.dconadd.add(dconstr_id, dconstrs, comment=comment)
         return dconadd
 
-    def add_doptprm(self, params: dict[str, Union[int, float]], comment: str='') -> DOPTPRM:
+    def add_doptprm(self, params: dict[str, int | float], comment: str='') -> DOPTPRM:
         """Creates a DOPTPRM card"""
         doptprm = DOPTPRM(params, comment=comment)
         self._add_methods._add_doptprm_object(doptprm)
@@ -4972,7 +4972,7 @@ class AddThermal(BDFAttributes):
     def add_qvect(self, sid: int, q0: float, eids: list[int],
                   t_source: float=None,
                   ce: int=0,
-                  vector_tableds: list[Union[int, float]]=0.0,
+                  vector_tableds: list[int | float]=0.0,
                   control_id: int=0, comment: str='') -> int:
         """
         Creates a QVECT card
@@ -5577,11 +5577,11 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         self.setup(run_geom_check=run_geom_check)
         #self.log.warning('no xref')
 
-    def add_param(self, key: str, values: list[Union[int, float, str]],
+    def add_param(self, key: str, values: list[int | float | str],
                   comment: str='') -> PARAM:
         return self._add_param_nastran(key, values, comment=comment)
 
-    def _add_param_nastran(self, key: str, values: list[Union[int, float, str]],
+    def _add_param_nastran(self, key: str, values: list[int | float | str],
                            comment: str='') -> PARAM:
         """
         Creates a PARAM card
@@ -5601,8 +5601,9 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return param
 
     # -----------------------------------------------------------------------------------
-    def add_grid(self, nid: int, xyz: Union[None, list[float], NDArray3float],
-                 cp: int=0, cd: int=0, ps: int=0, seid: int=0, comment: str='') -> int:
+    def add_grid(self, nid: int, xyz: None | list[float] | NDArray3float,
+                 cp: int=0, cd: int=0, ps: int=0,
+                 seid: int=0, comment: str='') -> int:
         """
         Creates the GRID card
 
@@ -5653,7 +5654,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         self.grdset = grdset
         return grdset
 
-    def add_seqgp(self, nids: list[int], seqids: list[Union[int, float]],
+    def add_seqgp(self, nids: list[int], seqids: list[int | float],
                   comment: str='') -> SEQGP:
         """
         Creates the SEQGP card
@@ -5672,7 +5673,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         self._add_methods._add_seqgp_object(seqgp)
         return seqgp
 
-    def add_spoint(self, ids: Union[int, list[int]], comment: str='') -> int:
+    def add_spoint(self, ids: int | list[int], comment: str='') -> int:
         """
         Creates the SPOINTs card that contains many SPOINTs
 
@@ -5687,7 +5688,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         spoint = self.spoint.add(ids, comment=comment)
         return spoint
 
-    def add_epoint(self, ids: Union[int, list[int]], comment: str='') -> int:
+    def add_epoint(self, ids: int | list[int], comment: str='') -> int:
         """
         Creates the EPOINTs card that contains many EPOINTs
 
@@ -5737,11 +5738,11 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         #self._add_load_object(load)
         #return load
 
-    def add_param(self, key: str, values: list[Union[int, float, str]],
+    def add_param(self, key: str, values: list[int | float | str],
                   comment: str='') -> PARAM:
         return self._add_param_nastran(key, values, comment=comment)
 
-    def _add_param_nastran(self, key: str, values: list[Union[int, float, str]],
+    def _add_param_nastran(self, key: str, values: list[int | float | str],
                            comment: str='') -> PARAM:
         """
         Creates a PARAM card
@@ -5760,7 +5761,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         self._add_methods._add_param_object(param)
         return param
 
-    def add_mdlprm(self, mdlprm_dict: dict[str, Union[int, float]],
+    def add_mdlprm(self, mdlprm_dict: dict[str, int | float],
                    comment: str='') -> MDLPRM:
         """
         Creates a MDLPRM card
@@ -5781,7 +5782,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return mdlprm
 
 
-    def _add_param_mystran(self, key: str, values: list[Union[int, float, str]],
+    def _add_param_mystran(self, key: str, values: list[int | float | str],
                            comment: str='') -> PARAM_MYSTRAN:
         """
         Creates a PARAM card
@@ -5800,7 +5801,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         self._add_methods._add_param_object(param)
         return param
 
-    def _add_param_nasa95(self, key: str, values: list[Union[int, float, str]],
+    def _add_param_nasa95(self, key: str, values: list[int | float | str],
                           comment: str='') -> PARAM_NASA95:
         """
         Creates a PARAM card
@@ -6189,7 +6190,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return elem
 
     def add_cquadx(self, eid: int, pid: int, nids: list[int],
-                   theta_mcid: Union[int, float]=0., comment: str='') -> int:
+                   theta_mcid: int | float=0., comment: str='') -> int:
         """Creates a CQUADX card"""
         elem = self.cquadx.add(eid, pid, nids, theta_mcid=theta_mcid, comment=comment)
         return elem
@@ -6475,10 +6476,10 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return load
 
     def add_rload1(self, sid: int, excite_id: int,
-                   delay: Union[int, float]=0,
-                   dphase: Union[int, float]=0,
-                   tc: Union[int, float]=0,
-                   td: Union[int, float]=0,
+                   delay: int | float=0,
+                   dphase: int | float=0,
+                   tc: int | float=0,
+                   td: int | float=0,
                    load_type='LOAD', comment: str='') -> int:
         """
         Creates an RLOAD1 card, which defines a frequency-dependent load
@@ -6521,10 +6522,10 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return load
 
     def add_rload2(self, sid: int, excite_id: int,
-                   delay: Union[int, float]=0,
-                   dphase: Union[int, float]=0,
-                   tb: Union[int, float]=0,
-                   tphi: Union[int, float]=0,
+                   delay: int | float=0,
+                   dphase: int | float=0,
+                   tb: int | float=0,
+                   tphi: int | float=0,
                    load_type: str='LOAD', comment: str='') -> int:
         """
         Creates an RLOAD2 card, which defines a frequency-dependent load
@@ -6664,9 +6665,9 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return dload
 
     def add_acsrce(self, sid: int, excite_id: int, rho: float, b: float,
-                   delay: Union[int, float]=0,
-                   dphase: Union[int, float]=0,
-                   power: Union[int, float]=0,
+                   delay: int | float=0,
+                   dphase: int | float=0,
+                   power: int | float=0,
                    comment: str='') -> int:
         """
         Creates an ACSRCE card
@@ -7461,7 +7462,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return set_obj
 
     def add_aset(self, ids: list[int],
-                 components: Union[str, list[str]],
+                 components: str | list[str],
                  comment: str='') -> int:
         """
         Creates an ASET/ASET1 card, which defines the degree of freedoms
@@ -7490,13 +7491,13 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return aset
 
     def add_aset1(self, ids: list[int],
-                  components: Union[str, list[str]],
+                  components: str | list[str],
                   comment: str='') -> int:
         """.. .. seealso:: ``add_aset``"""
         return self.add_aset(ids, components, comment=comment)
 
     def add_bset(self, ids: list[int],
-                 components: Union[str, list[str]],
+                 components: str | list[str],
                  comment: str='') -> int:
         """
         Creates an BSET/BSET1 card, which defines the degree of freedoms
@@ -7526,13 +7527,13 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return bset
 
     def add_bset1(self, ids: list[int],
-                  components: Union[str, list[str]],
+                  components: str | list[str],
                   comment: str='') -> int:
         """.. .. seealso:: ``add_bset``"""
         return self.add_bset(ids, components, comment=comment)
 
     def add_cset(self, ids: list[int],
-                 components: Union[str, list[str]],
+                 components: str | list[str],
                  comment: str='') -> int:
         """
         Creates an CSET/CSET1 card, which defines the degree of freedoms
@@ -7563,19 +7564,19 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return cset
 
     def add_cset1(self, ids: list[int],
-                  components: Union[str, list[str]],
+                  components: str | list[str],
                   comment: str='') -> int:
         """.. seealso:: ``add_cset``"""
         return self.add_cset(ids, components, comment=comment)
 
     def add_omit1(self, ids: list[int],
-                  components: Union[str, list[str]],
+                  components: str | list[str],
                   comment: str='') -> int:
         """.. seealso:: ``add_omit``"""
         return self.add_omit(ids, components, comment=comment)
 
     def add_omit(self, ids: list[int],
-                  components: Union[str, list[str]],
+                  components: str | list[str],
                   comment: str='') -> int:
         """
         Creates an OMIT1 card, which defines the degree of freedoms that
@@ -7601,7 +7602,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return omit
 
     def add_qset(self, ids: list[int],
-                 components: Union[str, list[str]],
+                 components: str | list[str],
                  comment: str='') -> int:
         """
         Creates a QSET/QSET1 card, which defines generalized degrees of
@@ -7628,7 +7629,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         return qset
 
     def add_qset1(self, ids: list[int],
-                  components: Union[str, list[str]],
+                  components: str | list[str],
                   comment: str='') -> int:
         """.. seealso:: ``add_qset``"""
         return self.add_qset(ids, components, comment=comment)
@@ -8017,7 +8018,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
             The coordinates in the CP coordinate system about which the
             loads are to be monitored.
             None : [0., 0., 0.]
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
            coordinate system of XYZ
         cd : int; default=None -> cp
             the coordinate system for load outputs
@@ -8059,7 +8060,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
             The coordinates in the CP coordinate system about which the
             loads are to be monitored.
             None : [0., 0., 0.]
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
            int : coordinate system
         cd : int; default=None -> cp
             the coordinate system for load outputs
@@ -8277,7 +8278,7 @@ class AddCards(AddCoords, Add0dElements, Add1dElements, Add2dElements, Add3dElem
         fields = ['RSPINT', rid, grida, gridb, gr, unit, table_id]
         self.reject_card_lines('RSPINT', print_card_8(fields).split('\n'), show_log=False)
 
-    def add_dti(self, name, fields, comment: str='') -> Union[DTI, DTI_UNITS]:
+    def add_dti(self, name, fields, comment: str='') -> DTI | DTI_UNITS:
         """Creates a DTI card"""
         if name == 'UNITS':
             dti = DTI_UNITS(name, fields, comment=comment)

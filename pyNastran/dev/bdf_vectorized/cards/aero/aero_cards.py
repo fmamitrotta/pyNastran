@@ -27,7 +27,7 @@ All cards are BaseCard objects.
 from __future__ import annotations
 from itertools import count
 import math
-from typing import Union, Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 import numpy as np
 
@@ -73,8 +73,8 @@ class AECOMP(BaseCard):
     type = 'AECOMP'
     allowed_list_types = ['SET1', 'AELIST', 'CAERO']
 
-    def __init__(self, name: str, list_type: list[str],
-                 lists: Union[int, list[int]], comment: str='') -> None:
+    def __init__(self, name: str, list_type: str,
+                 lists: int | list[int], comment: str='') -> None:
         """
         Creates an AECOMP card
 
@@ -1492,9 +1492,9 @@ class CAERO1(BaseCard):
     x43 : float
         distance along the flow direction from node 4 to node 3; (typically x, tip chord)
 
-    cp : int, CORDx
+    cp : int, Coord
         int : coordinate system
-        CORDx : Coordinate object (xref)
+        Coord : Coordinate object (xref)
     nspan : int
         int > 0 : N spanwise boxes distributed evenly
         int = 0 : use lchord
@@ -1594,9 +1594,9 @@ class CAERO1(BaseCard):
             distance along the flow direction from node 1 to node 2; (typically x, root chord)
         x43 : float
             distance along the flow direction from node 4 to node 3; (typically x, tip chord)
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
             int : coordinate system
-            CORDx : Coordinate object (xref)
+            Coord : Coordinate object (xref)
         nspan : int; default=0
             int > 0 : N spanwise boxes distributed evenly
             int = 0 : use lchord
@@ -2065,9 +2065,9 @@ class CAERO2(BaseCard):
             xyz location of point 1 (forward position)
         x12 : float
             length of the CAERO2
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
             int : coordinate system
-            CORDx : Coordinate object (xref)
+            Coord : Coordinate object (xref)
         nsb : int; default=0
             AEFACT id for defining the location of the slender body elements
         lsb : int; default=0
@@ -2583,9 +2583,9 @@ class CAERO4(BaseCard):
         x43 : float
             distance along the flow direction from node 4 to node 3
             (typically x, tip chord)
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
             int : coordinate system
-            CORDx : Coordinate object (xref)
+            Coord : Coordinate object (xref)
         nspan : int; default=0
             int > 0 : N spanwise boxes distributed evenly
             int = 0 : use lchord
@@ -2742,7 +2742,7 @@ class CAERO5(BaseCard):
             distance along the flow direction from node 1 to node 2; (typically x, root chord)
         x43 : float
             distance along the flow direction from node 4 to node 3; (typically x, tip chord)
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
             int : coordinate system
         nspan : int; default=0
             int > 0 : N spanwise boxes distributed evenly
@@ -2871,9 +2871,9 @@ class CAERO5(BaseCard):
         p1, p2, p3, p4 = self.get_points(model)
         #i = p2 - p1
         #ihat = i / norm(i)
-        #k = cross(ihat, p4-p1)
+        #k = np.cross(ihat, p4-p1)
         #khat = k / norm(k)
-        #jhat = cross(khat, ihat)
+        #jhat = np.cross(khat, ihat)
         #b = self.p4 - self.p1
         L = np.linalg.norm(p4 - p1)
 
@@ -3597,13 +3597,13 @@ class FLUTTER(BaseCard):
     def update(self, maps):
         raise NotImplementedError()
 
-    def _get_raw_nvalue_omax(self):
+    def _get_raw_nvalue_omax(self) -> tuple[Any, Any]:
         if self.method in ['K', 'KE']:
             #assert self.imethod in ['L', 'S'], 'imethod = %s' % self.imethod
-            return(self.imethod, self.nvalue)
+            return self.imethod, self.nvalue
         elif self.method in ['PKS', 'PKNLS']:
-            return(self.imethod, self.omax)
-        return(self.imethod, self.nvalue)
+            return self.imethod, self.omax
+        return self.imethod, self.nvalue
 
     def _repr_nvalue_omax(self):
         if self.method in ['K', 'KE']:
@@ -4028,7 +4028,7 @@ class MONPNT1(BaseCard):
             The coordinates in the CP coordinate system about which the
             loads are to be monitored.
             None : [0., 0., 0.]
-        cp : int, CORDx; default=0
+        cp : int, Coord; default=0
            coordinate system of XYZ
         cd : int; default=None -> cp
             the coordinate system for load outputs
@@ -4309,7 +4309,7 @@ class PAERO1(BaseCard):
             if isinstance(bi, integer_types) and bi >= 0:
                 Bi2.append(bi)
             elif bi is not None:
-                raise RuntimeError('invalid Bi value on PAERO1 bi=%r' % (bi))
+                raise RuntimeError(f'invalid Bi value on PAERO1 bi={bi!r}')
             #else:
                 #pass
         return PAERO1(pid, Bi, comment=comment)
@@ -5017,7 +5017,7 @@ class SPLINE1(Spline):
 
         nnodes = len(setg_ref.ids)
         if nnodes < 3:
-            msg = 'SPLINE1 requires at least 3 nodes; nnodes=%s\n' % (nnodes)
+            msg = f'SPLINE1 requires at least 3 nodes; nnodes={nnodes:d}\n'
             msg += str(self)
             msg += str(setg_ref)
             raise RuntimeError(msg)
@@ -5186,7 +5186,7 @@ class SPLINE2(Spline):
 
         nnodes = len(setg_ref.ids)
         if nnodes < 2:
-            msg = 'SPLINE2 requires at least 2 nodes; nnodes=%s\n' % (nnodes)
+            msg = f'SPLINE2 requires at least 2 nodes; nnodes={nnodes}\n'
             msg += str(self)
             msg += str(setg_ref)
             raise RuntimeError(msg)
@@ -5417,7 +5417,7 @@ class SPLINE3(Spline):
 
         nnodes = len(self.setg_ref.ids)
         if nnodes < 3:
-            msg = 'SPLINE3 requires at least 3 nodes; nnodes=%s\n' % (nnodes)
+            msg = f'SPLINE3 requires at least 3 nodes; nnodes={nnodes:d}\n'
             msg += str(self)
             msg += str(self.setg_ref)
             raise RuntimeError(msg)
@@ -5611,7 +5611,7 @@ class SPLINE4(Spline):
 
         nnodes = len(self.setg_ref.ids)
         if nnodes < 3:
-            msg = 'SPLINE4 requires at least 3 nodes; nnodes=%s\n' % (nnodes)
+            msg = f'SPLINE4 requires at least 3 nodes; nnodes={nnodes:d}\n'
             msg += str(self)
             msg += str(self.setg_ref)
             raise RuntimeError(msg)
@@ -5782,7 +5782,7 @@ class SPLINE5(Spline):
 
         nnodes = len(self.setg_ref.ids)
         if nnodes < 3:
-            msg = 'SPLINE5 requires at least 3 nodes; nnodes=%s\n' % (nnodes)
+            msg = f'SPLINE5 requires at least 3 nodes; nnodes={nnodes:d}\n'
             msg += str(self)
             msg += str(self.setg_ref)
             raise RuntimeError(msg)

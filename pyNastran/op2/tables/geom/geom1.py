@@ -5,7 +5,7 @@ defines readers for BDF objects in the OP2 GEOM1/GEOM1S table
 from __future__ import annotations
 from struct import Struct
 from collections import defaultdict
-from typing import Union, Callable, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 
 import numpy as np
 
@@ -30,7 +30,7 @@ class GEOM1:
     def read_fake(self, data: bytes, n: int) -> int:
         return self.op2._read_fake(data, n)
 
-    def read_stop(self, data: bytes, n: int) -> int:  # pragma: no cover
+    def read_stop(self, data: bytes, n: int):  # pragma: no cover
         """
         ints    = (1000, 0, 0, 0, 0, 0, 0, 0,               20.0, 100, 30.0, 120, 60.0, 130, -1, -1,
                    2000, 0, 0, 0, 0, 0, 0, 0, 1101004800, 200, 1106247680, 220, 1114636288, 230, -1, -1)
@@ -402,7 +402,7 @@ class GEOM1:
                    0.0, 0.0, 0.0,
                    0.0, 0.0, 1.875)
         """
-        op2: OP2Geom = self.op2
+        #op2: OP2Geom = self.op2
         n = self._read_cordx(data, n, cord_type=2, cord_n=2)
         return n
 
@@ -597,8 +597,8 @@ class GEOM1:
 
     def _read_cord2x_22(self, data: bytes, n: int,
                         coord_name: str,
-                        coord_cls: Union[CORD2R, CORD2C, CORD2S],
-                        flags: tuple[int, int]) -> tuple[int, list[Union[CORD2R, CORD2C, CORD2S]]]:
+                        coord_cls: CORD2R | CORD2C | CORD2S,
+                        flags: tuple[int, int]) -> tuple[int, list[CORD2R | CORD2C | CORD2S]]:
         """
         (2101,21,8) - CORD2R
         (2201,22,10) - CORD2S
@@ -626,8 +626,8 @@ class GEOM1:
 
     def _read_cord2x_13(self, data: bytes, n: int,
                         coord_name: str,
-                        coord_cls: Union[CORD2R, CORD2C, CORD2S],
-                        flags: tuple[int, int]) -> tuple[int, list[Union[CORD2R, CORD2C, CORD2S]]]:
+                        coord_cls: CORD2R | CORD2C | CORD2S,
+                        flags: tuple[int, int]) -> tuple[int, list[CORD2R | CORD2C | CORD2S]]:
         op2: OP2Geom = self.op2
         ntotal = 52 * op2.factor # 13*4
         s = Struct(mapfmt(op2._endian + b'4i9f', op2.size))

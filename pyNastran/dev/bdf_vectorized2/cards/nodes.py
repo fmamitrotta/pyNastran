@@ -2,7 +2,6 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 import numpy as np
-in1d = np.in1d
 
 from pyNastran.femutils.utils import duplicates
 from pyNastran.bdf.bdf import GRID
@@ -50,9 +49,9 @@ class Nodes:
 
     def repr_indent(self, indent=''):
         msg = '%s<Nodes>:\n' % indent
-        msg += '%s  GRID: %s\n' % len(indent, self.grid)
-        msg += '%s  SPOINT: %s\n' % len(indent, self.spoints)
-        msg += '%s  EPOINT: %s\n' % len(indent, self.epoints)
+        msg += f'{indent}  GRID: {self.grid}\n'
+        msg += f'{indent}  SPOINT: {self.spoints}\n'
+        msg += f'{indent}  EPOINT: {self.epoints}\n'
 
     def get_by_nid(self, nid):
         #self.grid.make_current()
@@ -174,13 +173,13 @@ class Nodes:
             if cd in [0, -1]:
                 continue
             nids = np.array(nids)
-            icd_transform[cd] = np.where(in1d(nids_all, nids))[0]
+            icd_transform[cd] = np.where(np.isin(nids_all, nids))[0]
 
         for cp, nids in sorted(nids_cp_transform.items()):
             if cp in [-1]:
                 continue
             nids = np.array(nids)
-            icp_transform[cp] = np.where(in1d(nids_all, nids))[0]
+            icp_transform[cp] = np.where(np.isin(nids_all, nids))[0]
         return icd_transform, icp_transform, xyz_cp, nid_cp_cd
 
     def get_node_index(self, nids, allow0=False):

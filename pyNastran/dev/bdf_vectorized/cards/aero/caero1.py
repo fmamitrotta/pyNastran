@@ -38,7 +38,7 @@ class CAERO1(VectorizedCard):
         """
         VectorizedCard.__init__(self, model)
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         i = self.i
         self.element_id[i] = integer(card, 1, 'element_id')
         self.property_id[i] = integer(card, 2, 'property_id')
@@ -262,7 +262,7 @@ class CAERO1(VectorizedCard):
 
         v12 = p2 - p1
         v13 = p3 - p1
-        v123 = cross(v12, v13)
+        v123 = np.cross(v12, v13)
         normi = np.linalg.norm(v123, axis=0)
 
         A = None

@@ -1,14 +1,14 @@
 from __future__ import annotations
-from typing import Union, Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 import numpy as np
 
 from cpylog import properties as log_properties
 from pyNastran.bdf.cards.elements.shell import ShellElement
 if TYPE_CHECKING:  # pragma: no cover
-    from pyNastran.bdf.bdf import BDF, CTRIA3, CTRIA6, CQUAD4, CQUAD8, CQUADR, CQUAD
+    from pyNastran.bdf.bdf import BDF, CTRIA3, CTRIA6, CTRIAR, CQUAD4, CQUAD8, CQUADR, CQUAD
 
-def get_shell_material_coord(element: Union[CTRIA3, CTRIA6, CTRIAR,
-                                            CQUAD4, CQUAD8, CQUADR, CQUAD]) -> tuple[int, float]:
+def get_shell_material_coord(element: CTRIA3 | CTRIA6 | CTRIAR |
+                                      CQUAD4 | CQUAD8 | CQUADR | CQUAD) -> tuple[int, float]:
     """
     used by:
      - CQUAD4, CQUADR, CQUAD8, CQUAD, CQUADX
@@ -114,7 +114,8 @@ def get_elements_nelements_unvectorized(model: BDF) -> tuple[Any, int, list[dict
     return elements, nelements, superelements
 
 
-def build_offset_normals_dims(model: BDF, eid_map: dict[int, int], nelements: int):
+def build_offset_normals_dims(model: BDF, eid_map: dict[int, int],
+                              nelements: int):
     normals = np.full((nelements, 3), np.nan, dtype='float32')
     offset = np.full(nelements, np.nan, dtype='float32')
     xoffset = np.full(nelements, np.nan, dtype='float32')
@@ -386,7 +387,7 @@ def _build_map_centroidal_result(model: BDF, nid_map: dict[int, int]) -> None:
         'CHEXA1' : (8, 8),
         'CHEXA20' : (20, 20),
     }
-    skip_cards = ['CAABSF']
+    skip_cards = ['CAABSF', 'GENEL']
     #['CTRIA6', 'CQUAD8', 'CHEXA', 'CTETRA', 'CPENTA', 'CPYRAM', 'CQUADX', 'CTRIAX']
     etypes_mixed_nodes = set(list(nnodes_map.keys()))
 

@@ -25,6 +25,8 @@ from pyNastran.gui.utils.vtk.vtk_utils import (
 #)
 
 
+from pyNastran.gui.utils.vtk.vectorized_geometry import (
+    create_offset_arrays)
 from pyNastran.gui.gui_objects.gui_result import GuiResult# , NormalResult
 #from pyNastran.gui.gui_objects.displacements import ForceTableResults, ElementalTableResults
 from pyNastran.dev.bdf_vectorized3.bdf import BDF, Subcase
@@ -32,7 +34,7 @@ from .alt_actor_builder import (
     build_vtk_geometry,
     create_alt_conm2_grids, create_alt_rbe2_grids, create_alt_rbe3_grids,
     create_alt_spcs, create_alt_axes,
-    create_monpnt)
+    create_monpnt, create_plotels)
 from pyNastran.dev.op2_vectorized3.op2_hdf5 import OP2, OP2Geom
 from pyNastran.dev.op2_vectorized3.op2_hdf5 import Results
 from pyNastran.utils import PathLike
@@ -42,7 +44,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.dev.bdf_vectorized3.bdf_interface.bdf_attributes import (
         CTETRA, CPENTA, CHEXA, CPYRAM,
     )
-    SolidElement = Union[CTETRA, CPENTA, CHEXA, CPYRAM],
+    SolidElement = CTETRA | CPENTA | CHEXA | CPYRAM
 
 
 class Nastran3:
@@ -279,6 +281,7 @@ class Nastran3:
         create_alt_rbe3_grids(gui, model, node_id, xyz_cid0)
         create_alt_axes(self, gui, model, node_id, xyz_cid0)
         create_monpnt(gui, model, node_id, xyz_cid0)
+        create_plotels(gui, model, node_id, xyz_cid0)
 
         # add alternate actors
         gui._add_alt_actors(gui.alt_grids)
@@ -521,24 +524,19 @@ def load_elements(ugrid: vtkUnstructuredGrid,
                 property_id = property_id[i]
                 nodesi = nodesi[i, :]
 
-            nodes_indexi = np.searchsorted(grid_id, nodesi[:, :])
             dnode = nodesi.shape[1]
-            nnodesi = np.ones((nelement, 1), dtype='int64') * dnode
-            cell_typei = np.ones(nelement, dtype='int64') * cell_type
+            cell_offset0, n_nodesi, cell_typei, cell_offseti = create_offset_arrays(
+                grid_id, nodesi,
+                nelement, cell_type, cell_offset0, dnode)
 
-            cell_offseti = _cell_offset(cell_offset0, nelement, dnode)
-
-            #nnodes
-            n_nodesi = np.hstack([nnodesi, nodes_indexi])
             n_nodes_.append(n_nodesi.ravel())
-
             cell_type_.append(cell_typei)
             cell_offset_.append(cell_offseti)
             element_ids.append(element_id)
             property_ids.append(property_id)
             #nnodes_nodes = [nnodes, node_id]
             del cell_type
-            del cell_offseti, nnodesi, nodesi
+            del cell_offseti
             cell_offset0 += nelement * (dnode + 1)
         elif etype in midside_elements:
             #print('  midside')
@@ -599,11 +597,8 @@ def load_elements(ugrid: vtkUnstructuredGrid,
                 cell_offset0 = _save_element(
                     is_full, grid_id, cell_type, cell_offset0,
                     element_id, property_id, nodes,
-                    element_ids,
-                    property_ids,
-                    n_nodes_,
-                    cell_type_,
-                    cell_offset_)
+                    element_ids, property_ids,
+                    n_nodes_, cell_type_, cell_offset_)
                 continue
             nodesi = element.base_nodes
 
@@ -700,49 +695,33 @@ def load_elements(ugrid: vtkUnstructuredGrid,
             n_nodes, cell_type, cell_offset)
     return element_id, property_id, element_cards, gui_elements, card_index
 
-def _save_element(i: np.ndarray, grid_id: np.ndarray, cell_type: int, cell_offset0: int,
-                  element_id,
-                  property_id,
-                  nodes,
-                  element_ids,
-                  property_ids,
-                  n_nodes_,
-                  cell_type_,
-                  cell_offset_,
-                  ):
+def _save_element(i: np.ndarray,
+                  grid_id: np.ndarray,
+                  cell_type: int,
+                  cell_offset0: int,
+                  element_id: np.ndarray,
+                  property_id: list[np.ndarray],
+                  nodes: list[np.ndarray],
+                  element_ids: list[np.ndarray],
+                  property_ids: list[np.ndarray],
+                  n_nodes_: list[np.ndarray],
+                  cell_type_: list[np.ndarray],
+                  cell_offset_: list[np.ndarray]) -> int:
     nodesi = nodes[i, :]
     nelement, dnode = nodesi.shape
     element_idi = element_id[i]
     property_idi = property_id[i]
-    nnodesi = np.ones((nelement, 1), dtype='int32') * dnode
-    nodes_indexi = np.searchsorted(grid_id, nodesi)
-    n_nodesi = np.hstack([nnodesi, nodes_indexi])
-    n_nodes_.append(n_nodesi.ravel())
+
+    cell_offset0, n_nodesi, cell_typei, cell_offseti = create_offset_arrays(
+        grid_id, nodes,
+        nelement, cell_type, cell_offset0, dnode)
 
     element_ids.append(element_idi)
     property_ids.append(property_idi)
-    cell_offseti = _cell_offset(cell_offset0, nelement, dnode)
-
-    nodes_indexi = np.searchsorted(grid_id, nodesi)
-    nnodesi = np.ones((nelement, 1), dtype='int32') * dnode
-    cell_typei = np.ones(nelement, dtype='int32') * cell_type
+    n_nodes_.append(n_nodesi.ravel())
     cell_type_.append(cell_typei)
     cell_offset_.append(cell_offseti)
-    cell_offset0 += nelement * (dnode + 1)
     return cell_offset0
-
-def _cell_offset(cell_offset0: int, nelement: int, dnode: int) -> np.ndarray:
-    r"""
-    (nnodes+1) = 4+1 = 5
-    [0, 5, 10, 15, 20, ... (nelements-1)*5]
-
-    for 2 CQUAD4s elements (4 nodes; 5 columns including the node count of 4)
-    [0, 5]
-    should be length nelement
-    """
-    cell_offseti = cell_offset0 + np.arange(0, nelement*(dnode +1), dnode + 1)
-    assert len(cell_offseti) == nelement
-    return cell_offseti
 
 def gui_material_ids(model: BDF,
                      icase: int,
@@ -1585,23 +1564,13 @@ def _create_solid_vtk_arrays(element: SolidElement,
     elif element.type == 'CHEXA':
         cell_type = cell_type_hexa8
         dnode = 8
-    else:
+    else:  # pragma: no coer
         raise NotImplementedError(element.type)
     nelement = element.n
-    nodesi = element.base_nodes
-
-    nnodesi = np.ones((nelement, 1), dtype='int32') * dnode
-    nodes_indexi = np.searchsorted(grid_id, nodesi[:nelement, :])
-    n_nodesi = np.hstack([nnodesi, nodes_indexi])
-
-    cell_offseti = _cell_offset(cell_offset0, nelement, dnode)
-
-    nodes_indexi = np.searchsorted(grid_id, nodesi[:nelement, :])
-    nnodesi = np.ones((nelement, 1), dtype='int32') * dnode
-    cell_typei = np.ones(nelement, dtype='int32') * cell_type
-    #del cell_type
-    #del cell_offseti, nnodesi, nodesi
-    cell_offset0 += nelement * (dnode + 1)
+    nodesi = element.base_nodes[:nelement, :]
+    cell_offset0, n_nodesi, cell_typei, cell_offseti = create_offset_arrays(
+        grid_id, nodesi,
+        nelement, cell_type, cell_offset0, dnode)
     return cell_offset0, n_nodesi, cell_typei, cell_offseti
 
 def _add_integer_node_gui_result(icase: int,

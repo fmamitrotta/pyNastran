@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Optional
 from copy import deepcopy
 from pyNastran.gui.typing import ColorFloat, ColorInt
 
@@ -78,11 +78,8 @@ class AltGeometry:
                 valid_keys.sort()
                 raise RuntimeError('%r is not a valid representation\nvalid=[%s]' % (
                     representation, ', '.join(valid_keys)))
-
-        if line_width is None:
-            line_width = 1
-        if opacity is None:
-            opacity = 1.0
+        assert isinstance(line_width, int), line_width
+        assert isinstance(opacity, float), opacity
         if label_actors is None:
             label_actors = []
 
@@ -170,7 +167,7 @@ class AltGeometry:
         return self._color
 
     @color.setter
-    def color(self, color: Union[ColorInt, ColorFloat]) -> None:
+    def color(self, color: ColorInt | ColorFloat) -> None:
         assert len(color) == 3, color
         if isinstance(color[0], int):
             assert isinstance(color[0], int), color[0]
@@ -190,7 +187,7 @@ class AltGeometry:
     def color_int(self) -> ColorInt:
         return self._color
 
-    def set_color(self, color: Union[ColorInt, ColorFloat],
+    def set_color(self, color: ColorInt | ColorFloat,
                   mode: str='rgb') -> None:
         assert mode == 'rgb', 'mode=%r' % mode
         self.color = color

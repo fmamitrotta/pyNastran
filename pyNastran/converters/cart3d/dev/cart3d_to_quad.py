@@ -89,7 +89,9 @@ def write_nastran_quads_tris(nodes, tris, quads, bdf_filename='tris_quads.bdf'):
         bdf_file.write('ENDDATA\n')
 
 
-def get_normal_groups(points, elements, rtol=1e-3, atol=1e-5):
+def get_normal_groups(points: np.ndarray,
+                      elements: np.ndarray,
+                      rtol: float=1e-3, atol: float=1e-5):
     """
     Gets the normal groups for a cart3d model
 
@@ -127,7 +129,7 @@ def get_normal_groups(points, elements, rtol=1e-3, atol=1e-5):
 
     a = p2 - p1
     b = p3 - p1
-    n = cross(a, b)
+    n = np.cross(a, b)
     ni = norm(n, axis=1)
     #print(n.shape)
     #print(ni.shape)
@@ -232,4 +234,3 @@ def check_normals(eid, elements, normals, cdict, same_normals, rtol=1e-4, atol=1
 
 if __name__ == '__main__': # pragma: no cover
     run_quad_extraction('Cart3d_55000_2.4_10_0_0_0_0.i.triq')
-

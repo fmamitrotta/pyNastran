@@ -4,14 +4,18 @@ defines:
  - TEMPDv
 
 """
+from __future__ import annotations
 from collections import defaultdict
 from itertools import count
+from typing import TYPE_CHECKING
 import numpy as np
 
 from pyNastran.bdf.bdf_interface.assign_type import integer, double
 from pyNastran.bdf.field_writer_8 import print_card_8
 from pyNastran.bdf.cards.base_card import _format_comment
 from pyNastran.dev.bdf_vectorized2.cards.loads.loads import BaseLoad
+if TYPE_CHECKING:
+    from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 
 
 class TEMPv(BaseLoad):
@@ -58,7 +62,7 @@ class TEMPv(BaseLoad):
         self._nid += nodes
         self._temperatures += temperatures
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         """
         Adds a TEMP card from ``BDF.add_card(...)``
 
@@ -160,7 +164,7 @@ class TEMPDv(BaseLoad):
         self._sid += sid
         self._temperatures += temperatures
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         """
         Adds a TEMP card from ``BDF.add_card(...)``
 

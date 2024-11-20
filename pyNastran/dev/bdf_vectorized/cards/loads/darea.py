@@ -4,8 +4,9 @@ import numpy as np
 from pyNastran.bdf.field_writer_8 import print_card_8
 from pyNastran.bdf.field_writer_16 import print_card_16
 from pyNastran.bdf.bdf_interface.assign_type import (
-    integer, integer_or_blank, double, double_or_blank, components_or_blank,
-    string_or_blank)
+    integer, double, components_or_blank,
+    # integer_or_blank, double_or_blank, string_or_blank
+)
 
 from pyNastran.dev.bdf_vectorized.cards.vectorized_card import VectorizedCard
 
@@ -20,7 +21,7 @@ from pyNastran.dev.bdf_vectorized.cards.vectorized_card import VectorizedCard
     #def parse(self, card_obj, icard=0, comment=''):
         #card = (1, 2., icard)
         #return card, comment
-    #def add_card(self, card, comment=''):
+    #def add_card(self, card: BDFCard, comment: str=''):
         #return
 
 class DAREA(VectorizedCard):

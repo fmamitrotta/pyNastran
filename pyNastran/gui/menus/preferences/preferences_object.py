@@ -1,10 +1,16 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from pyNastran.gui.menus.preferences.preferences import PreferencesWindow
-from pyNastran.gui.gui_objects.settings import Settings, NASTRAN_BOOL_KEYS
+from pyNastran.gui.gui_objects.settings import (
+    Settings, NASTRAN_BOOL_KEYS,
+    NastranSettings, OtherSettings)
 from pyNastran.gui.qt_files.base_gui import BaseGui
+if TYPE_CHECKING:
+    from pyNastran.gui.main_window import MainWindow
 
 
 class PreferencesObject(BaseGui):
-    def __init__(self, gui):
+    def __init__(self, gui: MainWindow):
         #self.gui = gui
         super().__init__(gui)
         self._preferences_window_shown = False
@@ -26,18 +32,24 @@ class PreferencesObject(BaseGui):
         #if not hasattr(self, 'case_keys'):  # TODO: maybe include...
             #self.log_error('No model has been loaded.')
             #return
-
         camera = self.gui.GetCamera()
         min_clip, max_clip = camera.GetClippingRange()
         settings: Settings = self.gui.settings
+        nastran_settings: NastranSettings = settings.nastran_settings
+        other_settings: OtherSettings = settings.other_settings
         data = {
             'font_size' : settings.font_size,
             'annotation_size' : settings.annotation_size, # int
             'annotation_color' : settings.annotation_color,
 
+            'caero_color' : nastran_settings.caero_color,
+            'rbe_line_color': nastran_settings.rbe_line_color,
+            'plotel_color': nastran_settings.plotel_color,
+
             'use_startup_directory': settings.use_startup_directory,
 
             'use_gradient_background' : settings.use_gradient_background,
+            'is_trackball_camera' : settings.is_trackball_camera,
             'use_parallel_projection': settings.use_parallel_projection,
             'background_color' : settings.background_color,
             'background_color2' : settings.background_color2,
@@ -58,6 +70,22 @@ class PreferencesObject(BaseGui):
 
             'min_clip' : min_clip,
             'max_clip' : max_clip,
+
+            #----------------------------------------
+            # other
+            'cart3d_fluent_include': other_settings.cart3d_fluent_include,
+            'cart3d_fluent_remove': other_settings.cart3d_fluent_remove,
+            'units_model_in': other_settings.units_model_in,
+            'units_length': other_settings.units_length,
+            #'units_area': other_settings.units_area,
+            'units_force': other_settings.units_force,
+            'units_moment': other_settings.units_moment,
+            'units_pressure': other_settings.units_pressure,
+            'units_stress': other_settings.units_stress,
+            'units_displacement': other_settings.units_displacement,
+            'units_velocity': other_settings.units_velocity,
+            'units_acceleration': other_settings.units_acceleration,
+            # ----------------------------------------
 
             'clicked_ok' : False,
             'close' : False,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 from collections import defaultdict
-from typing import Any, Union, Optional, cast, TYPE_CHECKING
+from typing import Any, Optional, cast, TYPE_CHECKING
 import numpy as np
 from numpy.linalg import norm
 
@@ -2485,6 +2485,8 @@ def get_results_to_exclude(nastran_settings: NastranSettings) -> set[str]:
         exclude_results.add('velocities')
     if not nastran_settings.acceleration:
         exclude_results.add('accelerations')
+    if not nastran_settings.temperature:
+        exclude_results.add('temperatures')
 
     if not nastran_settings.spc_force:
         exclude_results.add('spc_forces')
@@ -2582,7 +2584,7 @@ def get_results_to_exclude(nastran_settings: NastranSettings) -> set[str]:
         exclude_results.add('grid_point_forces')
     return exclude_results
 
-def get_pcomp_nplies(properties: dict[int, Union[PCOMP, PCOMPG, PCOMPS, PCOMPLS]],
+def get_pcomp_nplies(properties: dict[int, PCOMP | PCOMPG | PCOMPS | PCOMPLS],
                      property_ids_pcomp: list[int]) -> int:
     """
     layer 0 will be defined as the total, so:
@@ -2599,12 +2601,16 @@ def get_pcomp_nplies(properties: dict[int, Union[PCOMP, PCOMPG, PCOMPS, PCOMPLS]
     npliesi = 0
     pcomp_nplies = 0
     for pid in property_ids_pcomp:
-        prop = properties[pid]
+        try:
+            prop = properties[pid]
+        except KeyError:
+            continue
         pcomp_nplies = max(pcomp_nplies, prop.nplies + 1)
     npliesi = max(npliesi, pcomp_nplies)
     return npliesi
 
-def build_superelement_model(model: BDF, cid: int=0, fdtype: str='float32'):
+def build_superelement_model(model: BDF, cid: int=0,
+                             fdtype: str='float32'):
     models = {0 : model}
     models.update(model.superelement_models)
     #nmodels = len(models)
@@ -2839,16 +2845,20 @@ def build_normals_quality(settings: Settings,
             if make_offset_normals_dim and np.any(np.isfinite(xoffset)):
                 offset_res = GuiResult(
                     0, header='Offset', title='Offset',
-                    location='centroid', scalar=offset, data_format='%g')
+                    location='centroid', scalar=offset, data_format='%g',
+                    scale_type='length')
                 offset_x_res = GuiResult(
                     0, header='OffsetX', title='OffsetX',
-                    location='centroid', scalar=xoffset, data_format='%g')
+                    location='centroid', scalar=xoffset, data_format='%g',
+                    scale_type='length')
                 offset_y_res = GuiResult(
                     0, header='OffsetY', title='OffsetY',
-                    location='centroid', scalar=yoffset, data_format='%g')
+                    location='centroid', scalar=yoffset, data_format='%g',
+                    scale_type='length')
                 offset_z_res = GuiResult(
                     0, header='OffsetZ', title='OffsetZ',
-                    location='centroid', scalar=zoffset, data_format='%g')
+                    location='centroid', scalar=zoffset, data_format='%g',
+                    scale_type='length')
 
                 cases[icase] = (offset_res, (0, 'Offset'))
                 cases[icase + 1] = (offset_x_res, (0, 'OffsetX'))
@@ -2882,13 +2892,16 @@ def build_normals_quality(settings: Settings,
         if make_xyz or is_testing:
             x_res = GuiResult(
                 0, header='X', title='X',
-                location='node', scalar=xyz_cid0[:, 0], data_format='%g')
+                location='node', scalar=xyz_cid0[:, 0], data_format='%g',
+                scale_type='length')
             y_res = GuiResult(
                 0, header='Y', title='Y',
-                location='node', scalar=xyz_cid0[:, 1], data_format='%g')
+                location='node', scalar=xyz_cid0[:, 1], data_format='%g',
+                scale_type='length')
             z_res = GuiResult(
                 0, header='Z', title='Z',
-                location='node', scalar=xyz_cid0[:, 2], data_format='%g')
+                location='node', scalar=xyz_cid0[:, 2], data_format='%g',
+                scale_type='length')
             cases[icase] = (x_res, (0, 'X'))
             cases[icase + 1] = (y_res, (0, 'Y'))
             cases[icase + 2] = (z_res, (0, 'Z'))
@@ -2965,9 +2978,9 @@ def _set_nid_to_pid_map_or_blank(nid_to_pid_map: dict[int, list[int]],
         if nid is not None:
             nid_to_pid_map[nid].append(pid)
 
-def get_caero_control_surface_grid(grid,
-                                   box_id_to_caero_element_map,
-                                   caero_points,
+def get_caero_control_surface_grid(grid: vtkUnstructuredGrid,
+                                   box_id_to_caero_element_map: dict[int, int],
+                                   caero_points: np.ndarray,
                                    boxes_to_show: list[int],
                                    log):
     j = 0
@@ -3005,8 +3018,8 @@ def get_caero_control_surface_grid(grid,
     elements = np.asarray(plot_elements, dtype='int32')
     return all_points, elements, centroids, areas
 
-def get_model_unvectorized(log,
-                           bdf_filename: Union[str, BDF],
+def get_model_unvectorized(log: SimpleLogger,
+                           bdf_filename: str | BDF,
                            xref_loads: bool=True, is_h5py: bool=True):
     """Loads the BDF/OP2 geometry"""
     ext = '.bdf'
@@ -3036,6 +3049,7 @@ def get_model_unvectorized(log,
         model.load(obj_filename=bdf_filename)
     else:  # read the bdf/punch
         model = BDF(log=log, debug=True)
+        model.is_lax_parser = True
         #model.set_error_storage(nparse_errors=0,
         #                        stop_on_parsing_error=True,
         #                        nxref_errors=0,

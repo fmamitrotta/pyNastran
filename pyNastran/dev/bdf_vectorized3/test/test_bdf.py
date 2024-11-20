@@ -13,7 +13,7 @@ import copy
 import traceback
 import warnings
 from itertools import count, chain
-from typing import Optional, Union, Any
+from typing import Optional, Any
 from io import StringIO
 
 import numpy as np
@@ -51,7 +51,7 @@ try:
 except ImportError:
     IS_PYTABLES = False
 
-BDFs = Union[BDF_old, BDFv]
+BDFs = BDF_old | BDFv
 
 #from pyNastran.bdf.mesh_utils.export_mcids import export_mcids, export_mcids_all
 #from pyNastran.bdf.mesh_utils.extract_bodies import extract_bodies
@@ -89,15 +89,15 @@ def run_lots_of_files(filenames: list[str], folder: str='',
                       punch: bool=False,
                       nastran: str='',
                       encoding: Optional[str]=None,
-                      size: Union[int, list[int], None]=None,
-                      post: Union[int, list[int], None]=None,
-                      is_double: Union[bool, list[bool], None]=None,
+                      size: int | list[int] | None=None,
+                      post: int | list[int] | None=None,
+                      is_double: bool | list[bool] | None=None,
                       sum_load: bool=True,
                       run_nominal: bool=True,
                       run_equivalence: bool=True,
                       dev: bool=True,
                       crash_cards: Optional[list[str]]=None,
-                      pickle_obj: bool=True,
+                      run_pickle: bool=True,
                       quiet: bool=False) -> list[str]:
     """
     Runs multiple BDFs
@@ -135,7 +135,7 @@ def run_lots_of_files(filenames: list[str], folder: str='',
         False : doesn't crash; useful for running many tests
     crash_cards : list[str, str, ...]
         list of cards that are invalid and automatically crash the run
-    pickle_obj : bool; default=True
+    run_pickle : bool; default=True
         tests pickling
 
     Usage
@@ -212,7 +212,7 @@ def run_lots_of_files(filenames: list[str], folder: str='',
                         run_extract_bodies=False,
                         run_nominal=run_nominal,
                         run_equivalence=run_equivalence,
-                        pickle_obj=pickle_obj,
+                        run_pickle=run_pickle,
                         hdf5=write_hdf5, quiet=quiet, log=log)
                     del fem1
                     del fem2
@@ -294,7 +294,7 @@ def run_bdf(folder: str, bdf_filename: str,
             save_file_structure: bool=False,
             nerrors: int=0, dev: bool=False,
             crash_cards=None,
-            safe_xref: bool=False, pickle_obj: bool=False,
+            safe_xref: bool=False, run_pickle: bool=False,
             version: Optional[str]=None,
             validate_case_control: bool=True,
             stop_on_failure: bool=True,
@@ -354,7 +354,7 @@ def run_bdf(folder: str, bdf_filename: str,
     dev : bool; default=False
         True : crashes if an Exception occurs
         False : doesn't crash; useful for running many tests
-    pickle_obj : bool; default=True
+    run_pickle : bool; default=True
         tests pickling
 
     """
@@ -397,7 +397,7 @@ def run_bdf(folder: str, bdf_filename: str,
 
         skip_cards=skip_cards,
         save_file_structure=save_file_structure,
-        pickle_obj=pickle_obj,
+        run_pickle=run_pickle,
         validate_case_control=validate_case_control,
         stop_on_failure=stop_on_failure,
         log=log,
@@ -440,7 +440,7 @@ def run_and_compare_fems(
         run_loads: bool=True,
         run_mass: bool=True,
         skip_cards: Optional[list[str]]=None,
-        pickle_obj: bool=False,
+        run_pickle: bool=False,
         validate_case_control: bool=True,
         stop_on_failure: bool=True,
         log: Optional[SimpleLogger]=None,
@@ -471,7 +471,6 @@ def run_and_compare_fems(
 
     #nastran_cmd = 'nastran scr=yes bat=no old=no news=no '
     nastran_cmd = ''
-    run_pickle = False
     run_geom_check = False
     try:
         #try:
@@ -490,7 +489,7 @@ def run_and_compare_fems(
             hdf5=hdf5,
             encoding=encoding, crash_cards=crash_cards, safe_xref=safe_xref,
             limit_mesh_opt=limit_mesh_opt,
-            pickle_obj=pickle_obj, stop=stop, name=name, is_nominal=False)
+            stop=stop, name=name, is_nominal=False)
 
         if run_nominal:
             fem1_nominal = run_fem1(
@@ -504,7 +503,7 @@ def run_and_compare_fems(
                 hdf5=hdf5,
                 encoding=encoding, crash_cards=crash_cards, safe_xref=safe_xref,
                 limit_mesh_opt=limit_mesh_opt,
-                pickle_obj=pickle_obj, stop=stop, name=name,
+                stop=stop, name=name,
                 is_nominal=True,
             )
             compare_old_vs_new(fem1, fem1_nominal, check_nodes=True)
@@ -626,7 +625,7 @@ def run_and_compare_fems(
 
     if not quiet:
         print("-" * 80)
-    return (fem1, fem2, diff_cards)
+    return fem1, fem2, diff_cards
 
 def check_setup_flag(model: BDFv) -> None:
     if not isinstance(model, BDFv):
@@ -637,7 +636,7 @@ def check_setup_flag(model: BDFv) -> None:
         if card_type in card_types:
             raise RuntimeError(f'card_type={card_type!r} was already added...check _cards_to_setup')
 
-def _setup_fem(fem1: Union[BDF_old, BDFv],
+def _setup_fem(fem1: BDF_old | BDFv,
                debug: bool, log: SimpleLogger, version: str,
                skip_cards: list[str],
                dumplines: bool, nerrors: int,
@@ -1117,7 +1116,7 @@ def run_fem1(fem1: BDFs, bdf_model: str, out_model: str,
              save_file_structure: bool=False, hdf5: bool=False,
              encoding: Optional[str]=None, crash_cards: Optional[list[str]]=None,
              limit_mesh_opt: bool=False,
-             safe_xref: bool=True, pickle_obj: bool=False, stop: bool=False,
+             safe_xref: bool=True, stop: bool=False,
              name: str='', is_nominal: bool=True) -> BDFs:
     """
     Reads/writes the BDF
@@ -1239,8 +1238,7 @@ def run_fem1(fem1: BDFs, bdf_model: str, out_model: str,
                 elif xref:
                     _setup_xref(fem1, run_geom_check=run_geom_check)
 
-                if run_pickle:
-                    fem1 = remake_model(bdf_model, fem1, pickle_obj)
+                fem1 = remake_model(bdf_model, fem1, run_pickle)
                 #fem1.geom_check(geom_check=True, xref=True)
                 #fem1.uncross_reference()
                 #fem1.cross_reference()
@@ -1420,31 +1418,32 @@ def _fem_xref_methods_check(fem1: BDFv) -> None:
 
     export_mcids_all(fem1)
 
-def remake_model(bdf_model: BDFs, fem1: BDFs, pickle_obj: bool) -> None:
+def remake_model(bdf_model: BDFs, fem1: BDFs, run_pickle: bool) -> None:
     """reloads the model if we're testing pickling"""
-    remake = pickle_obj
-    if remake:
-        #log = fem1.log
-        model_name = os.path.splitext(bdf_model)[0]
-        obj_model = '%s.test_bdf.obj' % (model_name)
-        #out_model_8 = '%s.test_bdf.bdf' % (model_name)
-        #out_model_16 = '%s.test_bdf.bdf' % (model_name)
+    if not run_pickle or 1:
+        return fem1
 
-        fem1.save(obj_model)
-        fem1.save(obj_model, unxref=False)
-        #fem1.write_bdf(out_model_8)
-        fem1.get_bdf_stats()
+    #log = fem1.log
+    model_name = os.path.splitext(bdf_model)[0]
+    obj_model = f'{model_name}.test_bdf.obj'
+    #out_model_8 = '%s.test_bdf.bdf' % (model_name)
+    #out_model_16 = '%s.test_bdf.bdf' % (model_name)
 
-        fem1 = BDFv(debug=fem1.debug, log=fem1.log)
-        fem1.load(obj_model)
-        #fem1.write_bdf(out_model_8)
-        #fem1.log = log
-        os.remove(obj_model)
-        fem1.get_bdf_stats()
+    fem1.save(obj_model)
+    fem1.save(obj_model, unxref=False)
+    #fem1.write_bdf(out_model_8)
+    fem1.get_bdf_stats()
 
-        fem1.cross_reference()
-        #fem1.get_bdf_stats()
-        fem1._xref = True
+    fem1 = BDFv(debug=fem1.debug, log=fem1.log)
+    fem1.load(obj_model)
+    #fem1.write_bdf(out_model_8)
+    #fem1.log = log
+    os.remove(obj_model)
+    fem1.get_bdf_stats()
+
+    fem1.cross_reference()
+    #fem1.get_bdf_stats()
+    fem1._xref = True
     return fem1
 
 def check_for_cd_frame(fem1: BDFs, is_nominal: bool=True) -> None:
@@ -1838,7 +1837,7 @@ def check_case(sol: int,
 
     elif sol in {144, 'AESTAT'}:
         ierror = _check_static_aero_case(fem2, log, sol, subcase, ierror, nerrors)
-    elif sol in {145, 'SEFLUTTER'}:
+    elif sol in {145, 'SEFLUTTR', 'SEFLUTTER'}:
         ierror = _check_flutter_case(fem2, log, sol, subcase, ierror, nerrors)
     elif sol in {146, 'SEAERO'}:
         ierror = _check_gust_case(fem2, log, sol, subcase, ierror, nerrors)
@@ -1924,11 +1923,11 @@ def _check_static_aero_case(fem: BDFv, log: SimpleLogger, sol: int,
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem.caero_ids) == 0:
-        msg = 'An CAEROx card is required for STATIC AERO - SOL %i' % (sol)
+        msg = f'An CAEROx card is required for STATIC AERO - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem.spline_ids) == 0:
-        msg = 'An SPLINEx card is required for STATIC AERO - SOL %i' % (sol)
+        msg = f'An SPLINEx card is required for STATIC AERO - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     return ierror
@@ -2012,7 +2011,7 @@ def _check_gust_case(fem2: BDFs, log: SimpleLogger, sol: int, subcase: Subcase,
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     if len(fem2.mkaeros) == 0:
-        msg = 'An MKAERO1/2 card is required for GUST - SOL %i' % (sol)
+        msg = f'An MKAERO1/2 card is required for GUST - SOL {sol:d}'
         log.error(msg)
         ierror = stop_if_max_error(msg, RuntimeError, ierror, nerrors)
     unused_mklist = fem2.get_mklist()
@@ -2923,7 +2922,7 @@ def get_test_bdf_usage_args_examples(encoding):
 
 def main(argv=None, show_args: bool=True) -> None:
     """The main function for the command line ``test_bdf`` script."""
-    if argv is None:
+    if argv is None:  # pragma: no cover
         argv = sys.argv
 
     data = test_bdf_argparse(argv)
@@ -2987,7 +2986,7 @@ def main(argv=None, show_args: bool=True) -> None:
             run_mass=data['run_mass'],
             run_equivalence=data['run_equivalence'],
             skip_cards=data['skip_cards'],
-            pickle_obj=data['pickle'],
+            run_pickle=data['pickle'],
             safe_xref=data['safe'],
             hdf5=data['hdf5'],
             version=data['version'],
@@ -3038,7 +3037,7 @@ def main(argv=None, show_args: bool=True) -> None:
             run_mass=data['run_mass'],
             run_equivalence=data['run_equivalence'],
             skip_cards=data['skip_cards'],
-            pickle_obj=data['pickle'],
+            run_pickle=data['pickle'],
             safe_xref=data['safe'],
             hdf5=data['hdf5'],
             version=data['version'],

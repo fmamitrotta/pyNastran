@@ -34,6 +34,9 @@ class BushingProperty(Property):
     def cross_reference(self, model: BDF) -> None:
         pass
 
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        pass
+
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
         pass
@@ -683,7 +686,7 @@ class PBUSH1D(BushingProperty):
         assert isinstance(pid, int), 'pid=%r' % pid
 
     @staticmethod
-    def _read_shock(card: BDFCard, istart: int) -> tuple[str, float, float, float, float]:
+    def _read_shock(card: BDFCard, istart: int) -> tuple[int, tuple[str, float, float, float, float]]:
         """
         F(u, v) = Cv * S(u) * sign(v) * |v|^ev
         """
@@ -833,7 +836,7 @@ class PBUSH1D(BushingProperty):
             nspaces = 8 - (len(list_fields) - 1) % 8
 
             if nspaces < 8:
-                list_fields += [None] * (nspaces)
+                list_fields += [None] * nspaces
         return list_fields
 
     def repr_fields(self):

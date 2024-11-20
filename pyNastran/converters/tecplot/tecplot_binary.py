@@ -4,7 +4,7 @@ import sys
 from pathlib import PurePath
 from collections import namedtuple
 from struct import Struct, unpack, pack
-from typing import BinaryIO, Optional, Union, Any
+from typing import BinaryIO, Optional, Any
 
 import numpy as np
 from pyNastran.utils import print_bad_path
@@ -12,7 +12,7 @@ from pyNastran.converters.tecplot.zone import Zone, TecplotDict
 from pyNastran.utils import object_attributes, object_methods, object_stats
 
 from cpylog import get_logger2
-PathLike = Union[PurePath, str]
+PathLike = PurePath | str
 
 ZoneTuple = namedtuple('Zone', ['zone_name',
                                 'strand_id', 'solution_time',
@@ -89,8 +89,8 @@ class Base:
                               keys_to_skip=keys_to_skip)
 
     def object_stats(obj: Any, mode: str='public',
-                 keys_to_skip: Optional[list[str]]=None,
-                 filter_properties: bool=False) -> str:
+                     keys_to_skip: Optional[list[str]]=None,
+                     filter_properties: bool=False) -> str:
         """Prints out an easy to read summary of the object"""
         return object_stats(obj,
                             mode=mode,
@@ -325,7 +325,6 @@ class TecplotBinary(Base):
         zone.headers_dict['DATAPACKING']
         self.variables = zone.variables
         del self.f
-
 
 def _write_binary_zone_headers(model: TecplotBinary,
                                tecplot_file: BinaryIO,
@@ -722,7 +721,7 @@ def find_ints(file_obj: BinaryIO, n0: int) -> int: # pragma: no cover
 
 def _load_binary_data(file_obj: BinaryIO,
                       nvalues: int,
-                      data_fmt: Union[list[int], int, str]) -> tuple[np.ndarray, int]:
+                      data_fmt: list[int] | int | str) -> tuple[np.ndarray, int]:
     """
     Variable data format
     N=Total number of vars
@@ -793,7 +792,7 @@ def _data_fmt_ndatas_dtype(data_fmts: list[int]) -> tuple[np.ndarray, list[str]]
         dtypes.append(dtype)
     return ndatas, dtypes
 
-def _data_fmt_to_list(data_fmt: Union[str, int, list[int]]) -> list[int]:
+def _data_fmt_to_list(data_fmt: str | int | list[int]) -> list[int]:
     """
     puts the data in tecplot form
 
@@ -1504,4 +1503,3 @@ def _write_ndata(file_obj: BinaryIO, f, n: int, types: str='ifs', endian: str='<
     data = file_obj.read(n)
     file_obj.seek(nold)
     return _write_data(f, data, types=types, endian=endian)
-

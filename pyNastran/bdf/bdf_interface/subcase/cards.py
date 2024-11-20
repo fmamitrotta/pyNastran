@@ -1,4 +1,4 @@
-from typing import Union, Any
+from typing import Any
 from pyNastran.utils.numpy_utils import bytes_type
 from .subcase_base import CaseControlCard
 
@@ -15,8 +15,8 @@ from .sets import SET, SETMC
 def encode_str_list(strings: list[str], encoding: str) -> list[bytes]:
     return [stri.encode(encoding) for stri in strings]
 
-def encode_str_value_list(strings: list[Union[int, float, str]],
-                          encoding: str) -> list[Union[int, float, bytes]]:
+def encode_str_value_list(strings: list[int | float | str],
+                          encoding: str) -> list[int | float | bytes]:
     values_bytes = [stri.encode(encoding) if isinstance(stri, str) else stri
                     for stri in strings]
     return values_bytes
@@ -235,7 +235,7 @@ class CheckCard(CaseControlCard):
     allowed_keys: set[str] = set([])
 
     # key:(type, allowed_values)
-    allowed_values: dict[str, Union[float, str]] = {}
+    allowed_values: dict[str, float | str] = {}
 
     # the allowed value for the key, options, value approach
     allowed_strings: set[str] = set([])
@@ -686,7 +686,7 @@ class MEFFMASS(CheckCard):
         'MINT3' : (int, None),
         'MAXIT' : (int, None),
         'THRESH' : (float, None),
-    }  # type: dict[str, Union[str, int]]
+    }  # type: dict[str, str | int]
     #alternate_names = {'PRES'}
     #allow_ints = True
 

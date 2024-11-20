@@ -908,7 +908,7 @@ class SUPORT(VectorizedBaseCard):
         self.cards = []
 
     def _setup(self, ncards: int, cards: list[Any],
-               idtype: str) -> tuple[np.ndarray, np.ndarray]:
+               idtype: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         suport_id = []
         node_id = []
         component_list = []
@@ -1950,7 +1950,7 @@ class SET1(VectorizedBaseCard):
         set_card.is_skin = self.is_skin[i]
 
         inid = self.inid # [i, :]
-        set_card.dims = hslice_by_idim(i, inid, self.ids)
+        set_card.ids = hslice_by_idim(i, inid, self.ids)
 
         set_card.num_ids = self.num_ids[i]
         #assert isinstance(prop.ndim, np.ndarray), prop.ndim
@@ -2612,8 +2612,3 @@ class SESET(VectorizedBaseCard):
                 #assert len(list_fields) < 10, print_card(list_fields)
                 bdf_file.write(print_card(list_fields))
         return
-
-
-
-
-

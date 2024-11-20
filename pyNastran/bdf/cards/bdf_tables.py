@@ -68,6 +68,15 @@ class Table(BaseCard):
     #def parse_fields(self, xy, nrepeated, is_data=False):
         #self.table = TableObj(xy, nrepeated, is_data)
 
+    def plot(self, figure_id=None):
+        import matplotlib.pyplot as plt
+        fig = plt.figure(figure_id)
+        ax = fig.gca()
+        ax.suptitle(f'{self.type}: {self.tid}')
+        ax.plot(self.x, self.y)
+        ax.grid(True)
+        return fig, ax
+
     def write_card(self, size: int=8, is_double: bool=False) -> str:
         card = self.repr_fields()
         if size == 8:
@@ -128,7 +137,7 @@ class DTABLE(BaseCard):
         #print(self)
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a DTABLE card from ``BDF.add_card(...)``
 
@@ -251,8 +260,8 @@ class TABLED1(Table):
         self.y = np.asarray(y, dtype='float64')
         self.xaxis = xaxis
         self.yaxis = yaxis
-        assert self.xaxis in ['LINEAR', 'LOG'], 'xaxis=%r' % (self.xaxis)
-        assert self.yaxis in ['LINEAR', 'LOG'], 'yaxis=%r' % (self.yaxis)
+        assert self.xaxis in ['LINEAR', 'LOG'], f'xaxis={self.xaxis!r}'
+        assert self.yaxis in ['LINEAR', 'LOG'], f'yaxis={self.yaxis!r}'
 
     @classmethod
     def add_card(cls, card: BDFCard, comment: str=''):
@@ -567,7 +576,7 @@ class TABLED3(Table):
         assert self.x2 != 0.0
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABLED3 card from ``BDF.add_card(...)``
 
@@ -671,7 +680,7 @@ class TABLED4(Table):
         assert self.x3 <= self.x4, 'x3=%s x4=%s\n%s' % (self.x3, self.x4, str(self))
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABLED4 card from ``BDF.add_card(...)``
 
@@ -697,7 +706,7 @@ class TABLED4(Table):
         a = []
         j = 0
         for i in range(9, nfields):
-            ai = double(card, i, 'a%i' % (j))
+            ai = double(card, i, f'a{j:d}')
             a.append(ai)
             j += 1
         string(card, nfields, 'ENDT')
@@ -758,7 +767,7 @@ class TABLED5(Table):
         self.table_ids = table_ids
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABLED5 card from ``BDF.add_card(...)``
 
@@ -863,7 +872,7 @@ class TABDMP1(Table):
         assert self.Type in ['G', 'CRIT', 'Q'], 'Type=%r' % self.Type
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABDMP1 card from ``BDF.add_card(...)``
 
@@ -1104,7 +1113,7 @@ class TABLEM2(Table):
         self.y = np.asarray(y, dtype='float64')
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABLEM2 card from ``BDF.add_card(...)``
 
@@ -1217,7 +1226,7 @@ class TABLEM3(Table):
         assert self.x2 != 0.0
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABLEM3 card from ``BDF.add_card(...)``
 
@@ -1324,7 +1333,7 @@ class TABLEM4(Table):
         assert self.x3 <= self.x4, 'x3=%s x4=%s\n%s' % (self.x3, self.x4, str(self))
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABLEM4 card from ``BDF.add_card(...)``
 
@@ -1350,7 +1359,7 @@ class TABLEM4(Table):
         a = []
         j = 0
         for i in range(9, nfields):
-            ai = double_or_blank(card, i, 'a%i' % (j), 0.0)
+            ai = double_or_blank(card, i, f'a{j:d}', 0.0)
             a.append(ai)
             j += 1
         string(card, nfields, 'ENDT')
@@ -1434,7 +1443,7 @@ class TABLES1(Table):
         assert self.Type in [1, 2], 'TABLES1 Type=%s' % self.Type
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABLES1 card from ``BDF.add_card(...)``
 
@@ -1539,7 +1548,7 @@ class TABLEST(Table):
         self.yref = []
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABLEST card from ``BDF.add_card(...)``
 
@@ -1658,7 +1667,7 @@ class TABLEH1(Table):
         self.y = np.asarray(y, dtype='float64')
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABLEH1 card from ``BDF.add_card(...)``
 
@@ -1777,7 +1786,7 @@ class TABLEHT(Table):
         self.y = np.asarray(y, dtype='int32')
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABLEHT card from ``BDF.add_card(...)``
 
@@ -1848,11 +1857,11 @@ class TABRND1(Table):
         self.y = np.asarray(y, dtype='float64')
         self.xaxis = xaxis
         self.yaxis = yaxis
-        assert self.xaxis in ['LINEAR', 'LOG'], 'xaxis=%r' % (self.xaxis)
-        assert self.yaxis in ['LINEAR', 'LOG'], 'yaxis=%r' % (self.yaxis)
+        assert self.xaxis in ['LINEAR', 'LOG'], f'xaxis={self.xaxis!r}'
+        assert self.yaxis in ['LINEAR', 'LOG'], f'yaxis={self.yaxis!r}'
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABRND1 card from ``BDF.add_card(...)``
 
@@ -1983,10 +1992,10 @@ class TABRNDG(Table):
         #: Root-mean-square gust velocity. (Real)
         self.WG = WG
         assert self.Type in [1, 2], ('Type must be 1 or 2.  '
-                                     'Type=%s' % (self.Type))
+                                     f'Type={self.Type}')
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a TABRNDG card from ``BDF.add_card(...)``
 
@@ -2106,3 +2115,6 @@ def read_table_float_int(card: BDFCard, table_id: int,
     string(card, nfields, 'ENDT')
     x, y = make_xy(table_id, table_type, xy)
     return x, y
+
+TABLEDs = TABLED1 | TABLED2 | TABLED3 | TABLED4 | TABLED5
+TABLEMs = TABLEM1 | TABLEM2 | TABLEM3 | TABLEM4

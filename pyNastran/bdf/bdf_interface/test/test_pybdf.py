@@ -45,14 +45,14 @@ class TestPyBDF(unittest.TestCase):
             pybdf._open_file_checks(op2_filename, basename=False)
 
         with self.assertRaises(IOError):
-            pybdf._validate_open_file(bdf_filename, op2_filename, check=True)
+            pybdf._validate_open_file(op2_filename, check=True)
 
         with self.assertRaises(RuntimeError):
             _show_bad_file(pybdf, op2_filename, encoding, nlines_previous=10)
 
         #------------------------------------------------------
         with self.assertRaises(IOError):
-            pybdf._validate_open_file(bdf_filename, op2_filename, check=True)
+            pybdf._validate_open_file(op2_filename, check=True)
         with open(bdf_filename, 'w', encoding='utf8') as bdf_file:
             bdf_file.write('helló wörld from two\n')
 
@@ -68,7 +68,7 @@ class TestPyBDF(unittest.TestCase):
             pybdf._open_file_checks(bdf_dir, basename=False)
 
         with self.assertRaises(IOError):
-            pybdf._validate_open_file(bdf_filename, bdf_dir, check=True)
+            pybdf._validate_open_file(bdf_dir, check=True)
 
         os.remove('spike.op2')
         os.remove('spike.bdf')
@@ -273,31 +273,18 @@ class TestPyBDF(unittest.TestCase):
     def test_unicode_errors1(self):
         """tests some error handling"""
         bdf_filename = 'unicode.bdf'
-        with open(bdf_filename, 'w') as bdf_file:
-            bdf_file.write(
-                'CEND\n'
-                'SUBCASE 1\n'
-                '  DISP = ALL\n'
-                'BEGIN BULK\n'
-                'GRID,1,,0.,0.,0.\n'
-                'GRID.2,,1.,0.,0.\n'
-                'GRID,3,,1.,1.,0.\n'
-                'GRID,4,,0.,1.,0.\n'
-                '$ helló wörld from two\n'
-                'CQUAD4,1,2,3,4,5',
-                #'ENDDATA'
-            )
+        _write_unicode_deck(bdf_filename)
 
         read_includes = True
         dumplines = True
         encoding = 'utf8'
         pybdf = BDFInputPy(read_includes, dumplines, encoding, nastran_format='msc',
                            consider_superelements=False, log=None, debug=False)
-        if sys.platform == 'win32':
-            with self.assertRaises(RuntimeError):
-                pybdf.get_lines(bdf_filename, punch=None, make_ilines=True)
-        else:
-            pybdf.get_lines(bdf_filename, punch=None, make_ilines=True)
+        #if sys.platform == 'win32':
+            #with self.assertRaises(RuntimeError):
+                #pybdf.get_lines(bdf_filename, punch=None, make_ilines=True)
+        #else:
+        pybdf.get_lines(bdf_filename, punch=None, make_ilines=True)
 
         #with self.assertRaises(RuntimeError):
         #with self.assertRaises(UnicodeDecodeError):
@@ -306,20 +293,7 @@ class TestPyBDF(unittest.TestCase):
     def test_unicode_errors2(self):
         """tests some error handling"""
         bdf_filename = 'unicode.bdf'
-        with open(bdf_filename, 'w') as bdf_file:
-            bdf_file.write(
-                'CEND\n'
-                'SUBCASE 1\n'
-                '  DISP = ALL\n'
-                'BEGIN BULK\n'
-                'GRID,1,,0.,0.,0.\n'
-                'GRID.2,,1.,0.,0.\n'
-                'GRID,3,,1.,1.,0.\n'
-                'GRID,4,,0.,1.,0.\n'
-                '$ helló wörld from two\n'
-                'CQUAD4,1,2,3,4,5',
-                #'ENDDATA'
-            )
+        _write_unicode_deck(bdf_filename)
 
         read_includes = True
         dumplines = True
@@ -588,6 +562,23 @@ class TestPyBDF(unittest.TestCase):
         #assert len(additional_deck_lines) == 2, additional_deck_lines
         #assert len(additional_deck_lines[('SUPER', 1, '')]) == 1
         #assert len(additional_deck_lines[('SUPER', 0, '')]) == 3
+
+def _write_unicode_deck(bdf_filename: str) -> None:
+    with open(bdf_filename, 'w', encoding='utf8') as bdf_file:
+        bdf_file.write(
+            'CEND\n'
+            'SUBCASE 1\n'
+            '  DISP = ALL\n'
+            'BEGIN BULK\n'
+            'GRID,1,,0.,0.,0.\n'
+            'GRID.2,,1.,0.,0.\n'
+            'GRID,3,,1.,1.,0.\n'
+            'GRID,4,,0.,1.,0.\n'
+            '$ helló wörld from two\n'
+            'CQUAD4,1,2,3,4,5',
+            #'ENDDATA'
+        )
+
 
 if __name__ == '__main__':   # pragma: no cover
     unittest.main()

@@ -35,7 +35,9 @@ def remove_marc_files(filenames):
     # return names
 
 def run(regenerate: bool=True, run_nastran: bool=False, debug: bool=False,
-        sum_load: bool=True, sum_mass: bool=True, xref: bool=True,
+        sum_load: bool=True, sum_mass: bool=True, run_mcid: bool=True,
+        run_export_caero: bool=True,
+        xref: bool=True, is_lax_parser: bool=False,
         crash_cards=None):
     """Runs the full BDF test suite"""
     if crash_cards is None:
@@ -65,7 +67,7 @@ def run(regenerate: bool=True, run_nastran: bool=False, debug: bool=False,
         files2 = list(set(files2))
         files2.sort()
     else:
-        print('failed_cases_filename = %r' % failed_cases_filename)
+        print(f'failed_cases_filename = {failed_cases_filename!r}')
         files2 = get_failed_files(failed_cases_filename)
 
     #for filename in files2:
@@ -95,20 +97,25 @@ def run(regenerate: bool=True, run_nastran: bool=False, debug: bool=False,
     if os.path.exists('skipped_cards.out'):
         os.remove('skipped_cards.out')
 
-    print("nfiles = %s" % len(files))
+    print(f'nfiles = {len(files):d}')
     check = True
     debug = False
     size = [8]
     is_double = [False]
+    is_lax_parsers = [is_lax_parser]
     post = -1
     failed_files = run_lots_of_files(
         files, debug=debug, xref=xref,
         check=check,
         nastran=nastran,
         size=size, is_double=is_double, post=post,
+        is_lax_parser=is_lax_parsers,
         sum_load=sum_load, run_mass=sum_mass,
+        run_mcid=run_mcid,
+        run_export_caero=run_export_caero,
+        run_skin_solids=False,
         encoding='latin1', crash_cards=crash_cards,
-        dev=True, pickle_obj=True)
+        dev=True, run_pickle=True)
     ntotal = len(files)
     nfailed = len(failed_files)
     npassed = ntotal - nfailed
@@ -126,24 +133,28 @@ def main():
     ver = str(pyNastran.__version__)
 
     #is_release = False
+    skips = '[--skip_loads] [--skip_mass] [--skip_mcid] [--skip_aero]'
     msg = (
-        'Usage:  bdf_test [-r] [-n] [-s S...] [-e E] [-x] [-c C] [--safe] [--skip_loads] [--skip_mass]\n'
+        f'Usage:  bdf_test [-r] [-n] [-s S...] [-e E] [-x] [-c C] [--safe] [--lax] {skips}\n'
         '        bdf_test -h | --help\n'
         '        bdf_test -v | --version\n'
         '\n'
-        "Tests to see if many BDFs will work with pyNastran %s.\n"
+        f'Tests to see if many BDFs will work with pyNastran {ver}.\n'
         '\n'
         "Options:\n"
         '  -r, --regenerate     Resets the tests\n'
         '  -c C, --crash_cards  Crash on specific cards (e.g. CGEN,EGRID)\n'
         '  -n, --run_nastran    Runs Nastran\n'
-        '  --skip_loads         Disables static/dynamic loads sum\n'
-        '  --skip_mass          Disables mass sum\n'
         '  -s S, --size S       Sets the field size\n'
         '  -e E, --nerrors E    Allow for cross-reference errors (default=100)\n'
         '  -x, --xref           disables cross-referencing and checks of the BDF.\n'
         '                       (default=False -> on)\n'
-        '  --safe               Use safe cross-reference (default=False)\n' % ver
+        '  --safe               Use safe cross-reference (default=False)\n'
+        '  --skip_loads         Disables static/dynamic loads sum\n'
+        '  --skip_mass          Disables mass sum\n'
+        '  --skip_mcid          Disables MCID checks\n'
+        '  --skip_aero          Disables aero exporting\n'
+        '  --lax                Use the lax card parser (default=False)\n'
     )
     if len(sys.argv) == 0:
         sys.exit(msg)
@@ -154,13 +165,19 @@ def main():
     run_nastran = data['--run_nastran']
     sum_load = not data['--skip_loads']
     sum_mass = not data['--skip_mass']
+    run_mcid = not data['--skip_mcid']
+    run_export_caero = not data['--skip_aero']
     xref = not data['--xref']
+    is_lax_parser = data['--lax']
 
     crash_cards = []
     if data['--crash_cards']:
         crash_cards = data['--crash_cards'].split(',')
     run(regenerate=regenerate, run_nastran=run_nastran,
         sum_load=sum_load, sum_mass=sum_mass,
+        run_mcid=run_mcid,
+        run_export_caero=run_export_caero,
+        is_lax_parser=is_lax_parser,
         xref=xref, crash_cards=crash_cards)
 
 if __name__ == '__main__':  # pragma: no cover

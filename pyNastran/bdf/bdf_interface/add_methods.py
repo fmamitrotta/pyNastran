@@ -1,36 +1,37 @@
 # pylint: disable=R0902,R0904,R0914
 from __future__ import annotations
-from typing import Union, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 from pyNastran.bdf.cards.nodes import SPOINT, EPOINT
 if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import (
-        BDF,
+        BDF, Element, Property, Material, ThermalMaterial,
         CYAX, CYJOIN, AXIF,
         TOPVAR, MPCAX, CORD3G,
         SESUPORT, SEUSET, SEUSET1,
+        CAEROs, PAEROs, SPLINEs, FREQs,
     )
     from pyNastran.bdf.cards.bolt import BOLT, BOLTFOR, BOLTSEQ, BOLTLD
-    from pyNastran.bdf.cards.elements.elements import CFAST, CGAP, CRAC2D, CRAC3D, PLOTEL, GENEL
-    from pyNastran.bdf.cards.properties.properties import PFAST, PGAP, PRAC2D, PRAC3D
-    from pyNastran.bdf.cards.properties.solid import PLSOLID, PSOLID, PIHEX, PCOMPS, PCOMPLS
+    from pyNastran.bdf.cards.elements.elements import CFAST, CGAP, CRAC2D, CRAC3D, PLOTELs, GENEL
+    #from pyNastran.bdf.cards.properties.properties import PFAST, PGAP, PRAC2D, PRAC3D
+    #from pyNastran.bdf.cards.properties.solid import PLSOLID, PSOLID, PIHEX, PCOMPS, PCOMPLS
     #from pyNastran.bdf.cards.msgmesh import CGEN, GMCORD
 
-    from pyNastran.bdf.cards.elements.springs import CELAS1, CELAS2, CELAS3, CELAS4
+    #from pyNastran.bdf.cards.elements.springs import CELAS1, CELAS2, CELAS3, CELAS4
     from pyNastran.bdf.cards.properties.springs import PELAS, PELAST
 
-    from pyNastran.bdf.cards.elements.solid import (
-        #CTETRA, CPYRAM, CPENTA, CHEXA,
-        CIHEX1, CIHEX2, CHEXA1, CHEXA2,
-        CTETRA4, CPYRAM5, CPENTA6, CHEXA8,
-        CTETRA10, CPYRAM13, CPENTA15, CHEXA20,
-    )
+    #from pyNastran.bdf.cards.elements.solid import (
+    #    #CTETRA, CPYRAM, CPENTA, CHEXA,
+    #    CIHEX1, CIHEX2, CHEXA1, CHEXA2,
+    #    CTETRA4, CPYRAM5, CPENTA6, CHEXA8,
+    #    CTETRA10, CPYRAM13, CPENTA15, CHEXA20,
+    #)
     from pyNastran.bdf.cards.elements.rigid import RBAR, RBAR1, RBE1, RBE2, RBE3, RROD, RSPLINE, RSSCON
 
     from pyNastran.bdf.cards.axisymmetric.axisymmetric import (
         AXIF, RINGFL,
         AXIC, RINGAX, POINTAX, CCONEAX, PCONEAX, PRESAX, TEMPAX,)
-    from pyNastran.bdf.cards.elements.axisymmetric_shells import (
-        CTRAX3, CTRAX6, CTRIAX, CTRIAX6, CQUADX, CQUADX4, CQUADX8)
+    #from pyNastran.bdf.cards.elements.axisymmetric_shells import (
+        #CTRAX3, CTRAX6, CTRIAX, CTRIAX6, CQUADX, CQUADX4, CQUADX8)
     from pyNastran.bdf.cards.elements.shell import (
         CQUAD, CQUAD4, CQUAD8, CQUADR, CSHEAR,
         CTRIA3, CTRIA6, CTRIAR,
@@ -38,28 +39,27 @@ if TYPE_CHECKING:  # pragma: no cover
         CPLSTS3, CPLSTS4, CPLSTS6, CPLSTS8,
         SNORM,
     )
-    from pyNastran.bdf.cards.properties.shell import PSHELL, PCOMP, PCOMPG, PSHEAR, PLPLANE, PPLANE
-    from pyNastran.bdf.cards.elements.bush import CBUSH, CBUSH1D, CBUSH2D
+    #from pyNastran.bdf.cards.properties.shell import PSHELL, PCOMP, PCOMPG, PSHEAR, PLPLANE, PPLANE
+    #from pyNastran.bdf.cards.elements.bush import CBUSH, CBUSH1D, CBUSH2D
     from pyNastran.bdf.cards.properties.bush import PBUSH, PBUSH1D, PBUSHT, PBUSH2D
-    from pyNastran.bdf.cards.elements.damper import (CVISC, CDAMP1, CDAMP2, CDAMP3, CDAMP4,
-                                                     CDAMP5)
+    #from pyNastran.bdf.cards.elements.damper import (CVISC, CDAMP1, CDAMP2, CDAMP3, CDAMP4,
+    #                                                 CDAMP5)
     from pyNastran.bdf.cards.properties.damper import PVISC, PDAMP, PDAMP5, PDAMPT
-    from pyNastran.bdf.cards.elements.rods import CROD, CONROD, CTUBE
+    #from pyNastran.bdf.cards.elements.rods import CROD, CONROD, CTUBE
     from pyNastran.bdf.cards.elements.bars import CBAR, CBARAO, CBEAM3, CBEND, BAROR
     from pyNastran.bdf.cards.elements.beam import CBEAM, BEAMOR
-    from pyNastran.bdf.cards.properties.rods import PROD, PTUBE
-    from pyNastran.bdf.cards.properties.bars import PBAR, PBARL, PBRSECT, PBEND, PBEAM3
-    from pyNastran.bdf.cards.properties.beam import PBEAM, PBEAML, PBCOMP, PBMSECT
+    #from pyNastran.bdf.cards.properties.rods import PROD, PTUBE
+    #from pyNastran.bdf.cards.properties.bars import PBAR, PBARL, PBRSECT, PBEND, PBEAM3
+    #from pyNastran.bdf.cards.properties.beam import PBEAM, PBEAML, PBCOMP, PBMSECT
     # CMASS5
     from pyNastran.bdf.cards.elements.mass import CONM1, CONM2, CMASS1, CMASS2, CMASS3, CMASS4
     from pyNastran.bdf.cards.properties.mass import PMASS, NSM, NSM1, NSML, NSML1, NSMADD
     from pyNastran.bdf.cards.constraints import (SPC, SPCADD, SPCAX, SPC1, SPCOFF, SPCOFF1,
                                                  MPC, MPCADD, SUPORT1, SUPORT, SESUP,
                                                  GMSPC)
-    from pyNastran.bdf.cards.coordinate_systems import (CORD1R, CORD1C, CORD1S,
-                                                        CORD2R, CORD2C, CORD2S, #CORD3G,
-                                                        MATCID,
-                                                        )
+    from pyNastran.bdf.cards.coordinate_systems import (#CORD1R, CORD1C, CORD1S,
+                                                        #CORD2R, CORD2C, CORD2S, #CORD3G,
+                                                        MATCID, Coord)
     from pyNastran.bdf.cards.deqatn import DEQATN
     from pyNastran.bdf.cards.dynamic import (
         DELAY, DPHASE, FREQ, FREQ1, FREQ2, FREQ3, FREQ4, FREQ5,
@@ -68,14 +68,15 @@ if TYPE_CHECKING:  # pragma: no cover
         LSEQ, SLOAD, DAREA, RFORCE, RFORCE1, SPCD, DEFORM,
         LOADCYN, LOADCYH)
     from pyNastran.bdf.cards.loads.dloads import ACSRCE, DLOAD, TLOAD1, TLOAD2, RLOAD1, RLOAD2
-    from pyNastran.bdf.cards.loads.static_loads import (LOAD, CLOAD, GRAV, ACCEL, ACCEL1, FORCE,
-                                                        FORCE1, FORCE2, MOMENT, MOMENT1, MOMENT2,
-                                                        PLOAD, PLOAD1, PLOAD2, PLOAD4, PLOADX1,
-                                                        GMLOAD)
+    from pyNastran.bdf.cards.loads.static_loads import (
+        LOAD, CLOAD, GRAV, ACCEL, ACCEL1, FORCE,
+        FORCE1, FORCE2, MOMENT, MOMENT1, MOMENT2,
+        PLOAD, PLOAD1, PLOAD2, PLOAD4, PLOADX1,
+        GMLOAD)
     from pyNastran.bdf.cards.loads.random_loads import RANDPS, RANDT1
 
-    from pyNastran.bdf.cards.materials import (MAT1, MAT2, MAT3, MAT4, MAT5,
-                                               MAT8, MAT9, MAT10, MAT11, MAT3D,
+    from pyNastran.bdf.cards.materials import (#MAT1, MAT2, MAT3, MAT4, MAT5,
+                                               #MAT8, MAT9, MAT10, MAT11, MAT3D,
                                                MATG, MATHE, MATHP, CREEP, EQUIV,
                                                MATDMG,
                                                NXSTRAT)
@@ -87,12 +88,14 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from pyNastran.bdf.cards.aero.aero import (
         AECOMP, AECOMPL, AEFACT, AELINK, AELIST, AEPARM, AESURF, AESURFS,
-        CAERO1, CAERO2, CAERO3, CAERO4, CAERO5,
-        PAERO1, PAERO2, PAERO3, PAERO4, PAERO5,
+        #CAERO1, CAERO2, CAERO3, CAERO4, CAERO5,
+        #PAERO1, PAERO2, PAERO3, PAERO4, PAERO5,
         MONPNT1, MONPNT2, MONPNT3,
-        SPLINE1, SPLINE2, SPLINE3, SPLINE4, SPLINE5)
+        #SPLINE1, SPLINE2, SPLINE3, SPLINE4, SPLINE5,
+    )
     from pyNastran.bdf.cards.aero.static_loads import AESTAT, AEROS, CSSCHD, TRIM, TRIM2, DIVERG
-    from pyNastran.bdf.cards.aero.dynamic_loads import AERO, FLFACT, FLUTTER, GUST, MKAERO1, MKAERO2
+    from pyNastran.bdf.cards.aero.dynamic_loads import (
+        AERO, FLFACT, FLUTTER, GUST, GUST2, MKAERO1, MKAERO2)
     #from pyNastran.bdf.cards.aero.zona import (
         #ACOORD, AEROZ, AESURFZ, BODY7, CAERO7, MKAEROZ, PAFOIL7, PANLST1, PANLST3,
         #SEGMESH, SPLINE1_ZONA, SPLINE2_ZONA, SPLINE3_ZONA, TRIMLNK, TRIMVAR, TRIM_ZONA,
@@ -143,7 +146,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.cards.elements.acoustic import (
         PACABS, CAABSF, CHACAB, CHACBR,
         ACPLNW, AMLREG, ACMODL, MICPNT)
-
+    MaterialDependence = (
+        MATT1 | MATT2 | MATT3 | MATT4 | MATT5 | MATT8 | MATT9 | MATT11 |
+        MATS1 | MATDMG) # MATS3, MATS8
 
 class AddMethods:
     """defines methods to add card objects to the BDF"""
@@ -273,7 +278,8 @@ class AddMethods:
         self.model._type_to_id_map[ringfl.type].append(key)
         self.model._is_axis_symmetric = True
 
-    def _add_ringax_object(self, ringax: Union[RINGAX, POINTAX], allow_overwrites: bool=False) -> None:
+    def _add_ringax_object(self, ringax: RINGAX | POINTAX,
+                           allow_overwrites: bool=False) -> None:
         """adds a RINGAX card"""
         key = ringax.nid
         model = self.model
@@ -296,7 +302,8 @@ class AddMethods:
         else:
             self.model.seqgp.append(seqgp)
 
-    def _add_point_object(self, point: POINT, allow_overwrites: bool=False) -> None:
+    def _add_point_object(self, point: POINT,
+                          allow_overwrites: bool=False) -> None:
         """adds a POINT card"""
         key = point.nid
         model = self.model
@@ -400,7 +407,8 @@ class AddMethods:
         self.model.csupext[key] = csupext
         self.model._type_to_id_map[csupext.type].append(key)
 
-    def _add_plotel_object(self, elem: PLOTEL, allow_overwrites: bool=False) -> None:
+    def _add_plotel_object(self, elem: PLOTELs,
+                           allow_overwrites: bool=False) -> None:
         """adds an PLOTEL object"""
         key = elem.eid
         assert key > 0, 'eid=%s must be positive; elem=\n%s' % (key, elem)
@@ -416,28 +424,7 @@ class AddMethods:
         self.model.plotels[key] = elem
         self.model._type_to_id_map[elem.type].append(key)
 
-    def _add_element_object(self, elem: Union[CELAS1, CELAS2, CELAS3, CELAS4,
-                                              CDAMP1, CDAMP2, CDAMP3, CDAMP4, CDAMP5,
-                                              CVISC, CBUSH, CBUSH1D, CBUSH2D, CFAST, #CWELD
-                                              CGAP, GENEL, CCONEAX,
-                                              CROD, CTUBE, CONROD,
-                                              CBAR, CBEAM, CBEAM3, CBEND, CSHEAR,
-                                              CTRIA3, CTRIA6, CTRIAR,
-                                              CQUAD4, CQUAD8, CQUADR, CQUAD,
-                                              CTRIAX, CTRIAX6,
-                                              CQUADX, CQUADX4, CQUADX8,
-                                              CRAC2D, CRAC3D,
-                                              CPLSTN3, CPLSTN4, CPLSTN6, CPLSTN8,
-                                              CPLSTS3, #CPLSTS4, CPLSTS6, CPLSTS8,
-                                              CTETRA4, CTETRA10, CPENTA6, CPENTA15,
-                                              CHEXA8, CHEXA20, CPYRAM5, CPYRAM13,
-                                              CTRAX3, CTRAX6,
-                                              # thermal
-                                              CHBDYE, CHBDYG, CHBDYP,
-                                              # Nastran 95
-                                              CIHEX1, CIHEX2,
-                                              CHEXA1, CHEXA2,
-                                              ],
+    def _add_element_object(self, elem: Element,
                             allow_overwrites: bool=False) -> None:
         key = elem.eid
         model = self.model
@@ -451,7 +438,8 @@ class AddMethods:
             model.elements[key] = elem
             model._type_to_id_map[elem.type].append(key)
 
-    def _add_ao_object(self, elem_flag: CBARAO, allow_overwrites: bool=False) -> None:
+    def _add_ao_object(self, elem_flag: CBARAO,
+                       allow_overwrites: bool=False) -> None:
         """adds a CBARAO"""
         key = elem_flag.eid
         model = self.model
@@ -471,7 +459,8 @@ class AddMethods:
         """adds a DOPTPRM"""
         self.model.doptprm = doptprm
 
-    def _add_nsm_object(self, nsm: Union[NSM, NSM1, NSML, NSML1], allow_overwrites: bool=False) -> None:
+    def _add_nsm_object(self, nsm: NSM | NSM1 | NSML | NSML1,
+                        allow_overwrites: bool=False) -> None:
         """adds an nsm object to a nsm set"""
         key = nsm.sid
         assert key > 0, 'sid=%s must be positive; nsm=\n%s' % (key, nsm)
@@ -491,8 +480,8 @@ class AddMethods:
             self.model.nsmadds[key] = [nsmadd]
             self.model._type_to_id_map[nsmadd.type].append(key)
 
-    def _add_mass_object(self, mass: Union[CMASS1, CMASS2, CMASS3, CMASS4,
-                                           CONM1, CONM2], allow_overwrites: bool=False) -> None:
+    def _add_mass_object(self, mass: CMASS1 | CMASS2 | CMASS3 | CMASS4 |
+                                     CONM1 | CONM2, allow_overwrites: bool=False) -> None:
         key = mass.eid
         model = self.model
         assert key > 0, 'eid=%s must be positive; mass=\n%s' % (key, mass)
@@ -507,9 +496,9 @@ class AddMethods:
         """.. warning:: can dampers have the same ID as a standard element?"""
         return self._add_element_object(elem, allow_overwrites)
 
-    def _add_rigid_element_object(self, elem: Union[RBAR, RBAR1,
-                                                    RBE1, RBE2, RBE3,
-                                                    RROD, RSPLINE, RSSCON],
+    def _add_rigid_element_object(self, elem: RBAR | RBAR1 |
+                                              RBE1 | RBE2 | RBE3 |
+                                              RROD | RSPLINE | RSSCON,
                                   allow_overwrites: bool=False) -> None:
         key = elem.eid
         model = self.model
@@ -519,7 +508,7 @@ class AddMethods:
         model.rigid_elements[key] = elem
         model._type_to_id_map[elem.type].append(key)
 
-    def _add_thermal_element_object(self, elem: Union[CHBDYE, CHBDYG, CHBDYP]) -> None:
+    def _add_thermal_element_object(self, elem: CHBDYE | CHBDYG | CHBDYP) -> None:
         """same as add_element at the moment..."""
         self._add_element_object(elem)
 
@@ -556,8 +545,7 @@ class AddMethods:
     def _add_micpnt_object(self, micpnt: MICPNT) -> None:
         """adds an MICPNT object"""
         key = micpnt.eid
-        assert key not in self.model.micpnt, '\micpnt=\n%s old=\n%s' % (
-            micpnt, self.model.micpnt[key])
+        assert key not in self.model.micpnt, rf'\micpnt=\n{micpnt} old=\n{self.model.micpnt[key]}'
         assert key >= 0
         self.model.micpnt[key] = micpnt
         self.model._type_to_id_map[micpnt.type].append(key)
@@ -565,14 +553,7 @@ class AddMethods:
     def _add_acoustic_property_object(self, prop: PACABS) -> None:
         self._add_property_object(prop)
 
-    def _add_property_object(self, prop: Union[PELAS, PBUSH, PBUSH1D, PDAMP, PDAMP5, PBUSH2D,
-                                               PFAST, PVISC, PGAP, PRAC2D, PRAC3D, # PWELD
-                                               PROD, PTUBE,
-                                               PBAR, PBARL, PBRSECT, PCONEAX,
-                                               PBEAM, PBEAML, PBCOMP, PBMSECT,
-                                               PBEND, PBEAM3, PPLANE, PSHEAR,
-                                               PSHELL, PCOMP, PCOMPG, PLPLANE,
-                                               PSOLID, PLSOLID, PIHEX, PCOMPS, PCOMPLS],
+    def _add_property_object(self, prop: Property,
                              allow_overwrites: bool=False) -> None:
         """
         adds one of the following objects:
@@ -789,8 +770,7 @@ class AddMethods:
             model.transfer_functions[key] = [tf]
             model._type_to_id_map[tf.type].append(key)
 
-    def _add_structural_material_object(self, material: Union[MAT1, MAT2, MAT3, MAT8, MAT9,
-                                                              MAT10, MAT11, MAT3D, MATG],
+    def _add_structural_material_object(self, material: Material,
                                         allow_overwrites: bool=False) -> None:
         """adds an MAT1, MAT2, MAT8 object"""
         key = material.mid
@@ -803,7 +783,7 @@ class AddMethods:
             model.materials[key] = material
             model._type_to_id_map[material.type].append(key)
 
-    def _add_thermal_material_object(self, material: Union[MAT4, MAT5],
+    def _add_thermal_material_object(self, material: ThermalMaterial,
                                      allow_overwrites: bool=False) -> None:
         """adds an MAT4, MAT5 object"""
         key = material.mid
@@ -816,7 +796,7 @@ class AddMethods:
             model.thermal_materials[key] = material
             model._type_to_id_map[material.type].append(key)
 
-    def _add_hyperelastic_material_object(self, material: Union[MATHE, MATHP],
+    def _add_hyperelastic_material_object(self, material: MATHE | MATHP,
                                           allow_overwrites: bool=False) -> None:
         """adds an MATHP, MATHE object"""
         key = material.mid
@@ -828,8 +808,7 @@ class AddMethods:
             self.model.hyperelastic_materials[key] = material
             self.model._type_to_id_map[material.type].append(key)
 
-    def _add_material_dependence_object(self, material: Union[MATT1, MATT2, MATT3, MATT4, MATT5, MATT8, MATT9, MATT11,
-                                                              MATS1, MATDMG], # MATS3, MATS8
+    def _add_material_dependence_object(self, material: MaterialDependence,
                                         allow_overwrites: bool=False) -> None:
         """
         adds the following objects:
@@ -883,10 +862,9 @@ class AddMethods:
             self.model.creep_materials[key] = material
             self.model._type_to_id_map[material.type].append(key)
 
-    def _add_coord_object(self, coord: Union[CORD1R, CORD1C, CORD1S,
-                                             CORD2R, CORD2C, CORD2S], # CORD3G
+    def _add_coord_object(self, coord: Coord, # CORD3G
                           allow_overwrites: bool=False) -> None:
-        """adds a CORDx object"""
+        """adds a Coord object"""
         key = coord.cid
         assert coord.cid > -1, 'cid=%s coord=\n%s' % (key, coord)
         if key in self.model.coords:
@@ -897,79 +875,55 @@ class AddMethods:
             self.model.coords[key] = coord
             self.model._type_to_id_map[coord.type].append(key)
 
-    def _add_matcid_object(self, matcid: Union[MATCID]) -> None:
+    def _add_matcid_object(self, matcid: MATCID) -> None:
         """adds a MATCID object"""
         key = matcid.cid
         assert matcid.cid > -1, 'cid=%s coord=\n%s' % (key, matcid)
 
         # Multiple MATCIDs can share the same CID
-        if key in self.model.MATCID:
-            self.model.MATCID[key].append(matcid)
+        if key in self.model.matcid:
+            self.model.matcid[key].append(matcid)
         else:
-            self.model.MATCID[key] = [matcid]
+            self.model.matcid[key] = [matcid]
             self.model._type_to_id_map[matcid.type].append(key)
 
-    def _add_load_combination_object(self, load: Union[LOAD, CLOAD]) -> None:
+    def _add_load_combination_object(self, load: LOAD | CLOAD) -> None:
         """adds a load object to a load case"""
         key = load.sid
-        if key in self.model.load_combinations:
-            self.model.load_combinations[key].append(load)
-        else:
-            self.model.load_combinations[key] = [load]
-            self.model._type_to_id_map[load.type].append(key)
+        _add_value_to_dict(self.model.load_combinations, key, load, self.model._type_to_id_map)
 
-    def _add_load_object(self, load: Union[FORCE, FORCE1, FORCE2, MOMENT, MOMENT1, MOMENT2,
-                                           PLOAD, PLOAD1, PLOAD2, PLOAD4, PLOADX1,
-                                           GRAV, ACCEL, ACCEL1, SPCD, SLOAD,
-                                           QBDY1, QBDY2, QBDY3, QVOL, TEMPAX, PRESAX,
-                                           RFORCE, RFORCE1, LOADCYN, LOADCYH, DEFORM,
-                                           GMLOAD]) -> None:
+    def _add_load_object(self, load: (FORCE | FORCE1 | FORCE2 | MOMENT | MOMENT1 | MOMENT2 |
+                                      PLOAD | PLOAD1 | PLOAD2 | PLOAD4 | PLOADX1 |
+                                      GRAV | ACCEL | ACCEL1 | SPCD | SLOAD |
+                                      QBDY1 | QBDY2 | QBDY3 | QVOL | TEMPAX | PRESAX |
+                                      RFORCE | RFORCE1 | LOADCYN | LOADCYH | DEFORM |
+                                      GMLOAD)) -> None:
         """adds a load object to a load case"""
         key = load.sid
-        if key in self.model.loads:
-            self.model.loads[key].append(load)
-        else:
-            self.model.loads[key] = [load]
-            self.model._type_to_id_map[load.type].append(key)
+        _add_value_to_dict(self.model.loads, key, load, self.model._type_to_id_map)
 
     def _add_dload_object(self, load: DLOAD) -> None:
         """adds a dload object to a load case"""
         key = load.sid
-        if key in self.model.dloads:
-            self.model.dloads[key].append(load)
-        else:
-            self.model.dloads[key] = [load]
-            self.model._type_to_id_map[load.type].append(key)
+        _add_value_to_dict(self.model.dloads, key, load, self.model._type_to_id_map)
 
-    def _add_dload_entry(self, dload: Union[ACSRCE, RANDPS, RANDT1,
-                                            TLOAD1, TLOAD2, RLOAD1, RLOAD2,
-                                            QVECT]) -> None:
+    def _add_dload_entry(self, dload: (ACSRCE | RANDPS | RANDT1 |
+                                       TLOAD1 | TLOAD2 | RLOAD1 | RLOAD2 |
+                                       QVECT)) -> None:
         """adds a sub-dload object to a load case"""
         key = dload.sid
-        if key in self.model.dload_entries:
-            self.model.dload_entries[key].append(dload)
-        else:
-            self.model.dload_entries[key] = [dload]
-            self.model._type_to_id_map[dload.type].append(key)
+        _add_value_to_dict(self.model.dload_entries, key, dload, self.model._type_to_id_map)
 
     def _add_lseq_object(self, load: LSEQ) -> None:
         """adds a LSEQ object to a load case"""
         key = load.sid
-        if key in self.model.load_combinations:
-            self.model.load_combinations[key].append(load)
-        else:
-            self.model.load_combinations[key] = [load]
-            self.model._type_to_id_map[load.type].append(key)
+        _add_value_to_dict(self.model.load_combinations, key, load, self.model._type_to_id_map)
 
-    def _add_thermal_load_object(self, load: Union[TEMP, TEMPB3, QHBDY, QBDY1, QBDY2, QBDY3]) -> None:
+    def _add_thermal_load_object(self, load: TEMP | TEMPB3 | QHBDY | QBDY1 | QBDY2 | QBDY3) -> None:
         # same function at the moment...
         key = load.sid
         assert key > 0, 'key=%s; load=%s\n' % (key, load)
-        if key in self.model.loads:
-            self.model.loads[key].append(load)
-        else:
-            self.model.loads[key] = [load]
-            self.model._type_to_id_map[load.type].append(key)
+        _add_value_to_dict(self.model.loads, key, load, self.model._type_to_id_map)
 
     def _add_phbdy_object(self, prop: PHBDY) -> None:
         key = prop.pid
@@ -1021,7 +975,7 @@ class AddMethods:
             self.model.normals[key] = snorm
             self.model._type_to_id_map[snorm.type].append(key)
 
-    def _add_convection_property_object(self, prop: Union[PCONV, PCONVM]) -> None:
+    def _add_convection_property_object(self, prop: PCONV | PCONVM) -> None:
         key = prop.pconid
         if key in self.model.convection_properties:
             if not prop == self.model.convection_properties[key]:
@@ -1034,56 +988,32 @@ class AddMethods:
             self.model.convection_properties[key] = prop
             self.model._type_to_id_map[prop.type].append(key)
 
-    def _add_thermal_bc_object(self, bc: Union[CONV, CONVM, RADM, TEMPBC], key) -> None:
+    def _add_thermal_bc_object(self, bc: CONV | CONVM | RADM | TEMPBC, key) -> None:
         assert key > 0
-        if key in self.model.bcs:
-            self.model.bcs[key].append(bc)
-        else:
-            self.model.bcs[key] = [bc]
-            self.model._type_to_id_map[bc.type].append(key)
+        _add_value_to_dict(self.model.bcs, key, bc, self.model._type_to_id_map)
 
     def _add_constraint_mpc_object(self, constraint: MPC) -> None: # MPCAX
         key = constraint.conid
-        if key in self.model.mpcs:
-            self.model.mpcs[key].append(constraint)
-        else:
-            self.model.mpcs[key] = [constraint]
-            self.model._type_to_id_map[constraint.type].append(key)
+        _add_value_to_dict(self.model.mpcs, key, constraint, self.model._type_to_id_map)
 
     def _add_constraint_mpcadd_object(self, constraint: MPCADD) -> None:
         key = constraint.conid
-        if key in self.model.mpcadds:
-            self.model.mpcadds[key].append(constraint)
-        else:
-            self.model.mpcadds[key] = [constraint]
-            self.model._type_to_id_map[constraint.type].append(key)
+        _add_value_to_dict(self.model.mpcadds, key, constraint, self.model._type_to_id_map)
 
-    def _add_constraint_spc_object(self, constraint: Union[SPC, SPC1, SPCAX, GMSPC]) -> None:
+    def _add_constraint_spc_object(self, constraint: SPC | SPC1 | SPCAX | GMSPC) -> None:
         key = constraint.conid
-        if key in self.model.spcs:
-            self.model.spcs[key].append(constraint)
-        else:
-            self.model.spcs[key] = [constraint]
-            self.model._type_to_id_map[constraint.type].append(key)
+        _add_value_to_dict(self.model.spcs, key, constraint, self.model._type_to_id_map)
 
     def _add_constraint_spcadd_object(self, constraint: SPCADD) -> None:
         key = constraint.conid
-        if key in self.model.spcadds:
-            self.model.spcadds[key].append(constraint)
-        else:
-            self.model.spcadds[key] = [constraint]
-            self.model._type_to_id_map[constraint.type].append(key)
+        _add_value_to_dict(self.model.spcadds, key, constraint, self.model._type_to_id_map)
 
-    def _add_constraint_spcoff_object(self, constraint: Union[SPCOFF, SPCOFF1]) -> None:
+    def _add_constraint_spcoff_object(self, constraint: SPCOFF | SPCOFF1) -> None:
         """dumb key, but good enough..."""
         key = constraint.type
-        if key in self.model.spcoffs:
-            self.model.spcoffs[key].append(constraint)
-        else:
-            self.model.spcoffs[key] = [constraint]
-            self.model._type_to_id_map[constraint.type].append(key)
+        _add_value_to_dict(self.model.spcoffs, key, constraint, self.model._type_to_id_map)
 
-    def _add_sesuport_object(self, se_suport: Union[SESUP, SESUPORT]) -> None:
+    def _add_sesuport_object(self, se_suport: SESUP | SESUPORT) -> None:
         """adds an SESUPORT"""
         self.model._type_to_id_map[se_suport.type].append(len(self.model.se_suport))
         self.model.se_suport.append(se_suport)
@@ -1255,7 +1185,7 @@ class AddMethods:
         self.model._type_to_id_map[aelink.type].append(key)
         #assert key not in self.model.aestats,'\naestat=%s oldAESTAT=\n%s' %(aestat,self.model.aestats[key])
 
-    def _add_aecomp_object(self, aecomp: Union[AECOMP, AECOMPL]) -> None:
+    def _add_aecomp_object(self, aecomp: AECOMP | AECOMPL) -> None:
         """adds an AECOMP object"""
         key = aecomp.name
         assert key not in self.model.aecomps, '\naecomp=\n%s oldAECOMP=\n%s' % (aecomp, self.model.aecomps[key])
@@ -1281,7 +1211,7 @@ class AddMethods:
 
     def _add_aesurf_object(self, aesurf: AESURF) -> None:
         """adds an AESURF object"""
-        key = aesurf.aesid
+        key = aesurf.aesurf_id
         assert key not in self.model.aesurf, '\naesurf=\n%s old=\n%s' % (
             aesurf, self.model.aesurf[key])
         assert key >= 0
@@ -1305,7 +1235,7 @@ class AddMethods:
         self.model.csschds[key] = csschd
         self.model._type_to_id_map[csschd.type].append(key)
 
-    def _add_caero_object(self, caero: Union[CAERO1, CAERO2, CAERO3, CAERO4, CAERO5],
+    def _add_caero_object(self, caero: CAEROs,
                           allow_overwrites: bool=False) -> None:
         """adds an CAERO1/CAERO2/CAERO3/CAERO4/CAERO5 object"""
         key = caero.eid
@@ -1322,25 +1252,25 @@ class AddMethods:
         self.model.caeros[key] = caero
         self.model._type_to_id_map[caero.type].append(key)
 
-    def _add_paero_object(self, paero: Union[PAERO1, PAERO2, PAERO3, PAERO4, PAERO5],
+    def _add_paero_object(self, paero: PAEROs,
                           allow_overwrites: bool=False) -> None:
         """adds an PAERO1/PAERO2/PAERO3/PAERO4/PAERO5 object"""
         key = paero.pid
         if not allow_overwrites:
             assert key not in self.model.paeros, '\npaero=\n%r old_paero=\n%r' % (
                 paero, self.model.paeros[key])
-        assert key > 0, 'paero.pid = %r' % (key)
+        assert key > 0, f'paero.pid = {key}'
         self.model.paeros[key] = paero
         self.model._type_to_id_map[paero.type].append(key)
 
-    def _add_monpnt_object(self, monitor_point: Union[MONPNT1, MONPNT2, MONPNT3]) -> None:
+    def _add_monpnt_object(self, monitor_point: MONPNT1 | MONPNT2 | MONPNT3) -> None:
         """adds an MONPNT object"""
         key = monitor_point.name
         assert key not in self.model.monitor_points, f'\nmonitor_point:\n{monitor_point}oldMOTPNT:\n{self.model.monitor_points[key]}'
         self.model.monitor_points.append(monitor_point)
         self.model._type_to_id_map[monitor_point.type].append(len(self.model.monitor_points) - 1)
 
-    def _add_spline_object(self, spline: Union[SPLINE1, SPLINE2, SPLINE3, SPLINE4, SPLINE5],
+    def _add_spline_object(self, spline: SPLINEs,
                            allow_overwrites: bool=False) -> None:
         """adds an SPLINE1/SPLINE2/SPLINE3/SPLINE4/SPLINE5 object"""
         key = spline.eid
@@ -1350,7 +1280,7 @@ class AddMethods:
         self.model.splines[key] = spline
         self.model._type_to_id_map[spline.type].append(key)
 
-    def _add_gust_object(self, gust: GUST) -> None:
+    def _add_gust_object(self, gust: GUST | GUST2) -> None:
         """adds an GUST object"""
         key = gust.sid
         assert key not in self.model.gusts
@@ -1358,7 +1288,8 @@ class AddMethods:
         self.model.gusts[key] = gust
         self.model._type_to_id_map[gust.type].append(key)
 
-    def _add_trim_object(self, trim: Union[TRIM, TRIM2], allow_overwrites: bool=False) -> None:
+    def _add_trim_object(self, trim: TRIM | TRIM2,
+                         allow_overwrites: bool=False) -> None:
         """adds an TRIM object"""
         key = trim.sid
         if not allow_overwrites:
@@ -1393,7 +1324,7 @@ class AddMethods:
         self.model.flfacts[key] = flfact  # set id...
         self.model._type_to_id_map[flfact.type].append(key)
 
-    def _add_dconstr_object(self, dconstr: Union[DCONSTR, DCONADD]) -> None:
+    def _add_dconstr_object(self, dconstr: DCONSTR | DCONADD) -> None:
         """adds a DCONSTR object"""
         #key = (dconstr.oid, dconstr.rid)
         key = dconstr.oid
@@ -1462,7 +1393,7 @@ class AddMethods:
         self.model.dscreen[key] = dscreen
         self.model._type_to_id_map[dscreen.type].append(key)
 
-    def _add_dresp_object(self, dresp: Union[DRESP1, DRESP2, DRESP3]) -> None:
+    def _add_dresp_object(self, dresp: DRESP1 | DRESP2 | DRESP3) -> None:
         """adds a DRESP1/DRESP2/DRESP3 object"""
         key = dresp.dresp_id
         assert key not in self.model.dresps, 'DRESPx=%s old=\n%snew=\n%s' % (
@@ -1471,7 +1402,7 @@ class AddMethods:
         self.model.dresps[key] = dresp
         self.model._type_to_id_map[dresp.type].append(key)
 
-    def _add_dvcrel_object(self, dvcrel: Union[DVCREL1, DVCREL2]) -> None:
+    def _add_dvcrel_object(self, dvcrel: DVCREL1 | DVCREL2) -> None:
         """adds a DVCREL1/DVCREL2 object"""
         key = dvcrel.oid
         assert key not in self.model.dvcrels, 'DVCRELx=%s old\n%snew=\n%s' % (
@@ -1480,7 +1411,7 @@ class AddMethods:
         self.model.dvcrels[key] = dvcrel
         self.model._type_to_id_map[dvcrel.type].append(key)
 
-    def _add_dvmrel_object(self, dvmrel: Union[DVMREL1, DVMREL2]) -> None:
+    def _add_dvmrel_object(self, dvmrel: DVMREL1 | DVMREL2) -> None:
         """adds a DVMREL1/DVMREL2 object"""
         key = dvmrel.oid
         assert key not in self.model.dvmrels, 'DVMRELx=%s old=\n%snew=\n%s' % (
@@ -1490,7 +1421,7 @@ class AddMethods:
         self.model.dvmrels[key] = dvmrel
         self.model._type_to_id_map[dvmrel.type].append(key)
 
-    def _add_dvprel_object(self, dvprel: Union[DVPREL1, DVPREL2]) -> None:
+    def _add_dvprel_object(self, dvprel: DVPREL1 | DVPREL2) -> None:
         """adds a DVPREL1/DVPREL2 object"""
         key = dvprel.oid
         assert key not in self.model.dvprels, 'DVPRELx=%s old\n%snew=\n%s' % (
@@ -1543,7 +1474,7 @@ class AddMethods:
         self.model.nlparms[key] = nlparm
         self.model._type_to_id_map[nlparm.type].append(key)
 
-    def _add_rotor_object(self, rotor: Union[ROTORD, ROTORG]) -> None:
+    def _add_rotor_object(self, rotor: ROTORD | ROTORG) -> None:
         """adds a ROTORD/ROTORG object"""
         key = rotor.sid
         assert key > 0, 'key=%s; rotor=%s\n' % (key, rotor)
@@ -1570,7 +1501,7 @@ class AddMethods:
         self.model.nxstrats[key] = nxstrat
         self.model._type_to_id_map[nxstrat.type].append(key)
 
-    def _add_tstep_object(self, tstep: Union[TSTEP, TSTEP1],
+    def _add_tstep_object(self, tstep: TSTEP | TSTEP1,
                           allow_overwrites: bool=False) -> None:
         """adds a TSTEP object"""
         key = tstep.sid
@@ -1594,7 +1525,7 @@ class AddMethods:
             self.model.tstepnls[key] = tstepnl
             self.model._type_to_id_map[tstepnl.type].append(key)
 
-    def _add_freq_object(self, freq: Union[FREQ, FREQ1, FREQ2, FREQ3, FREQ4, FREQ5]) -> None:
+    def _add_freq_object(self, freq: FREQs) -> None:
         key = freq.sid
         assert key > 0
         if key in self.model.frequencies:
@@ -1607,7 +1538,7 @@ class AddMethods:
             self.model.frequencies[key] = [freq]
             self.model._type_to_id_map[freq.type].append(key)
 
-    def _add_set_object(self, set_obj: Union[SET1, SET2, SET3]) -> None:
+    def _add_set_object(self, set_obj: SET1 | SET2 | SET3) -> None:
         """adds an SET1/SET3 object"""
         key = set_obj.sid
         assert key >= 0
@@ -1625,37 +1556,37 @@ class AddMethods:
             self.model.radset = set_obj
             #self.model._type_to_id_map[set_obj.type].append(key)
 
-    def _add_aset_object(self, set_obj: Union[ASET, ASET1]) -> None:
+    def _add_aset_object(self, set_obj: ASET | ASET1) -> None:
         """adds an ASET/ASET1 object"""
         self.model.asets.append(set_obj)
         n = len(self.model._type_to_id_map['ASET'])
         self.model._type_to_id_map['ASET'].append(n)
 
-    def _add_omit_object(self, set_obj: Union[OMIT, OMIT1]) -> None:
+    def _add_omit_object(self, set_obj: OMIT | OMIT1) -> None:
         """adds an OMIT/OMIT1 object"""
         self.model.omits.append(set_obj)
         n = len(self.model._type_to_id_map['OMIT'])
         self.model._type_to_id_map['OMIT'].append(n)
 
-    def _add_bset_object(self, set_obj: Union[BSET, BSET1]) -> None:
+    def _add_bset_object(self, set_obj: BSET | BSET1) -> None:
         """adds an BSET/BSET1 object"""
         self.model.bsets.append(set_obj)
         n = len(self.model._type_to_id_map['BSET'])
         self.model._type_to_id_map['BSET'].append(n)
 
-    def _add_cset_object(self, set_obj: Union[CSET, CSET1]) -> None:
+    def _add_cset_object(self, set_obj: CSET | CSET1) -> None:
         """adds an CSET/USET1 object"""
         self.model.csets.append(set_obj)
         n = len(self.model._type_to_id_map['CSET'])
         self.model._type_to_id_map['CSET'].append(n)
 
-    def _add_qset_object(self, set_obj: Union[QSET, QSET1]) -> None:
+    def _add_qset_object(self, set_obj: QSET | QSET1) -> None:
         """adds an QSET/QSET1 object"""
         self.model.qsets.append(set_obj)
         n = len(self.model._type_to_id_map['QSET'])
         self.model._type_to_id_map['QSET'].append(n)
 
-    def _add_uset_object(self, set_obj: Union[USET, USET1]) -> None:
+    def _add_uset_object(self, set_obj: USET | USET1) -> None:
         """adds an USET/USET1 object"""
         key = set_obj.name
         if key in self.model.usets:
@@ -1664,19 +1595,19 @@ class AddMethods:
             self.model.usets[key] = [set_obj]
         self.model._type_to_id_map[set_obj.type].append(key)
 
-    def _add_sebset_object(self, set_obj: Union[SEBSET, SEBSET1]) -> None:
+    def _add_sebset_object(self, set_obj: SEBSET | SEBSET1) -> None:
         """adds an SEBSET/SEBSET1 object"""
         self.model.se_bsets.append(set_obj)
 
-    def _add_secset_object(self, set_obj: Union[SECSET, SECSET1]) -> None:
+    def _add_secset_object(self, set_obj: SECSET | SECSET1) -> None:
         """adds an SECSET/SECSTE1 object"""
         self.model.se_csets.append(set_obj)
 
-    def _add_seqset_object(self, set_obj: Union[SEQSET, SEQSET1]) -> None:
+    def _add_seqset_object(self, set_obj: SEQSET | SEQSET1) -> None:
         """adds an SEQSET/SEQSET1 object"""
         self.model.se_qsets.append(set_obj)
 
-    def _add_seuset_object(self, set_obj: Union[SEUSET, SEUSET1]) -> None:
+    def _add_seuset_object(self, set_obj: SEUSET | SEUSET1) -> None:
         """adds an SEUSET/SEUSET1 object"""
         key = set_obj.name
         if key in self.model.se_usets:
@@ -1695,7 +1626,7 @@ class AddMethods:
         self.model.se_sets[key] = set_obj
         self.model._type_to_id_map[set_obj.type].append(key)
 
-    def _add_table_object(self, table: Union[TABLEH1, TABLEHT, TABLES1, TABLEST]) -> None:
+    def _add_table_object(self, table: TABLEH1 | TABLEHT | TABLES1 | TABLEST) -> None:
         """adds a TABLES1, TABLEST object"""
         key = table.tid
         if key in self.model.tables:
@@ -1706,7 +1637,7 @@ class AddMethods:
         self.model.tables[key] = table
         self.model._type_to_id_map[table.type].append(key)
 
-    def _add_tabled_object(self, table: Union[TABLED1, TABLED2, TABLED3, TABLED4]) -> None:
+    def _add_tabled_object(self, table: TABLED1 | TABLED2 | TABLED3 | TABLED4) -> None:
         """adds a TABLED1, TABLED2, TABLED3, TABLED4 object"""
         key = table.tid
         assert key not in self.model.tables_d, '\ntabled=\n%s old_tabled=\n%s' % (
@@ -1715,7 +1646,7 @@ class AddMethods:
         self.model.tables_d[key] = table
         self.model._type_to_id_map[table.type].append(key)
 
-    def _add_tablem_object(self, table: Union[TABLEM1, TABLEM2, TABLEM3, TABLEM4]) -> None:
+    def _add_tablem_object(self, table: TABLEM1 | TABLEM2 | TABLEM3 | TABLEM4) -> None:
         """adds a TABLEM1, TABLEM2, TABLEM3, TABLEM4 object"""
         key = table.tid
         assert key not in self.model.tables_m, '\ntablem=\n%s old_tablem=\n%s' % (
@@ -1733,7 +1664,7 @@ class AddMethods:
         self.model.tables_sdamping[key] = table
         self.model._type_to_id_map[table.type].append(key)
 
-    def _add_random_table_object(self, table: Union[TABRND1, TABRNDG]) -> None:
+    def _add_random_table_object(self, table: TABRND1 | TABRNDG) -> None:
         """adds a TABRND1, TABRNDG object"""
         key = table.tid
         assert key not in self.model.random_tables, '\nTable=\n%s old=\n%s' % (
@@ -1742,7 +1673,7 @@ class AddMethods:
         self.model.random_tables[key] = table
         self.model._type_to_id_map[table.type].append(key)
 
-    def _add_method_object(self, method: Union[EIGR, EIGRL, EIGB],
+    def _add_method_object(self, method: EIGR | EIGRL | EIGB,
                            allow_overwrites: bool=False) -> None:
         """adds a EIGR/EIGRL object"""
         key = method.sid
@@ -1754,7 +1685,7 @@ class AddMethods:
             self.model.methods[key] = method
             self.model._type_to_id_map[method.type].append(key)
 
-    def _add_cmethod_object(self, method: Union[EIGC, EIGP],
+    def _add_cmethod_object(self, method: EIGC | EIGP,
                             allow_overwrites: bool=False) -> None:
         """adds a EIGB/EIGC object"""
         key = method.sid
@@ -1766,7 +1697,7 @@ class AddMethods:
             self.model.cMethods[key] = method
             self.model._type_to_id_map[method.type].append(key)
 
-    def _add_mkaero_object(self, mkaero: Union[MKAERO1, MKAERO2]) -> None:
+    def _add_mkaero_object(self, mkaero: MKAERO1 | MKAERO2) -> None:
         """adds an MKAERO1/MKAERO2 object"""
         self.model.mkaeros.append(mkaero)
 
@@ -1837,3 +1768,14 @@ class AddMethods:
         else:
             self.model.boltfor[boltfor.sid] = boltfor
             self.model._type_to_id_map[boltfor.type].append(key)
+
+def _add_value_to_dict(result: dict[int, Any], key: int, card: Any,
+                       mapper: dict[str, set[int]]) -> None:
+    mapperi = mapper[card.type]
+    if key not in result:
+        result[key] = [card]
+        mapperi.append(key)
+    else:
+        result[key].append(card)
+        if key not in mapperi:
+            mapperi.append(key)

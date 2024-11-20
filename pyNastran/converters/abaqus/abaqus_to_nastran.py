@@ -6,7 +6,7 @@ import os
 import sys
 from itertools import count
 from collections import defaultdict
-from typing import Callable, Union, cast, Optional, TYPE_CHECKING
+from typing import Callable, cast, Optional, TYPE_CHECKING
 
 import numpy as np
 
@@ -866,7 +866,7 @@ def map_shell_property_ids(model: Abaqus, nastran_model: BDF,
         elem.theta_mcid = theta_mcid
 
 def get_eids_from_recursive_element_set(model: Abaqus,
-                                        element_set_name: str) -> Union[np.ndarray, str]:
+                                        element_set_name: str) -> np.ndarray | str:
     """returns None if we cant find a set of eids"""
     eids = model.element_sets[element_set_name]
     if isinstance(eids, str):
@@ -877,7 +877,7 @@ def _create_material(nastran_model: BDF,
                      mat: Material,
                      mid: int,
                      comment: str,
-                     is_solid: bool=None) -> Union[MAT1, MAT8]:
+                     is_solid: bool=None) -> MAT1 | MAT8:
     """creates a material"""
     assert isinstance(is_solid, bool), is_solid
     G = None
@@ -1032,11 +1032,11 @@ def _write_boundary_as_nastran(model: Abaqus,
 
             nids = _get_nodes(model, nid)
             #assert isinstance(nid, int), nid
-            for nid in nids:
+            for nidi in nids:
                 if value == 0.0:
-                    fixed_spcs[dof].append(nid)
+                    fixed_spcs[dof].append(nidi)
                 else:
-                    raise RuntimeError((nid, dof, value))
+                    raise RuntimeError((nidi, dof, value))
 
         # add the spcs
         for dof, nids in fixed_spcs.items():
@@ -1254,14 +1254,14 @@ def _write_distributed_loads(model: Abaqus,
                 raise RuntimeError(dloadi)
     return load_id
 
-def _get_nodes(model: Abaqus, nid: Union[int, str]) -> list[int]:
+def _get_nodes(model: Abaqus, nid: int | str) -> list[int]:
     if isinstance(nid, integer_types):
         nids = [nid]
     else:
         nids = model.node_sets[nid.lower()]
     return nids
 
-def _get_elements(model: Abaqus, eid: Union[int, str]) -> list[int]:
+def _get_elements(model: Abaqus, eid: int | str) -> list[int]:
     if isinstance(eid, integer_types):
         eids = [eid]
     else:
@@ -1271,7 +1271,7 @@ def _get_elements(model: Abaqus, eid: Union[int, str]) -> list[int]:
 def cmd_abaqus_to_nastran(argv=None, log: Optional[SimpleLogger]=None,
                           quiet: bool=False) -> None:
     """Interface for abaqus_to_nastran"""
-    if argv is None:
+    if argv is None:  # pragma: no cover
         argv = sys.argv
 
     default_encoding = sys.getdefaultencoding()

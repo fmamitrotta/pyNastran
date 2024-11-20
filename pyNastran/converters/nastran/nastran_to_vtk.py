@@ -1,7 +1,7 @@
 """tests the NastranIO class"""
 from __future__ import annotations
 import os
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from vtkmodules.vtkCommonDataModel import vtkPointData, vtkCellData
 from vtkmodules.vtkCommonCore import vtkFloatArray
@@ -51,7 +51,7 @@ def save_nastran_results(gui: NastranGUI,
         if case.is_complex:
             log.warning(f'skipping case {str(case)} because it is complex')
             continue
-        if isinstance(case, (GridPointForceResult)):
+        if isinstance(case, GridPointForceResult):
             log.warning(f'skipping case {str(case)}')
             continue
 
@@ -71,6 +71,8 @@ def save_nastran_results(gui: NastranGUI,
             continue
 
         if isinstance(case, LayeredTableResults):
+            if len(case.form_names) == 0:
+                continue
             vtk_array = _save_layered_table_results(icase, case,
                                                     key, index_name, used_titles,
                                                     point_data, cell_data, log)
@@ -197,7 +199,8 @@ def _save_simple_table_results(icase: int,
     add_vtk_array(case.location, point_data, cell_data, vtk_array)
     #log.warning(f'skipping SimpleTableResults {case}')
 
-def _save_layered_table_results(icase, case: LayeredTableResults,
+def _save_layered_table_results(icase: int,
+                                case: LayeredTableResults,
                                 key: int,
                                 index_name: tuple[int, tuple[int, int, int, str]],
                                 used_titles: set[str],
@@ -213,7 +216,13 @@ def _save_layered_table_results(icase, case: LayeredTableResults,
     #k = t0 + nmethods * ilayer + imethod
     #method = case.methods[imethod]
     #form_index = case.get_form_index(key, name)
-    form_name = case.form_names[itime, ilayer, imethod]
+    try:
+        form_name = case.form_names[itime, ilayer, imethod]
+    except TypeError as error:
+        msg = (f'itime={itime!r} ilayer={ilayer!r} imethod={imethod}\n'
+               f'case.form_names={case.form_names}')
+        raise TypeError(msg)
+
     #for method in case.methods:
     titlei =  f'icase={icase}; {form_name}_subcase={case.subcase_id}'
     method = case.get_methods(key, name)[0]
@@ -226,8 +235,8 @@ def _save_layered_table_results(icase, case: LayeredTableResults,
     del name, itime, ilayer, imethod
     return vtk_array
 
-def nastran_to_vtk(bdf_filename: Union[str, BDF],
-                   op2_filename: Union[str, OP2],
+def nastran_to_vtk(bdf_filename: str | BDF,
+                   op2_filename: str | OP2,
                    vtu_filename: str,
                    log_level: str='error',
                    compression_level: int=5) -> vtkUnstructuredGrid:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from itertools import count, zip_longest
-from typing import Union, Optional, Any, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 import numpy as np
 
 from pyNastran.utils.numpy_utils import zip_strict, integer_types, float_types
@@ -375,14 +375,14 @@ class CBEAM(Element):
 
     @property
     def is_x(self) -> np.ndarray:
-        return (self.g0 == 0)
+        return self.g0 == 0
 
     @property
     def is_g0(self) -> np.ndarray:
         return ~self.is_x
 
     @property
-    def all_properties(self) -> list[Union[PBEAM, PBEAML, PBCOMP]]:
+    def all_properties(self) -> list[PBEAM | PBEAML | PBCOMP]:
         model = self.model
         return [model.pbeam, model.pbeaml, model.pbcomp]
 
@@ -519,7 +519,7 @@ class CBEAM(Element):
         if np.any(is_rotate_v_g):
             # end A
             # global - cid != 0
-            icd1_v_vector = (is_rotate_v_g) & (cd1 != 0)
+            icd1_v_vector = is_rotate_v_g & (cd1 != 0)
             cd1_v_vector = cd1[icd1_v_vector]
             if np.any(cd1_v_vector):
                 #v[icd1_vector, :] = np.nan
@@ -573,7 +573,7 @@ class CBEAM(Element):
         wa = self.wa.copy()  # we're going to be inplace hacking it, so copy :)
 
         if np.any(is_rotate_wa_g):
-            icd1_vector = (is_rotate_wa_g) & (cd1 != 0)
+            icd1_vector = is_rotate_wa_g & (cd1 != 0)
             cd1_vector = cd1[icd1_vector]
             if np.any(icd1_vector):
                 cd1_ref = coords.slice_card_by_id(cd1_vector)
@@ -606,7 +606,7 @@ class CBEAM(Element):
         # wb defines the offset at end B
         wb = self.wb.copy()  # we're going to be inplace hacking it, so copy :)
         if np.any(is_rotate_wb_g):
-            icd2_vector = (is_rotate_wb_g) & (cd2 != 0)
+            icd2_vector = is_rotate_wb_g & (cd2 != 0)
             cd2_vector = cd2[icd2_vector]
             #cd2_vector = cd2[is_rotate_wb]
             #icd2_vector = (cd2_vector != 0)
@@ -2677,9 +2677,9 @@ class PBCOMP(Property):
             z = self.z[istation0:istation1]
             c = self.c[istation0:istation1]
             mids = self.material_ids[istation0:istation1]
-            for (yi, zi, ci, mid) in zip_longest(y, z, c, mids):
+            for (yi, zi, ci, midi) in zip_longest(y, z, c, mids):
                 ci = set_blank_if_default(ci, default=0.0)
-                list_fields += [yi, zi, ci, mid, None, None, None, None]
+                list_fields += [yi, zi, ci, midi, None, None, None, None]
             #assert len(y) > 0, list_fields
             bdf_file.write(print_card(list_fields))
         return
@@ -3084,7 +3084,7 @@ class CBEAM3(Element):
 
     @property
     def is_x(self) -> np.ndarray:
-        return (self.g0 == 0)
+        return self.g0 == 0
 
     @property
     def is_g0(self) -> np.ndarray:
@@ -3765,7 +3765,7 @@ class CBEND(Element):
 
     @property
     def is_x(self) -> np.ndarray:
-        return (self.g0 == 0)
+        return self.g0 == 0
 
     @property
     def is_g0(self) -> np.ndarray:

@@ -1,4 +1,4 @@
-from numpy import zeros, arange, dot, cross, searchsorted, array
+from numpy import zeros, arange, cross, searchsorted, array
 
 from pyNastran.bdf.field_writer_8 import print_card_8
 from pyNastran.bdf.bdf_interface.assign_type import integer, integer_or_blank
@@ -28,7 +28,7 @@ class CTETRA10(SolidElement):
         """
         SolidElement.__init__(self, model)
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         i = self.i
 
         eid = integer(card, 1, 'element_id')

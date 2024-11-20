@@ -6,7 +6,7 @@ from __future__ import annotations
 from struct import Struct
 from itertools import count
 from functools import partial
-from typing import Union, Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 import numpy as np
 
 #from pyNastran.bdf.cards.elements.elements import CGAP, PLOTEL
@@ -764,7 +764,7 @@ class GEOM2:
                 #print(f'eid={eid} fe,f={fe},{f} g0={g0}')
                 x = None
             else:
-                raise RuntimeError('invalid f value...f=%s' % (f))
+                raise RuntimeError(f'invalid f value...f={f}')
 
             wa = [w1a, w2a, w3a]
             wb = [w1b, w2b, w3b]
@@ -1240,7 +1240,7 @@ class GEOM2:
                 data_in = [[eid, pid, ga, gb, geom],
                            [f, g0]]
             else:
-                raise RuntimeError('invalid f value...f=%s' % (f))
+                raise RuntimeError(f'invalid f value...f={f}')
             elem = CBEND.add_op2_data(data_in)
             elem.validate()
             assert f == fe, 'f=%s type(f)=%s fe=%s\n%s' % (f, type(f), fe, elem)
@@ -3436,7 +3436,7 @@ class GEOM2:
         """VUQUAD4(11201,112,9940)"""
         return self._run_4nodes(self.op2.cquad4, data, n)
 
-    def _run_cquad_44(self, element: Union[CQUAD, CQUADX], data: bytes, n: int) -> int:
+    def _run_cquad_44(self, element: CQUAD | CQUADX, data: bytes, n: int) -> int:
         """common method for CQUAD, CQUADX"""
         op2 = self.op2
         ntotal = 44 * self.factor  # 11*4
@@ -3556,7 +3556,7 @@ class GEOM2:
         op2.card_count[element.type] = nelements
         return n
 
-    def _run_4nodes(self, element: Union[CQUAD4, CAABSF], data: bytes, n: int) -> int:
+    def _run_4nodes(self, element: CQUAD4 | CAABSF, data: bytes, n: int) -> int:
         """common method for CQUAD4, CQUADR"""
         op2 = self.op2
         nelements = (len(data) - n) // 24
@@ -3640,7 +3640,7 @@ class GEOM2:
 
         return n, elements
 
-    def _run_cquad4_nx_56(self, element: Union[CQUAD4, CQUADR],
+    def _run_cquad4_nx_56(self, element: CQUAD4 | CQUADR,
                           data: bytes, n: int) -> tuple[int, Any]:
         """
         common method for CQUAD4, CQUADR

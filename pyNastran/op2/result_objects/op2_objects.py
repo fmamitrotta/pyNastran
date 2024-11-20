@@ -4,7 +4,7 @@ import copy
 import warnings
 from itertools import count
 from struct import pack
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import numpy as np
 
 from cpylog import SimpleLogger
@@ -132,10 +132,6 @@ SORT2_TABLE_NAME_MAP = {
 
     # ONR / OEE
     'ONRGY2' : 'ONRGY1',
-
-    'OUGV2' : 'OUGV1',
-    'OPG2' : 'OPG1',
-
 }
 
 SORT1_TABLES = list(SORT2_TABLE_NAME_MAP.values())
@@ -465,7 +461,7 @@ class ScalarObject(BaseScalarObject):
         for name in self.data_code['data_names']:
             if hasattr(self, name + 's'):
                 vals = getattr(self, name + 's')
-                name = name + 's'
+                name += 's'
                 vals_array = np.array(vals)
             elif hasattr(self, name):
                 vals = getattr(self, name)
@@ -1006,7 +1002,7 @@ class BaseElement(ScalarObject):
         #print(data_frame)
         return data_frame
 
-def get_times_dtype(nonlinear_factor: Union[int, float], size: int,
+def get_times_dtype(nonlinear_factor: int | float, size: int,
                     analysis_code_fmt=None) -> tuple[str, str, str]:
     dtype = 'float'
     if isinstance(nonlinear_factor, integer_types):

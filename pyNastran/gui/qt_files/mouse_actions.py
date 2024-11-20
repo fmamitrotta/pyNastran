@@ -28,7 +28,7 @@ from pyNastran.gui.styles.area_pick_style import AreaPickStyle
 from pyNastran.gui.styles.zoom_style import ZoomStyle
 #from pyNastran.gui.styles.probe_style import ProbeResultStyle
 from pyNastran.gui.styles.rotation_center_style import RotationCenterStyle
-from pyNastran.gui.styles.trackball_style_camera import TrackballStyleCamera
+from pyNastran.gui.styles.trackball_style_camera import TrackballStyleCamera, JoystickStyleCamera
 from pyNastran.gui.utils.vtk.vtk_utils import (
         find_point_id_closest_to_xyz, create_vtk_selection_node_by_cell_ids)
 
@@ -112,7 +112,7 @@ class MouseActions:
             self.vtk_interactor.AddObserver('EndPickEvent', self._probe_picker)
             # there should be a cleaner way to revert the trackball Rotate command
             # it apparently requires an (obj, event) argument instead of a void...
-            self.set_style_as_trackball()
+            self.set_style()
 
             # the more correct-ish way to reset the 'LeftButtonPressEvent' to Rotate
             # that doesn't work...
@@ -186,7 +186,7 @@ class MouseActions:
 
         #elif mode == 'pan':
             #pass
-        else:
+        else:  # pragma: no cover
             raise NotImplementedError('camera_mode = %r' % self._camera_mode)
 
         if left_button_down_cleanup:
@@ -265,10 +265,24 @@ class MouseActions:
                 self.setup_mouse_buttons(mode='default')
                 return
 
+    def set_style(self):
+        gui: MainWindow = self.gui
+        settings = gui.settings
+        if settings.is_trackball_camera:
+            self.set_style_as_trackball()
+        else:
+            self.set_style_as_joystick()
+
     def set_style_as_trackball(self) -> None:
         """sets the default rotation style"""
         #self._simulate_key_press('t') # change mouse style to trackball
         self.style = TrackballStyleCamera(self.vtk_interactor, self)
+        self.vtk_interactor.SetInteractorStyle(self.style)
+
+    def set_style_as_joystick(self) -> None:
+        """sets the default rotation style"""
+        #self._simulate_key_press('t') # change mouse style to trackball
+        self.style = JoystickStyleCamera(self.vtk_interactor, self)
         self.vtk_interactor.SetInteractorStyle(self.style)
 
     def on_highlight_node(self) -> None:
@@ -356,7 +370,7 @@ class MouseActions:
 
     def on_area_pick(self, is_eids: bool=True,
                      is_nids: bool=True,
-                     representation: str='wire+points',
+                     representation: str='wire+point',
                      name=None,
                      callback: Optional[Callable]=None,
                      cleanup: bool=True,
@@ -674,8 +688,7 @@ class MouseActions:
                     world_position, cell_id)
                 #if out is None:
                     #return
-                _result_name, result_value, unused_node_id, node_xyz = out
-                focal_point = node_xyz
+                _result_name, result_value, unused_node_id, focal_point = out
                 gui.log_info('focal_point = %s' % str(focal_point))
                 self.setup_mouse_buttons(mode='default')
 
@@ -713,6 +726,9 @@ class MouseActions:
 
             return_flag, duplicate_key, result_value, unused_result_name, xyz = out
             if return_flag is True:
+                return
+            if xyz is None:
+                log.warning(f'xyz is None using _cell_{location}_pick(cell_id={cell_id}, world_position={world_position}; returning...')
                 return
 
             # prevent duplicate labels with the same value on the same cell
@@ -772,7 +788,7 @@ class MouseActions:
                         out = self._cell_centroid_pick(cell_id, world_position, icase=icase)
                     elif location == 'node':
                         out = self._cell_node_pick(cell_id, world_position, icase=icase)
-                    else:
+                    else:  # pragma: no cover
                         raise RuntimeError(f'probe_picker_all: invalid pick location={location!r}')
                 except IndexError:
                     # IndexError: out of range?

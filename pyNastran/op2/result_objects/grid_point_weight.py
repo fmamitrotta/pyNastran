@@ -406,11 +406,12 @@ class GridPointWeight:
         page_num : int
             the new page number
         """
-        msg = ['                           O U T P U T   F R O M   G R I D   P O I N T   W E I G H T   G E N E R A T O R']
-        msg.append('0                                                     REFERENCE POINT =        %i' % self.reference_point)
+        msg = [
+            '                           O U T P U T   F R O M   G R I D   P O I N T   W E I G H T   G E N E R A T O R',
+            f'0                                                     REFERENCE POINT =        {self.reference_point:d}',
+            '                                                                M O']
 
         # MO
-        msg.append('                                                                M O')
         for i in range(6):
             msg.append('                      * %13.6E %13.6E %13.6E %13.6E %13.6E %13.6E *' % tuple(self.MO[i, :]))
 

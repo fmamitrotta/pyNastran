@@ -73,7 +73,7 @@ class OBOLT:
         op2.nonlinear_factor = np.nan
         op2.is_table_1 = True
         op2.is_table_2 = False
-        unused_three = op2.parse_approach_code(data)
+        op2.parse_approach_code(data)  # from field 3
         op2.words = [
             'approach_code', 'table_code', '???', 'isubcase',
             '???', '???', '???', 'random_code',
@@ -358,7 +358,7 @@ class OBOLT:
                 if op2.read_mode == 1:
                     return ndata
 
-            print(op2.code, op2.nonlinear_factor, nnodes)
+            #print(op2.code, op2.nonlinear_factor, nnodes)
             assert op2.format_code == 2, op2.code_information
             ints = np.frombuffer(data, dtype=op2.idtype8)
             nfields = len(ints)
@@ -420,4 +420,3 @@ class OBOLT:
             raise RuntimeError(op2.code_information())
         #raise NotImplementedError(op2.code_information())
         return ndata
-

@@ -1,4 +1,4 @@
-from typing import Callable, Union
+from typing import Callable
 from vtkmodules.vtkRenderingCore import vtkActor
 from vtkmodules.vtkRenderingLOD import vtkLODActor
 
@@ -8,4 +8,4 @@ Format = tuple[str, str, str, Callable, str, Callable]
 ColorFloat = tuple[float, float, float]
 ColorInt = tuple[int, int, int]
 
-Actor = Union[vtkActor, vtkLODActor]
+Actor = vtkActor | vtkLODActor

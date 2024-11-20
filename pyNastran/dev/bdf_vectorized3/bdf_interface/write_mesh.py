@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Union, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 from io import StringIO
 
 from pyNastran.bdf.field_writer import print_card_8, print_card_16
@@ -18,7 +18,7 @@ class WriteMesh(BDFAttributes):
         #BDFAttributes.__init__(self)
         self.writer = Writer(self)
 
-    def write_bdf(self, out_filename: Optional[Union[str, StringIO]]=None,
+    def write_bdf(self, out_filename: Optional[str | StringIO]=None,
                   encoding: Optional[str]=None,
                   size: int=8,
                   nodes_size: Optional[int]=None,

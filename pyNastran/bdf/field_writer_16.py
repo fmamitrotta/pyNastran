@@ -3,12 +3,13 @@ Defines functions for single precision 16 character field writing.
 """
 import sys
 import warnings
-from typing import Union, Optional, Any
+from typing import Optional, Any
 from numpy import float32, isnan  # type: ignore
 
 from pyNastran.utils.numpy_utils import integer_types
 from pyNastran.bdf.cards.utils import wipe_empty_fields
 from pyNastran.bdf.field_writer_8 import set_blank_if_default
+
 
 def set_string16_blank_if_default(value: Any, default: Any) -> str:
     """helper method for writing BDFs"""
@@ -16,6 +17,7 @@ def set_string16_blank_if_default(value: Any, default: Any) -> str:
     if val is None:
         return '                '
     return '%16s' % val
+
 
 def print_scientific_16(value: float) -> str:
     """
@@ -194,7 +196,7 @@ def print_float_16(value: float) -> str:
     return field
 
 
-def print_field_16(value: Optional[Union[int, float, str]]) -> str:
+def print_field_16(value: Optional[int | float | str]) -> str:
     """
     Prints a 16-character width field
 
@@ -222,7 +224,7 @@ def print_field_16(value: Optional[Union[int, float, str]]) -> str:
     return field
 
 
-def print_card_16(fields: list[Optional[Union[int, float, str]]],
+def print_card_16(fields: list[Optional[int | float | str]],
                   wipe_fields: bool=True) -> str:
     """
     Prints a nastran-style card with 16-character width fields.

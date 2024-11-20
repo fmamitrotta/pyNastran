@@ -7,9 +7,6 @@ from struct import Struct, pack
 from typing import TextIO, Optional, cast, TYPE_CHECKING
 
 import numpy as np
-in1d = np.in1d
-#in1d = np.in1d if hasattr(np, 'in1d') else getattr(np, 'in')
-#from numpy import zeros, unique, array_equal, empty
 
 from cpylog import SimpleLogger
 
@@ -521,10 +518,10 @@ class RealGridPointForcesArray(GridPointForces):
             all the elements to consider
         coord_out : CORD2R()
             the output coordinate system
-        coords : dict[int] = CORDx
+        coords : dict[int] = Coord
             all the coordinate systems
             key : int
-            value : CORDx
+            value : Coord
         nid_cd : (Nnodes, 2) int ndarray
             the (BDF.point_ids, cd) array
         icd_transform : dict[cd] = (Nnodesi, ) int ndarray
@@ -559,7 +556,7 @@ class RealGridPointForcesArray(GridPointForces):
 
         assert isinstance(eids[0], integer_types), type(eids[0])
 
-        is_in = in1d(gpforce_eids, eids, assume_unique=False)
+        is_in = np.isin(gpforce_eids, eids, assume_unique=False)
         irange = np.arange(len(gpforce_nids), dtype='int32')[is_in]
         nids = gpforce_nids[irange]
 
@@ -569,7 +566,7 @@ class RealGridPointForcesArray(GridPointForces):
             log.debug('eids = %s' % gpforce_eids[irange])
 
         try:
-            is_in3 = in1d(nid_cd[:, 0], nids, assume_unique=False)
+            is_in3 = np.isin(nid_cd[:, 0], nids, assume_unique=False)
         except IndexError:
             msg = 'nids_cd=%s nids=%s' % (nid_cd, nids)
             raise IndexError(msg)
@@ -624,10 +621,10 @@ class RealGridPointForcesArray(GridPointForces):
             all the elements to consider; must be sorted
         coord_out : CORD2R()
             the output coordinate system
-        coords : dict[int] = CORDx
+        coords : dict[int] = Coord
             all the coordinate systems
             key : int
-            value : CORDx
+            value : Coord
         nid_cd : (Nnodes, 2) int ndarray
             the (BDF.point_ids, cd) array
         icd_transform : dict[cd] = (Nnodesi, ) int ndarray
@@ -743,7 +740,7 @@ class RealGridPointForcesArray(GridPointForces):
 
         # get analysis coordinate systems
         try:
-            is_in_cd = in1d(nid_cd[:, 0], nids, assume_unique=False)
+            is_in_cd = np.isin(nid_cd[:, 0], nids, assume_unique=False)
         except IndexError:
             msg = 'nids_cd=%s nids=%s' % (nid_cd, nids)
             raise IndexError(msg)
@@ -812,7 +809,7 @@ class RealGridPointForcesArray(GridPointForces):
         assert isinstance(eids[0], integer_types), type(eids[0])
         assert isinstance(nids[0], integer_types), type(nids[0])
         # filter out rows not in the node set
-        is_in = in1d(gpforce_nids, nids, assume_unique=False)
+        is_in = np.isin(gpforce_nids, nids, assume_unique=False)
         if not np.any(is_in):
             msg = 'no nodes found\n'
             if log:
@@ -823,7 +820,7 @@ class RealGridPointForcesArray(GridPointForces):
             return gpforce_nids, gpforce_eids, irange, force_out, moment_out
 
         # filter out rows not in the element set
-        is_in2 = in1d(gpforce_eids[is_in], eids, assume_unique=False)
+        is_in2 = np.isin(gpforce_eids[is_in], eids, assume_unique=False)
         if not np.any(is_in2):
             msg = 'no elements found\n'
             log.warning(msg)
@@ -923,10 +920,10 @@ class RealGridPointForcesArray(GridPointForces):
             the mapping for nid_cd
         element_centroids_cid0 : (Nelements, 3) float ndarray
             an array of element centroids corresponding to eids
-        coords : dict[int] = CORDx
+        coords : dict[int] = Coord
             all the coordinate systems
             key : int
-            value : CORDx
+            value : Coord
         nid_cd : (Nnodes, 2) int ndarray
             the (BDF.point_ids, cd) array
         stations : (nstations, ) float ndarray
@@ -1619,6 +1616,8 @@ class ComplexGridPointForcesArray(GridPointForces):
         headers = self.get_headers()
         #name = self.name
         if self.is_unique:
+            data_frame = self._build_unique_dataframe(headers)
+            '''
             ntimes = self.data.shape[0]
             nnodes = self.data.shape[1]
             #nvalues = ntimes * nnodes
@@ -1631,6 +1630,7 @@ class ComplexGridPointForcesArray(GridPointForces):
             df3.columns = headers
             data_frame = df1.join([df2, df3])
             #print(data_frame)
+            '''
         else:
             node_element = [self.node_element[:, 0], self.node_element[:, 1]]
             if self.nonlinear_factor not in (None, np.nan):
@@ -1648,6 +1648,53 @@ class ComplexGridPointForcesArray(GridPointForces):
                 data_frame.index.names = ['NodeID', 'ElementID', 'Item']
             #print(self.data_frame)
         self.data_frame = data_frame
+
+    def _build_unique_dataframe(self, headers: list[str]):
+        import pandas as pd
+        ntimes = self.data.shape[0]
+        nnodes = self.data.shape[1]
+        #nvalues = ntimes * nnodes
+        node_element = self.node_element.reshape((ntimes * nnodes, 2))
+        if self.nonlinear_factor not in (None, np.nan):
+            column_names, column_values = self._build_dataframe_transient_header()
+            #column_names = column_names[0]
+            #column_values = column_values[0]
+
+            column_values2 = []
+            for value in column_values:
+                values2 = []
+                for valuei in value:
+                    values = np.ones(nnodes) * valuei
+                    values2.append(values)
+                values3 = np.vstack(values2).ravel()
+                column_values2.append(values3)
+            df1 = pd.DataFrame(column_values2).T
+            df1.columns = column_names
+            #df1.columns.names = column_names
+            #self.data_frame.columns.names = column_names
+
+            df2 = pd.DataFrame(node_element)
+            df2.columns = ['NodeID', 'ElementID']
+            df3 = pd.DataFrame(self.element_names.ravel())
+            df3.columns = ['ElementType']
+
+            dfs = [df2, df3]
+            for i, header in enumerate(headers):
+                df = pd.DataFrame(self.data[:, :, i].ravel())
+                df.columns = [header]
+                dfs.append(df)
+            data_frame = df1.join(dfs)
+            #print(self.data_frame)
+        else:
+            df1 = pd.DataFrame(node_element)
+            df1.columns = ['NodeID', 'ElementID']
+            df2 = pd.DataFrame(self.element_names[0, :])
+            df2.columns = ['ElementType']
+            df3 = pd.DataFrame(self.data[0])
+            df3.columns = headers
+            data_frame = df1.join([df2, df3])
+            #print(data_frame)
+        return data_frame
 
     def _build_dataframe(self):
         """::
@@ -1938,12 +1985,12 @@ class ComplexGridPointForcesArray(GridPointForces):
                         #str(self.data.shape), itime, str(ieids)))
 
                     #[t1, t2, t3, r1, r2, r3]
-                    t1 = self.data[itime, :, 0]
-                    t2 = self.data[itime, :, 1]
-                    t3 = self.data[itime, :, 2]
-                    r1 = self.data[itime, :, 3]
-                    r2 = self.data[itime, :, 4]
-                    r3 = self.data[itime, :, 5]
+                    #t1 = self.data[itime, :, 0]
+                    #t2 = self.data[itime, :, 1]
+                    #t3 = self.data[itime, :, 2]
+                    #r1 = self.data[itime, :, 3]
+                    #r2 = self.data[itime, :, 4]
+                    #r3 = self.data[itime, :, 5]
 
                     zero = ' '
                     for (nid, eid, ename, t1i, t2i, t3i, r1i, r2i, r3i) in zip(

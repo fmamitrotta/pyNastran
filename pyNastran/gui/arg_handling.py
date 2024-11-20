@@ -41,6 +41,8 @@ FORMAT_TO_EXTENSION = {
     'avl' : ['.avl'],
     'vrml' : ['.wrl'],
     'vtk' : ['.vtk', '.vtu'],
+    'fld' : ['.fld'],
+    'fluent' : ['.vrt', '.cel', '.daten'],
     #'abaqus' : []
 
     # no duplicate extensions are allowed; use the explicit --format option
@@ -60,7 +62,7 @@ def determine_format(input_filename: str,
     if allowed_formats is None:
         # used to include None...
         allowed_formats = [
-            'nastran', 'stl', 'cart3d', 'tecplot', 'ugrid', 'ugrid3d', 'panair',
+            'nastran', 'stl', 'cart3d', 'fld', 'fluent', 'tecplot', 'ugrid', 'ugrid3d', 'panair',
             #'plot3d',
             'surf', 'lawgs', 'shabp', 'avus', 'fast', 'abaqus',
             'usm3d', 'bedge', 'su2', 'tetgen',
@@ -457,7 +459,7 @@ def _update_format(argdict: dict[str, Any],
 def _validate_format(input_formats: list[str]) -> None:
     # None is for custom geometry
     allowed_formats = [
-        'nastran', 'stl', 'cart3d', 'tecplot', 'ugrid', 'ugrid3d', 'panair',
+        'nastran', 'stl', 'cart3d', 'fld', 'fluent', 'tecplot', 'ugrid', 'ugrid3d', 'panair',
         #'plot3d',
         'surf', 'lawgs', 'degen_geom', 'shabp', 'avus', 'fast', 'abaqus',
         'usm3d', 'bedge', 'su2', 'tetgen',

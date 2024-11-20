@@ -18,7 +18,7 @@ some missing optimization flags
 http://mscnastrannovice.blogspot.com/2014/06/msc-nastran-design-optimization-quick.html"""
 # pylint: disable=C0103,R0902,R0904,R0914
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 from itertools import cycle, count
 import numpy as np
 
@@ -35,12 +35,15 @@ from pyNastran.bdf.bdf_interface.assign_type import (
     double, double_or_blank, string, string_or_blank,
     integer_double_or_blank, integer_double_string_or_blank,
     double_string_or_blank, interpret_value, check_string, loose_string)
+from pyNastran.bdf.bdf_interface.assign_type_force import (
+    force_double, force_double_or_blank)
 from pyNastran.bdf.field_writer_8 import print_card_8
 from pyNastran.bdf.field_writer_16 import print_card_16
 from pyNastran.bdf.field_writer_double import print_card_double
 from pyNastran.bdf.cards.utils import build_table_lines
 if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import BDF
+    from pyNastran.op2.op2 import OP2
     from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 
 #TODO: replace this with formula
@@ -421,7 +424,7 @@ def _check_dvmrel_options(mp_name, material_type, options):
             'valid: [%s]' % (mp_name, material_type, ', '.join(soptions)))
         raise ValueError(msg)
 
-def _check_dvprel_options(pname_fid: Union[str, int],
+def _check_dvprel_options(pname_fid: str | int,
                           prop_type: str, options):
     if pname_fid not in options:
         soptions = [str(val) for val in options]
@@ -476,14 +479,15 @@ class DVXREL1(BaseCard):
             raise RuntimeError('Invalid %s\n' % self.type + msg + str(self))
 
     @property
-    def desvar_ids(self):
+    def desvar_ids(self) -> list[int]:
         if self.dvids_ref is None:
             return self.dvids
         return [desvar.desvar_id for desvar in self.dvids_ref]
 
 
 class DVXREL2(BaseCard):
-    def __init__(self, oid, dvids, labels, deqation, comment):
+    def __init__(self, oid: int, dvids: list[int], labels: list[str],
+                 deqation: int, comment: str):
         BaseCard.__init__(self)
 
         if comment:
@@ -592,7 +596,7 @@ class DCONSTR(OptConstraint):
         self.dresp_id_ref = None
 
     @classmethod
-    def export_to_hdf5(cls, hdf5_file, dconstrs, encoding):
+    def export_to_hdf5(cls, hdf5_file, dconstrs, encoding: str):
         oid = []
         dresp_id = []
         lid = []
@@ -684,7 +688,7 @@ class DCONSTR(OptConstraint):
             the BDF object
 
         """
-        msg = ', which is required by DCONSTR oid=%s' % (self.oid)
+        msg = f', which is required by DCONSTR oid={self.oid:d}'
         self.dresp_id_ref = model.DResp(self.dresp_id, msg)
         if isinstance(self.lid, integer_types):
             self.lid_ref = model.TableD(self.lid, msg)
@@ -743,7 +747,7 @@ class DESVAR(OptConstraint):
                       #xlb=-1e20, xub=1e20, delx=None, ddval=None, comment='')
 
     @classmethod
-    def export_to_hdf5(cls, h5_file, model, desvar_ids):
+    def export_to_hdf5(cls, h5_file, model: BDF, desvar_ids: np.ndarray):
         """exports the elements in a vectorized way"""
         #comments = []
         encoding = model.get_encoding()
@@ -772,8 +776,9 @@ class DESVAR(OptConstraint):
         h5_file.create_dataset('delx', data=delx)
         h5_file.create_dataset('ddval', data=ddval)
 
-    def __init__(self, desvar_id, label, xinit, xlb=-1e20, xub=1e20,
-                 delx=None, ddval=None, comment=''):
+    def __init__(self, desvar_id: int, label: str, xinit: float,
+                 xlb: float=-1e20, xub: float=1e20,
+                 delx=None, ddval: int=0, comment: str=''):
         """
         Creates a DESVAR card
 
@@ -794,10 +799,10 @@ class DESVAR(OptConstraint):
             approximate optimization
             NX  if blank : take from DOPTPRM; otherwise 1.0
             MSC if blank : take from DOPTPRM; otherwise 0.5
-        ddval : int; default=None
+        ddval : int; default=0
             int : DDVAL id
                   allows you to set discrete values
-            None : continuous
+            0/None : continuous
         comment : str; default=''
             a comment for the card
 
@@ -828,7 +833,7 @@ class DESVAR(OptConstraint):
         pass
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a DESVAR card from ``BDF.add_card(...)``
 
@@ -851,8 +856,32 @@ class DESVAR(OptConstraint):
         return DESVAR(desvar_id, label, xinit, xlb=xlb, xub=xub,
                       delx=delx, ddval=ddval, comment=comment)
 
+    @classmethod
+    def add_card_lax(cls, card: BDFCard, comment: str=''):
+        """
+        Adds a DESVAR card from ``BDF.add_card(...)``
+
+        Parameters
+        ----------
+        card : BDFCard()
+            a BDFCard object
+        comment : str; default=''
+            a comment for the card
+
+        """
+        desvar_id = integer(card, 1, 'desvar_id')
+        label = string(card, 2, 'label')
+        xinit = double(card, 3, 'xinit')
+        xlb = force_double_or_blank(card, 4, 'xlb', default=-1e20)
+        xub = force_double_or_blank(card, 5, 'xub', default=1e20)
+        delx = force_double_or_blank(card, 6, 'delx')
+        ddval = integer_or_blank(card, 7, 'ddval')
+        assert len(card) <= 8, f'len(DESVAR card) = {len(card):d}\ncard={card}'
+        return DESVAR(desvar_id, label, xinit, xlb=xlb, xub=xub,
+                      delx=delx, ddval=ddval, comment=comment)
+
     @property
-    def value(self):
+    def value(self) -> float:
         """gets the actual value for the DESVAR"""
         value = min(max(self.xinit, self.xlb), self.xub)
         return value
@@ -876,19 +905,19 @@ class DESVAR(OptConstraint):
             msg = ', which is required by DESVAR desvar_id=%r' % self.desvar_id
             self.ddval_ref = model.DDVal(self.ddval, msg=msg)
 
-    def safe_cross_reference(self, model):
+    def safe_cross_reference(self, model: BDF, xref_errors):
         try:
             self.cross_reference(model)
         except KeyError:
-            self.log.warning('cant cross reference DESVAR {self.desvar_id} with DDVAL {self.ddval}')
+            self.log.warning(f'cant cross reference DESVAR {self.desvar_id} with DDVAL {self.ddval}')
 
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
         self.ddval = self.DDVal()
         self.ddval_ref = None
 
-    def DDVal(self):
-        if self.ddval_ref is  not None:
+    def DDVal(self) -> int:
+        if self.ddval_ref is not None:
             return self.ddval_ref.oid
         return self.ddval
 
@@ -904,12 +933,13 @@ class DESVAR(OptConstraint):
         """
         xlb = set_blank_if_default(self.xlb, -1e20)
         xub = set_blank_if_default(self.xub, 1e20)
+        ddval = set_blank_if_default(self.DDVal(), 0)
 
         label = self.label.strip()
         if len(label) <= 6:
             label = ' %6s ' % label
         list_fields = ['DESVAR', self.desvar_id, label, self.xinit, xlb,
-                       xub, self.delx, self.DDVal()]
+                       xub, self.delx, ddval]
         return list_fields
 
     def write_card(self, size: int=8, is_double: bool=False) -> str:
@@ -920,8 +950,10 @@ class DESVAR(OptConstraint):
 
 class TOPVAR(BaseCard):
     type = 'TOPVAR'
-    def __init__(self, opt_id, label, prop_type, xinit, pid, xlb=0.001, delxv=0.2, power=3.0,
-                 options=None, comment=''):
+    def __init__(self, opt_id: int, label: str, prop_type: str,
+                 xinit: float, pid: int,
+                 xlb: float=0.001, delxv: float=0.2, power: float=3.0,
+                 options=None, comment: str=''):
         if comment:
             self.comment = comment
         if options is None:
@@ -937,7 +969,7 @@ class TOPVAR(BaseCard):
         self.options = options
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a DESVAR card from ``BDF.add_card(...)``
 
@@ -1020,7 +1052,7 @@ class TOPVAR(BaseCard):
                     option['num_cyclic_symmetries'],
                     None,
                 ]
-            else:
+            else:  # pragma: no cover
                 raise NotImplementedError(name)
         return list_fields
 
@@ -1153,7 +1185,6 @@ DOPTPRM_DEFAULTS = {
     'DSMXESL' : 20,
     'DXMAX' : 1.0,
     'DXMIN' : 0.05,  # 1e-5 for topology optimization
-    'DPMIN' : 0.01,
 
     'ETA1' : 0.01,
     'ETA2' : 0.25,
@@ -1288,7 +1319,7 @@ class DOPTPRM(OptConstraint):
             params[param] = val
         return DOPTPRM(params, comment=comment)
 
-    def raw_fields(self) -> list[Union[int, float, str]]:
+    def raw_fields(self) -> list[int | float | str]:
         list_fields = ['DOPTPRM']
         for param, val in sorted(self.params.items()):
             list_fields += [param, val]
@@ -1844,8 +1875,8 @@ class DRESP1(OptConstraint):
                  response_type: str,
                  property_type: str,
                  region: int,
-                 atta: Optional[Union[int, float, str]],
-                 attb: Optional[Union[int, float, str]],
+                 atta: Optional[int | float | str],
+                 attb: Optional[int | float | str],
                  atti: list[int],
                  comment: str='', validate: bool=False):
         """
@@ -2198,7 +2229,7 @@ class DRESP1(OptConstraint):
             the BDF object
 
         """
-        msg = ', which is required by DRESP1 dresp_id=%s' % (self.dresp_id)
+        msg = f', which is required by DRESP1 dresp_id={self.dresp_id:d}'
         msg += '\n' + str(self)
 
         op2_results = [
@@ -2577,7 +2608,7 @@ class DRESP2(OptConstraint):
     type = 'DRESP2'
 
     def __init__(self, dresp_id: int, label: str,
-                 dequation: Union[int, str],
+                 dequation: int | str,
                  region: int, params,
                  method: str='MIN',
                  c1: float=1., c2: float=0.005, c3: float=10.,
@@ -2894,7 +2925,7 @@ class DRESP2(OptConstraint):
         self.dequation = self.DEquation()
         self.dequation_ref = None
 
-    def DEquation(self) -> Union[int, str]:
+    def DEquation(self) -> int | str:
         if self.dequation_ref is None:
             return self.dequation
         return self.dequation_ref.equation_id
@@ -3201,7 +3232,7 @@ class DRESP3(OptConstraint):
             the BDF object
 
         """
-        msg = ', which is required by DRESP3 ID=%s' % (self.dresp_id)
+        msg = f', which is required by DRESP3 ID={self.dresp_id:d}'
         default_values = {}
         params = {}
         for key, vals in sorted(self.params.items()):
@@ -4239,7 +4270,7 @@ class DVMREL1(DVXREL1):
             the BDF object
 
         """
-        msg = ', which is required by DVMREL1 oid=%r' % (self.oid)
+        msg = f', which is required by DVMREL1 oid={self.oid:d}'
         self.mid_ref = model.Material(self.mid, msg=msg)
         self.dvids_ref = [model.Desvar(dvid, msg) for dvid in self.dvids]
 
@@ -4581,6 +4612,30 @@ class DVMREL2(DVXREL2):
 
         #assert self.pid_ref.type not in ['PBEND', 'PBARL', 'PBEAML'], self.pid
 
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+
+        .. todo:: add support for DEQATN cards to finish DVMREL2 xref
+
+        """
+        msg = ', which is required by DVMREL2 oid=%r' % self.oid
+        if self.mat_type in self.allowed_materials:
+            self.mid_ref = model.safe_material(self.mid, self.oid, xref_errors, msg=msg)
+        else:
+            raise NotImplementedError('mat_type=%r is not supported' % self.mat_type)
+        self.dvids_ref = [model.safe_desvar(dvid, self.oid, xref_errors, msg) for dvid in self.dvids]
+        self.dequation_ref = model.DEQATN(self.dequation, msg=msg)
+        self._check_args()
+
+        #assert self.pid_ref.type not in ['PBEND', 'PBARL', 'PBEAML'], self.pid
+
     def uncross_reference(self) -> None:
         """Removes cross-reference links"""
         self.mid = self.Mid()
@@ -4666,8 +4721,10 @@ class DVPREL1(DVXREL1):
                        p_min=None, p_max=1e20, c0=0.0,
                        validate=False)
 
-    def __init__(self, oid, prop_type, pid, pname_fid, dvids, coeffs,
-                 p_min=None, p_max=1e20, c0=0.0, validate=False, comment=''):
+    def __init__(self, oid: int, prop_type: str, pid: int,
+                 pname_fid: int | str, dvids: list[int], coeffs: list[float],
+                 p_min: Optional[float]=None, p_max: float=1e20,
+                 c0: float=0.0, validate: bool=False, comment: str=''):
         """
         Creates a DVPREL1 card
 
@@ -4729,7 +4786,7 @@ class DVPREL1(DVXREL1):
         pname_fid = validate_dvprel(prop_type, pname_fid, validate)
         self.pname_fid = pname_fid
 
-    def update_model(self, model, desvar_values):
+    def update_model(self, model: BDF, desvar_values):
         """doesn't require cross-referencing"""
         value = get_dvxrel1_coeffs(self, model, desvar_values, debug=False)
         assert isinstance(self.pid, int), type(self.pid)
@@ -4851,7 +4908,7 @@ class DVPREL1(DVXREL1):
         """
         pass
 
-    def OptID(self):
+    def OptID(self) -> int:
         return self.oid
 
     def cross_reference(self, model: BDF) -> None:
@@ -4866,6 +4923,19 @@ class DVPREL1(DVXREL1):
         msg = ', which is required by DVPREL1 oid=%r' % self.oid
         self.pid_ref = self._get_property(model, self.pid, msg=msg)
         self.dvids_ref = [model.Desvar(dvid, msg) for dvid in self.dvids]
+
+    def safe_cross_reference(self, model: BDF, xref_errors) -> None:
+        """
+        Cross links the card so referenced cards can be extracted directly
+
+        Parameters
+        ----------
+        model : BDF()
+            the BDF object
+        """
+        msg = ', which is required by DVPREL1 oid=%r' % self.oid
+        self.pid_ref = self._get_property(model, self.pid, msg=msg)
+        self.dvids_ref = [model.safe_desvar(dvid, self.oid, xref_errors, msg) for dvid in self.dvids]
 
     def _get_property(self, model: BDF, pid: int, msg: str=''):
         assert isinstance(self.pid, int), type(self.pid)
@@ -4952,7 +5022,7 @@ class DVPREL1(DVXREL1):
                 pass
 
             # TODO: haven't quite decided what to do
-            if desvar_ref.ddval is not None:
+            if desvar_ref.ddval not in {0, None}:
                 msg = 'DESVAR id=%s DDVAL is not None\n%s' % (desvar, str(desvar_ref))
             #assert desvar_ref.ddval is None, desvar_ref
             xinit += coeff * xiniti

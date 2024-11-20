@@ -19,12 +19,12 @@ Defines:
 import sys
 from math import ceil
 from collections import defaultdict
-from typing import Union, Optional
+from typing import Optional, Any
 
 import numpy as np
 from cpylog import SimpleLogger, get_logger2
 
-from pyNastran.utils import is_binary_file, _filename
+from pyNastran.utils import PathLike, is_binary_file
 from pyNastran.converters.cart3d.cart3d_reader_writer import (
     Cart3dReaderWriter, _write_cart3d_binary, _write_cart3d_ascii)
 
@@ -34,11 +34,57 @@ class Cart3D(Cart3dReaderWriter):
     is_structured = False
     is_outward_normals = True
 
-    def __init__(self, log=None, debug=False):
+    def __init__(self, log=None, debug: bool=False):
         Cart3dReaderWriter.__init__(self, log=log, debug=debug)
         self.loads = {}
         self.points = None
         self.elements = None
+
+    def cut_model_centroid(self, result: np.ndarray,
+                           yslices: np.ndarray,
+                           xyz=None) -> tuple[np.ndarray, np.ndarray]:  # pragma: no cover
+        if xyz is None:
+            xyz = self.points
+        ys = xyz[:, 1]
+        nelements = len(self.elements)
+        y_elements = ys[self.elements]
+
+        # grab all nodes where an element y value is 0.
+        y_max = y_elements.max(axis=1)
+        y_min = y_elements.min(axis=1)
+        assert len(y_max) == nelements, (len(y_max), nelements)
+        ieid = np.where((y_min <= 0.) & (y_max > 0.))[0]
+        assert len(ieid) <= nelements, (len(ieid), nelements)
+        nodes = self.elements[ieid, :]
+        #inodes = np.unique(nodes.ravel())
+
+        xyz1 = xyz[nodes[:,0], :]
+        xyz2 = xyz[nodes[:,1], :]
+        xyz3 = xyz[nodes[:,2], :]
+
+        centroid = (xyz1 + xyz2 + xyz3) / 3
+        return centroid, result[ieid]
+
+    def cut_model_node(self, result: np.ndarray,
+                       yslices: np.ndarray,
+                       xyz=None) -> tuple[np.ndarray, np.ndarray]:
+        if xyz is None:
+            xyz = self.points
+        ys = xyz[:, 1]
+        nelements = len(self.elements)
+        y_elements = ys[self.elements]
+
+        # grab all nodes where an element y value is 0.
+        y_max = y_elements.max(axis=1)
+        y_min = y_elements.min(axis=1)
+        assert len(y_max) == nelements, (len(y_max), nelements)
+
+        ieid = np.where((y_min <= 0.) & (y_max > 0.))[0]
+        assert len(ieid) <= nelements, (len(ieid), nelements)
+        nodes = self.elements[ieid, :]
+        inodes = np.unique(nodes.ravel())
+        return xyz[inodes, :], result[inodes]
+
 
     def flip_model(self) -> None:
         """flip the model about the y-axis"""
@@ -50,7 +96,8 @@ class Cart3D(Cart3dReaderWriter):
         ])
         #print(self.elements.shape)
 
-    def make_mirror_model(self, nodes, elements, regions, loads, axis='y', tol=0.000001):
+    def make_mirror_model(self, nodes, elements, regions, loads,
+                          axis: str='y', tol: float=0.000001) -> None:
         """
         Makes a full cart3d model about the given axis.
 
@@ -136,7 +183,7 @@ class Cart3D(Cart3dReaderWriter):
         #self.log.info('---finished make_mirror_model---')
         #return (nodes2, elements2, regions2, loads2)
 
-    def make_half_model(self, axis: str='y', remap_nodes: bool=True):
+    def make_half_model(self, axis: str='y', remap_nodes: bool=True) -> tuple[Any, Any, Any, Any, Any]:
         """
         Makes a half model from a full model
 
@@ -230,7 +277,7 @@ class Cart3D(Cart3dReaderWriter):
         self.elements = elements2
         self.regions = regions2
         self.loads = loads2
-        return (nodes2, elements2, regions2, loads2)
+        return nodes2, elements2, regions2, loads2
 
     def keep_elements(self,
                       ielements: np.ndarray,
@@ -630,7 +677,8 @@ class Cart3D(Cart3dReaderWriter):
         return nnormals
 
 
-def read_cart3d(cart3d_filename, log=None, debug=False, result_names=None) -> Cart3D:
+def read_cart3d(cart3d_filename: PathLike,
+                log=None, debug=False, result_names=None) -> Cart3D:
     """loads a Cart3D file"""
     model = Cart3D(log=log, debug=debug)
     model.read_cart3d(cart3d_filename, result_names)
@@ -790,7 +838,7 @@ def _get_area_vector(nodes: np.ndarray,
 
     return n
 
-def _get_ax(axis: Union[str, int], log: SimpleLogger) -> tuple[int, int]:
+def _get_ax(axis: str | int, log: SimpleLogger) -> tuple[int, int]:
     """helper method to convert an axis_string into an integer"""
     if isinstance(axis, str):
         axis = axis.lower().strip()

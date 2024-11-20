@@ -21,6 +21,12 @@ except ModuleNotFoundError:  # pragma: no cover
     pass
 
 try:
+    from pyNastran.converters.fld.fld_io import FLD_IO
+    CLASS_MAP['fld'] = FLD_IO
+except ModuleNotFoundError:  # pragma: no cover
+    pass
+
+try:
     from pyNastran.converters.stl.stl_io import STL_IO
     CLASS_MAP['stl'] = STL_IO
 except ModuleNotFoundError:  # pragma: no cover
@@ -111,17 +117,32 @@ except ModuleNotFoundError:  # pragma: no cover
 
 #---------------------------------------------------------------------
 # pynastrangui-1.4.0-dev includes obj, but not others below line
-try:
-    from pyNastran2.nastran_io2 import Nastran2
-    CLASS_MAP['nastran2'] = Nastran2
-except ModuleNotFoundError:  # pragma: no cover
-    pass
+#try:
+#    from pyNastran2.nastran_io2 import Nastran2
+#    CLASS_MAP['nastran2'] = Nastran2
+#except ModuleNotFoundError:  # pragma: no cover
+#    pass
 
 try:
-    from pyNastran.dev.bdf_vectorized3.nastran_io3 import Nastran3
-    CLASS_MAP['nastran3'] = Nastran3
+    import tables
+
+
+    IS_TABLES = True
+except ModuleNotFoundError:
+    IS_TABLES = False
+
+if IS_TABLES:
+    try:
+        from pyNastran.dev.bdf_vectorized3.nastran_io3 import Nastran3
+        CLASS_MAP['nastran3'] = Nastran3
+    except ModuleNotFoundError:  # pragma: no cover
+        raise
+
+try:
+    from pyNastran.converters.fluent.fluent_io import FluentIO
+    CLASS_MAP['fluent'] = FluentIO
 except ModuleNotFoundError:  # pragma: no cover
-    raise
+    pass
 
 if DEV:
     try:

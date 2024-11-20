@@ -15,7 +15,6 @@ htmlcov
 *.exe
 *.whl
 *.dll
-*.log
 *.rar
 *.out
 *.log
@@ -25,7 +24,6 @@ htmlcov
 *.pdf
 *.h5
 *.gz
-*.json
 
 # pyInstaller building
 #*.qm
@@ -89,7 +87,6 @@ plane_face2_*.bdf
 *.bdf_out
 *.dat_out
 *.f04
-*.plt
 *.ses.*
 *.jou
 *.log.*

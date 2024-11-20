@@ -36,7 +36,7 @@ The superelement sets start with SE:
 
 """
 from __future__ import annotations
-from typing import Union, Optional, Any, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 import numpy as np
 
 from pyNastran.utils.numpy_utils import integer_types, integer_string_types
@@ -54,6 +54,7 @@ from pyNastran.bdf.bdf_interface.assign_type import (
 )
 if TYPE_CHECKING:  # pragma: no cover
     from pyNastran.bdf.bdf import BDF
+    from pyNastran.bdf.bdf_interface.bdf_card import BDFCard
 
 
 class Set(BaseCard):
@@ -68,7 +69,7 @@ class Set(BaseCard):
         self.ids = list(set(self.ids))
         self.ids.sort()
 
-    def repr_fields(self)-> list[Optional[Union[int, float, str]]]:
+    def repr_fields(self)-> list[Optional[int | float | str]]:
         list_fields = self.raw_fields()
         return list_fields
 
@@ -135,7 +136,7 @@ class ABCQSet(Set):
         assert len(self.ids) == len(self.components), 'len(ids)=%s len(components)=%s' % (len(self.ids), len(self.components))
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         ids = []
         components = []
 
@@ -232,7 +233,7 @@ class SuperABCQSet(Set):
         assert len(self.ids) == len(self.components), 'len(ids)=%s len(components)=%s' % (len(self.ids), len(self.components))
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid = integer(card, 1, 'seid')
         ids = []
         components = []
@@ -495,7 +496,7 @@ class ABCQSet1(Set):
         self.use_thru = True
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         components = fcomponents_or_blank(card, 1, 'components', '0')
 
         nfields = len(card)
@@ -612,7 +613,7 @@ class SuperABCQSet1(Set):
             raise TypeError(msg)
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid = integer(card, 1, 'seid')
         components = fcomponents_or_blank(card, 2, 'components', '0')
 
@@ -892,7 +893,7 @@ class CSET1(ABCQSet1):
         self.ids_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a CSET1 card from ``BDF.add_card(...)``
 
@@ -1051,7 +1052,7 @@ class SET1(Set):
         self.ids_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a SET1 card from ``BDF.add_card(...)``
 
@@ -1303,7 +1304,7 @@ class SET2(Set):
         self.macro_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a SET2 card from ``BDF.add_card(...)``
 
@@ -1478,7 +1479,7 @@ class SET3(Set):
         self.clean_ids()
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a SET3 card from ``BDF.add_card(...)``
 
@@ -1593,7 +1594,7 @@ class SESET(SetSuper):
         self.clean_ids()
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a SESET card from ``BDF.add_card(...)``
 
@@ -1796,7 +1797,7 @@ class SEQSEP(SetSuper):  # not integrated...is this an SESET ???
         self.clean_ids()
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a SEQSEP card from ``BDF.add_card(...)``
 
@@ -1967,7 +1968,7 @@ class USET(Set):
         self.ids_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a USET card from ``BDF.add_card(...)``
 
@@ -2026,7 +2027,7 @@ class USET(Set):
             the BDF object
 
         """
-        msg = ', which is required by USET name=%s' % (self.name)
+        msg = f', which is required by USET name={self.name}'
         self.ids_ref = model.EmptyNodes(self.node_ids, msg=msg)
 
     def uncross_reference(self) -> None:
@@ -2038,7 +2039,7 @@ class USET(Set):
     def node_ids(self):
         if self.ids_ref is None:
             return self.ids
-        msg = ', which is required by USET name=%s' % (self.name)
+        msg = f', which is required by USET name={self.name}'
         return _node_ids(self, self.ids_ref, allow_empty_nodes=True, msg=msg)
 
     def raw_fields(self):
@@ -2108,7 +2109,7 @@ class USET1(ABCQSet1):
         #self.ids_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         """
         Adds a USET1 card from ``BDF.add_card(...)``
 
@@ -2168,7 +2169,7 @@ class USET1(ABCQSet1):
             the BDF object
 
         """
-        msg = ', which is required by USET1 name=%s' % (self.name)
+        msg = f', which is required by USET1  name={self.name}'
         self.ids_ref = model.EmptyNodes(self.node_ids, msg=msg)
 
     def uncross_reference(self) -> None:
@@ -2180,7 +2181,7 @@ class USET1(ABCQSet1):
     def node_ids(self):
         if self.ids_ref is None:
             return self.ids
-        msg = ', which is required by USET1 name=%s' % (self.name)
+        msg = f', which is required by USET1 name={self.name}'
         return _node_ids(self, self.ids_ref, allow_empty_nodes=True, msg=msg)
 
     def raw_fields(self):

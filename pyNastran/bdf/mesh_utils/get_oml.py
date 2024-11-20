@@ -6,7 +6,6 @@ defines:
 """
 from io import StringIO
 from copy import deepcopy
-from typing import Union
 from pathlib import PurePath
 import numpy as np
 
@@ -15,7 +14,7 @@ from pyNastran.bdf.mesh_utils.internal_utils import get_bdf_model
 #from pyNastran.bdf.bdf_interface.dev_utils import get_free_edges
 
 
-def get_oml_eids(bdf_filename: Union[str, BDF, PurePath, StringIO],
+def get_oml_eids(bdf_filename: str | BDF | PurePath | StringIO,
                  eid_start: int,
                  theta_tol: float=30.,
                  is_symmetric: bool=True,
@@ -48,7 +47,7 @@ def get_oml_eids(bdf_filename: Union[str, BDF, PurePath, StringIO],
     #2818 # close
 
     #eids_oml = np.array([eid_start])
-    eids_oml = set([eid_start])
+    eids_oml = {eid_start}
     #---------------------------------
     theta_tol = np.radians(theta_tol)
 
@@ -76,7 +75,7 @@ def get_oml_eids(bdf_filename: Union[str, BDF, PurePath, StringIO],
             etypes_skipped.add(elem.type)
 
     #eid_starts = eids_oml.tolist()
-    eids_next = set([eid_start])
+    eids_next = {eid_start}
     while eids_next:
         eid_starts = deepcopy(eids_next)
         eids_oml_start = deepcopy(eids_oml)

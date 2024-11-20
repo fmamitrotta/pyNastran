@@ -126,7 +126,7 @@ class Usm3d:
         mapbc = {}
         for line in lines[1:]:
             sline = line.split()
-            #self.log.info(sline)
+            #self.log.info(str(sline))
             patch_id, bc, family, surf, surf_ids = sline[:5]
             mapbc[int(patch_id)] = [int(bc), int(family), int(surf), surf_ids]
         return mapbc
@@ -201,7 +201,7 @@ class Usm3d:
 
         # determine .flo file name
         if nmax > 0:
-            flo_filename = basename + '_%s.flo' % (nmax)
+            flo_filename = basename + f'_{nmax}.flo'
         else:
             flo_filename = basename + '.flo'
 
@@ -255,7 +255,7 @@ class Usm3d:
         return header, tris, bcs
 
     def read_cogsg(self, cogsg_filename: str,
-                   stop_after_header: bool=False) -> None:
+                   stop_after_header: bool=False) -> tuple[np.ndarray, np.ndarray]:
         """
         Reads the *.cogsg file
 
@@ -794,16 +794,19 @@ def write_cogsg_volume(model: Usm3d, cogsg_fileame: str) -> None:
         #outfile.write(block_size)
 
         # tets
-        str_format = '>%si' % ntets
-        n0 = tets[:, 0] + 1
-        n1 = tets[:, 1] + 1
-        n2 = tets[:, 2] + 1
-        n3 = tets[:, 3] + 1
-        #print("n0 = %s" % n0)
-        outfile.write(pack(str_format, *n0))
-        outfile.write(pack(str_format, *n1))
-        outfile.write(pack(str_format, *n2))
-        outfile.write(pack(str_format, *n3))
+        if 0:
+            outfile.write((tets+1).T.ravel())
+        else:  # pragma: no cover
+            str_format = '>%si' % ntets
+            n0 = tets[:, 0] + 1
+            n1 = tets[:, 1] + 1
+            n2 = tets[:, 2] + 1
+            n3 = tets[:, 3] + 1
+            #print("n0 = %s" % n0)
+            outfile.write(pack(str_format, *n0))
+            outfile.write(pack(str_format, *n1))
+            outfile.write(pack(str_format, *n2))
+            outfile.write(pack(str_format, *n3))
         #n += 4 * 8 * ntets
         #print("outfile.tell 2 = ", outfile.tell(), n)
 
@@ -818,14 +821,17 @@ def write_cogsg_volume(model: Usm3d, cogsg_fileame: str) -> None:
 
         # nodes
         #npoints = header['nPoints']
-        str_format = '>%sd' % nnodes
         nodes = self.nodes
-        n0 = nodes[:, 0]
-        n1 = nodes[:, 1]
-        n2 = nodes[:, 2]
-        outfile.write(pack(str_format, *n0))
-        outfile.write(pack(str_format, *n1))
-        outfile.write(pack(str_format, *n2))
+        if 0:
+            outfile.write(nodes.T.ravel())
+        else:  # pragma: no cover
+            str_format = '>%sd' % nnodes
+            n0 = nodes[:, 0]
+            n1 = nodes[:, 1]
+            n2 = nodes[:, 2]
+            outfile.write(pack(str_format, *n0))
+            outfile.write(pack(str_format, *n1))
+            outfile.write(pack(str_format, *n2))
 
         # nodes footer
         outfile.write(block_size)

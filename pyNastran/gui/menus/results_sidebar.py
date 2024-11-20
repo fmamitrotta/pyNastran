@@ -1,6 +1,6 @@
 from __future__ import annotations
 import sys
-from typing import Union, Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 # kills the program when you hit Cntl+C from the command line
 import signal
@@ -397,7 +397,7 @@ class ResultsSidebar(QWidget):
         #self.deflection_edit.valueChanged.connect(self.on_deflection_scale)
         #self.vector_scale.valueChanged.connect(self.on_vector_scale)
 
-    def set_max_case(self, cases: Union[list[int], dict[int, Any]]):
+    def set_max_case(self, cases: list[int] | dict[int | Any]):
         """
         The max case id needs to be dynamic because additional results
         can be added

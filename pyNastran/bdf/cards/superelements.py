@@ -73,7 +73,7 @@ class SEBNDRY(BaseCard):
         self.ids_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid_a = integer(card, 1, 'seid_a')
         seid_b = integer_string_or_blank(card, 2, 'seid_b')
         ids = []
@@ -147,7 +147,7 @@ class RELEASE(BaseCard):
         self.nids_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid = integer(card, 1, 'seid')
         comp = integer(card, 2, 'comp')
         nids = []
@@ -206,7 +206,7 @@ class SEELT(BaseCard):
         self.eids_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid = integer(card, 1, 'seid')
         eids = []
         i = 1
@@ -229,7 +229,7 @@ class SEELT(BaseCard):
             the BDF object
 
         """
-        msg = ', which is required by SEELT seid=%s' % (self.seid)
+        msg = f', which is required by SEELT seid={self.seid:d}'
         eids_ref = self._xref_elements_plotels(model, self.eids, msg=msg)
         self.eids_ref = eids_ref
 
@@ -307,7 +307,7 @@ class SELOAD(BaseCard):
         self.lid_se = lid_se
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         lid_s0 = integer(card, 1, 'lid_s0')
         seid = integer(card, 2, 'seid')
         lid_se = integer(card, 3, 'lid_se')
@@ -369,7 +369,7 @@ class SEEXCLD(BaseCard):
         self.nodes_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid_a = integer(card, 1, 'seid_a')
         seid_b = integer_string_or_blank(card, 2, 'seid_b')
         nodes = []
@@ -439,7 +439,7 @@ class SEMPLN(BaseCard):
         self.nodes_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid = integer(card, 1, 'lid_s0')
         plane = string(card, 2, 'seid')
         p1 = integer(card, 3, 'p1')
@@ -526,7 +526,7 @@ class SELABEL(BaseCard):
         assert isinstance(self.label, str), self.label
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid = integer(card, 1, 'seid')
         label = ''.join([exact_string_or_blank(card, ifield, 'label', '        ')
                          for ifield in range(2, len(card))])
@@ -626,7 +626,7 @@ class SELOC(BaseCard):
         self.nodes_seid_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid = integer(card, 1, 'seid')
         nodes0 = []
         nodes_seid = []
@@ -654,7 +654,7 @@ class SELOC(BaseCard):
             the BDF object
 
         """
-        msg = ', which is required by SELOC seid=%s' % (self.seid)
+        msg = f', which is required by SELOC seid={self.seid:d}'
 
         #PA1-PA3 Three GRID entries in the PART that are to be used to move the PART. After moving,
         #these points will be coincident with PB1-PB3.
@@ -678,7 +678,7 @@ class SELOC(BaseCard):
             the BDF object
 
         """
-        msg = ', which is required by SELOC seid=%s' % (self.seid)
+        msg = f', which is required by SELOC seid={self.seid:d}'
         self.nodes_seid_ref = model.superelement_nodes(self.seid, self.nodes_seid, msg=msg)
         self.nodes_0_ref = model.get_point_grids(self.nodes_0, msg=msg)
 
@@ -964,7 +964,7 @@ class CSUPEXT(BaseCard):
         self.nodes_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid = integer(card, 1, 'seid')
         nodes = []
         i = 1
@@ -1086,7 +1086,7 @@ class SEBULK(BaseCard):
         self.unitno = unitno
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid = integer(card, 1, 'seid')
         superelement_type = string(card, 2, 'superelement_type')
         rseid = integer_or_blank(card, 3, 'rseid', 0)
@@ -1217,7 +1217,7 @@ class SECONCT(BaseCard):
         self.nodes_b_ref = None
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         seid_a = integer(card, 1, 'seid_a')
         seid_b = integer(card, 2, 'seid_b')
         tol = double_or_blank(card, 3, 'tol', 1e-5)
@@ -1353,7 +1353,7 @@ class SENQSET(BaseCard):
         self.n = n
 
     @classmethod
-    def add_card(cls, card, comment=''):
+    def add_card(cls, card: BDFCard, comment: str=''):
         set_id = integer_or_string(card, 1, 'set_id')
         n = integer_or_blank(card, 2, 'n', 0)
         assert len(card) <= 3, f'len(SENQSET card) = {len(card):d}\ncard={card}'

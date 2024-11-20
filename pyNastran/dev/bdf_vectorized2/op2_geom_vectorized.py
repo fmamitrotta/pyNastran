@@ -625,7 +625,7 @@ class OP2Geom(OP2GeomCommon, BDF):
                 data_in = [[eid, pid, ga, gb, pa, pb, w1a,
                             w2a, w3a, w1b, w2b, w3b], [f, g0]]
             else:
-                raise RuntimeError('invalid f value...f=%s' % (f))
+                raise RuntimeError(f'invalid f value...f={f}')
 
             nids = [ga, gb]
             elem = self.cbar.add(eid, pid, nids, x, g0, offt='GGG',
@@ -772,7 +772,7 @@ class OP2Geom(OP2GeomCommon, BDF):
         pass
 
     def _add_coord_object(self, coord, allow_overwrites: bool=False) -> None:
-        """adds a CORDx object"""
+        """adds a Coord object"""
         key = coord.cid
         assert coord.cid > -1, 'cid=%s coord=\n%s' % (key, coord)
         if key in self.coords:

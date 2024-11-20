@@ -56,7 +56,7 @@ def quad_area_centroid(n1, n2, n3, n4):
     n = len(n1)
     assert area.shape == (n, ), area.shape
     assert centroid.shape == (n, 3), centroid.shape
-    return(area, centroid)
+    return area, centroid
 
 
 class CHEXA8(SolidElement):
@@ -73,7 +73,7 @@ class CHEXA8(SolidElement):
         """
         SolidElement.__init__(self, model)
 
-    def add_card(self, card, comment=''):
+    def add_card(self, card: BDFCard, comment: str=''):
         #self.model.log.debug('chexa8-add')
         i = self.i
         #comment = self._comments[i]

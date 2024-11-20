@@ -12,7 +12,7 @@ defines:
 from __future__ import annotations
 from pathlib import PurePath
 from io import StringIO
-from typing import Union, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 import numpy as np
 
 from pyNastran.nptyping_interface import NDArrayNint, NDArrayN3float
@@ -28,7 +28,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from cpylog import SimpleLogger
 
 
-BDF_FILETYPE = Union[BDF, str, StringIO, PurePath]
+BDF_FILETYPE = BDF | str | StringIO | PurePath
 def get_bdf_model(bdf_filename: BDF_FILETYPE,
                   xref: bool=True,
                   cards_to_skip=None,
@@ -53,7 +53,7 @@ def bdf_equivalence_nodes(bdf_filename: str,
                           bdf_filename_out: Optional[str],
                           tol: float,
                           renumber_nodes: bool=False, neq_max: int=4, xref: bool=True,
-                          node_set: Optional[Union[list[int], NDArrayNint]]=None,
+                          node_set: Optional[list[int] | NDArrayNint]=None,
                           size: int=8, is_double: bool=False,
                           remove_collapsed_elements: bool=False,
                           avoid_collapsed_elements: bool=False,

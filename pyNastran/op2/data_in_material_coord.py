@@ -5,7 +5,7 @@ Defines:
 """
 from __future__ import annotations
 import copy
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy import cos, sin, cross
@@ -160,9 +160,9 @@ def calc_imat(normals: np.ndarray, csysi: np.ndarray) -> np.ndarray:
     i is not a unit vector because k (the element normal)
     is not a unit vector.
     """
-    jmat = cross(normals, csysi) # k x i
+    jmat = np.cross(normals, csysi) # k x i
     jmat /= norm(jmat)
-    imat = cross(jmat, normals)
+    imat = np.cross(jmat, normals)
     return imat
 
 
@@ -319,7 +319,7 @@ def get_eid_to_theta_rad(bdf: BDF, debug: bool) -> dict[int, float]:
         tmp = theta_rad[mcid]
         tmp[this_quad] = angle2vec(g2 - g1, imat)
         # getting sign of THETA
-        check_normal = cross(g2 - g1, imat)
+        check_normal = np.cross(g2 - g1, imat)
         tmp[this_quad] *= np.sign((check_normal * normals).sum(axis=1))
         beta_rad = angle2vec(g3 - g1, g2 - g1)
         gamma_rad = angle2vec(g4 - g2, g1 - g2)
@@ -356,7 +356,7 @@ def get_eid_to_theta_rad(bdf: BDF, debug: bool) -> dict[int, float]:
         tmp[this_tria] = angle2vec(g2 - g1, imat)
 
         # getting sign of THETA
-        check_normal = cross(g2 - g1, imat)
+        check_normal = np.cross(g2 - g1, imat)
         tmp[this_tria] *= np.sign((check_normal * normals).sum(axis=1))
         theta_rad[mcid] = tmp
 
@@ -492,7 +492,7 @@ def get_eid_to_theta_rad2(model: BDF, debug: bool) -> dict[int, float]:
 
         theta_radi = angle2vec(g21, imat)
         # getting sign of THETA
-        check_normal = cross(g21, imat)
+        check_normal = np.cross(g21, imat)
         theta_radi *= np.sign((check_normal * normals).sum(axis=1))
         beta_rad = angle2vec(g31, g21)
         gamma_rad = angle2vec(g42, g12)
@@ -516,7 +516,7 @@ def get_eid_to_theta_rad2(model: BDF, debug: bool) -> dict[int, float]:
 
         theta_radi = angle2vec(g21, imat)
         # getting sign of THETA
-        check_normal = cross(g21, imat)
+        check_normal = np.cross(g21, imat)
         theta_radi *= np.sign((check_normal * normals).sum(axis=1))
         for eid, theta in zip(eid_tri_mcid, theta_radi):
             eid_to_theta_rad[eid] = theta
@@ -531,8 +531,8 @@ def _get_normal(v1: np.ndarray, v2: np.ndarray) -> np.ndarray:
     return normals
 
 def _transform_shell_force(vec_name: str,
-                           vector: Union[RealPlateForceArray, RealPlateBilinearForceArray],
-                           new_vector: Union[RealPlateForceArray, RealPlateBilinearForceArray],
+                           vector:     RealPlateForceArray | RealPlateBilinearForceArray,
+                           new_vector: RealPlateForceArray | RealPlateBilinearForceArray,
                            eid_to_theta_rad: dict[int, float],
                            log: SimpleLogger):
     vec_eids = get_eids_from_op2_vector(vector)

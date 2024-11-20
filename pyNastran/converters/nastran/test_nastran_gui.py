@@ -4,9 +4,9 @@ import os
 import sys
 from pathlib import Path
 from copy import deepcopy
+import getpass
 from collections import defaultdict
 import unittest
-from typing import Union
 
 import numpy as np
 try:
@@ -62,7 +62,7 @@ class NastranGUI(NastranIO, FakeGUIMethods):
         self.build_fmts(['nastran'], stop_on_failure=True)
         self.stop_on_failure = True
 
-    def load_nastran_geometry(self, bdf_filename: Union[str, BDF],
+    def load_nastran_geometry(self, bdf_filename: str | BDF,
                          name: str='main',
                          plot: bool=True,
                          stop_on_failure: bool=False):
@@ -71,7 +71,7 @@ class NastranGUI(NastranIO, FakeGUIMethods):
             plot=plot, stop_on_failure=stop_on_failure)
         self.validate_result_object_methods()
 
-    def load_nastran_results(self, op2_filename: Union[str, OP2]):
+    def load_nastran_results(self, op2_filename: str | OP2):
         self.stop_on_failure = True
         super().load_nastran_results(op2_filename)
         self.validate_result_object_methods()
@@ -386,11 +386,11 @@ class TestNastranGUI(unittest.TestCase):
         model_name = 'main'
 
 
-        p1 = [0., 0., 0.]
-        p3 = [1., 0., 0.]
+        p1 = [0, 0, 0]
+        p3 = [1, 0, 0]
 
-        p2 = [0., 1., 0.]
-        zaxis = [0., 0., 1.]
+        p2 = [0, 1, 0]
+        zaxis = [0, 0, 1]
 
         test.shear_moment_torque_obj.setup_model_data(model_name)
         force_sum, moment_sum = test.shear_moment_torque_obj.plot_shear_moment_torque(
@@ -404,10 +404,10 @@ class TestNastranGUI(unittest.TestCase):
         assert np.allclose(np.abs(force_sum).max(), 0.000732421875), np.abs(force_sum).max()
         assert np.allclose(np.abs(moment_sum).max(), 0.000244140625), np.abs(moment_sum).max()
 
-        p1 = np.array([0., 0., 0.]) # origin
-        p2 = np.array([1., 0., 0.]) # xaxis
-        p3 = np.array([1., 0., 0.]) # end
-        zaxis = np.array([0., 0., 1.])
+        p1 = np.array([0, 0, 0]) # origin
+        p2 = np.array([1, 0, 0]) # xaxis
+        p3 = np.array([1, 0, 0]) # end
+        zaxis = np.array([0, 0, 1])
         #idir = 0
         test.shear_moment_torque_obj.plot_shear_moment_torque(
             icase_gpforce,
@@ -419,16 +419,15 @@ class TestNastranGUI(unittest.TestCase):
             csv_filename=None, show=False, stop_on_failure=True)
 
         if IS_CUTTING_PLANE:
-            with self.assertRaises(TypeError):
-                # we need to set the case to a grid point force result
-                test.cutting_plane_obj.make_cutting_plane(
-                    model_name,
-                    p1, p2, zaxis,
-                    method='Z-Axis Projection',
-                    cid_p1=0, cid_p2=0, cid_zaxis=0,
-                    ytol=1., plane_atol=1e-5,
-                    plane_color=None, plane_opacity=0.5,
-                    csv_filename=None, show=False, stop_on_failure=True)
+            # we need to set the case to a grid point force result
+            test.cutting_plane_obj.make_cutting_plane(
+                model_name,
+                p1, p2, zaxis,
+                method='Z-Axis Projection',
+                cid_p1=0, cid_p2=0, cid_zaxis=0,
+                ytol=1., plane_atol=1e-5,
+                plane_color=None, plane_opacity=0.5,
+                csv_filename=None, show=False, stop_on_failure=True)
 
         # setting the case to a grid point force result
         test.icase_fringe = icase_gpforce
@@ -596,6 +595,17 @@ class TestNastranGUI(unittest.TestCase):
         test = NastranGUI()
         test.on_load_geometry(infile_name=bdf_filename, geometry_format='nastran', name='main',
                               plot=True, stop_on_failure=True)
+
+    def test_aero_02(self):
+        """checks 0012_flutter.op2"""
+        bdf_filename = os.path.join(MODEL_PATH, 'aero', '2_mode_flutter', '0012_flutter.bdf')
+        op2_filename = os.path.join(MODEL_PATH, 'aero', '2_mode_flutter', '0012_flutter.op2')
+        #log = SimpleLogger(level='error', encoding='utf-8')
+        test = NastranGUI()
+        test.on_load_geometry(infile_name=bdf_filename, geometry_format='nastran', name='main',
+                              plot=True, stop_on_failure=True)
+        test.on_load_results(op2_filename)
+        test.validate_result_object_methods()
 
     def test_stack_composites(self):
         e1 = np.array([
@@ -765,6 +775,51 @@ class TestNastranGUI(unittest.TestCase):
         else:
             assert len(test.result_cases) == 39, len(test.result_cases)
 
+    @unittest.skipIf(getpass.getuser() != 'sdoyle', 'local test')
+    def test_solid_bending_missing_nodes(self):
+        bdf_filename = os.path.join(MODEL_PATH, 'solid_bending', 'solid_bending.bdf')
+        op2_filename1 = os.path.join(MODEL_PATH, 'solid_bending', 'solid_bending.op2')
+        op2_filename2 = os.path.join(MODEL_PATH, 'solid_bending', 'solid_bending_extra_nodes.op2')
+
+        model = read_op2(op2_filename=op2_filename1, debug=False, combine=False)
+        print(list(model.displacements.keys()))
+        disp = model.displacements[(1, 1, 1, 0, 0, '', '')]
+        # print(disp.object_attributes())
+
+        # ['acoustic_flag', 'analysis_code', 'analysis_fmt', 'approach_code', 'class_name', 'data', 'data_code',
+        #  'data_frame', 'data_names', 'dataframe', 'device_code', 'dt', 'format_code', 'gridtype_str', 'h5_file',
+        #  'headers', 'is_built', 'is_cid', 'is_complex', 'is_msc', 'is_nasa95', 'is_real', 'is_sort1', 'is_sort2',
+        #  'isubcase', 'itime', 'itotal', 'label', 'load_as_h5', 'lsdvmn', 'lsdvmns', 'name', 'node_gridtype',
+        #  'nonlinear_factor', 'ntimes', 'ntotal', 'num_wide', 'ogs', 'pval_step', 'random_code', 'result_name', 'size',
+        #  'sort_bits', 'sort_code', 'sort_method', 'subtitle', 'subtitle_original', 'superelement_adaptivity_index',
+        #  'tCode', 'table_code', 'table_name', 'table_name_str', 'thermal', 'thermal_bits', 'title', 'words']
+
+        nids = disp.node_gridtype[:, 0]
+        gridtype = disp.node_gridtype[:, 1]
+        nnids = len(nids)
+        nid = nids[-1] + 1
+        nids2 = np.arange(nid, nid+nnids, dtype=nids.dtype)
+        node_gridtype2 =  disp.node_gridtype.copy()
+        node_gridtype2[:, 0] = nids2
+
+        datai = disp.data[0, :, :]
+        data = np.vstack([datai, datai])
+        disp.node_gridtype = np.vstack([disp.node_gridtype, node_gridtype2])
+        print(disp.node_gridtype)
+        disp.data = data.reshape(1, 2*nnids, 6)
+
+        test = NastranGUI()
+        test.load_nastran_geometry(bdf_filename)
+        if USE_NEW_SIDEBAR_OBJS and USE_OLD_SIDEBAR_OBJS and USE_OLD_TERMS:
+            assert len(test.result_cases) == 11, len(test.result_cases)
+        elif USE_NEW_SIDEBAR_OBJS and USE_OLD_TERMS:
+            assert len(test.result_cases) == 10, len(test.result_cases)
+        else:
+            assert USE_OLD_SIDEBAR_OBJS
+            assert len(test.result_cases) == 10, len(test.result_cases)
+
+        test.load_nastran_results(model)
+
     def test_beam_modes_01(self):
         """CBAR/CBEAM - PARAM,POST,-1"""
         bdf_filename = os.path.join(MODEL_PATH, 'beam_modes', 'beam_modes.dat')
@@ -791,6 +846,7 @@ class TestNastranGUI(unittest.TestCase):
             assert USE_OLD_SIDEBAR_OBJS
             assert len(test.result_cases) == 238, len(test.result_cases)
 
+    @unittest.skipIf(getpass.getuser() != 'sdoyle', 'local test')
     def test_beam_modes_01_missing_eids(self):
         """
         same as test_beam_modes_01 except:
@@ -1700,6 +1756,22 @@ class TestNastranGUI(unittest.TestCase):
         test.load_nastran_geometry(op2_filename)
         test.load_nastran_results(op2_filename)
 
+    def test_gui_pcomp_01(self):
+        """tests composite von mises cquad4"""
+        bdf_filename = os.path.join(MODEL_PATH, 'unit', 'pcomp', 'pcomp_cquad4.bdf')
+        op2_filename = os.path.join(MODEL_PATH, 'unit', 'pcomp', 'pcomp_cquad4.op2')
+        test = NastranGUI()
+        test.load_nastran_geometry(bdf_filename)
+        test.load_nastran_results(op2_filename)
+
+    def test_gui_pcomp_02(self):
+        """tests composite von mises ctria3"""
+        bdf_filename = os.path.join(MODEL_PATH, 'unit', 'pcomp', 'pcomp_ctria3.bdf')
+        op2_filename = os.path.join(MODEL_PATH, 'unit', 'pcomp', 'pcomp_ctria3.op2')
+        test = NastranGUI()
+        test.load_nastran_geometry(bdf_filename)
+        test.load_nastran_results(op2_filename)
+
     def test_gui_superelement_1(self):
         """tests flyswatter"""
         bdf_filename = os.path.join(MODEL_PATH, 'superelements', 'flyswatter', 'flyswatter_renumber.bdf')
@@ -1785,13 +1857,13 @@ class TestNastranGUI(unittest.TestCase):
     def test_gui_zona_model_1(self):
         bdf_filename = os.path.join(MODEL_PATH, 'aero', 'f16_ma41.bdf')
         test = NastranGUI()
-        test.log = SimpleLogger(level='error', encoding='utf-8', log_func=None)
+        test.log = SimpleLogger(level='error', encoding='utf-8')
         test.load_nastran_geometry(bdf_filename)
 
     def test_gui_zona_model_2(self):
         bdf_file = get_zona_model()
         test = NastranGUI()
-        test.log = SimpleLogger(level='error', encoding='utf-8', log_func=None)
+        test.log = SimpleLogger(level='error', encoding='utf-8')
         test.load_nastran_geometry(bdf_file)
 
 #def test_bottle():  # pragma: no cover

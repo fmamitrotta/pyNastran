@@ -1,5 +1,5 @@
 import warnings
-from typing import Optional, Union
+from typing import Optional
 from .assign_type import double, _get_dtype
 from .bdf_card import BDFCard
 from pyNastran.utils.numpy_utils import (
@@ -44,7 +44,8 @@ def _force_integer(svalue: str) -> int:
             return avalue
 
 
-def force_double(card: BDFCard, ifield: int, fieldname: str) -> float:
+def force_double(card: BDFCard, ifield: int, fieldname: str,
+                 end: str='') -> float:
     """see ``double``"""
     svalue = card.field(ifield)
 
@@ -53,12 +54,12 @@ def force_double(card: BDFCard, ifield: int, fieldname: str) -> float:
     elif isinstance(svalue, integer_types):
         dtype = _get_dtype(svalue)
         warnings.warn('%s = %r (field #%s) on card must be a float (not %s).\n'
-                      'card=%s' % (fieldname, svalue, ifield, dtype, card))
+                      'card=%s%s' % (fieldname, svalue, ifield, dtype, card, end))
         return float(svalue)
     elif svalue is None or len(svalue) == 0:  ## None
         dtype = _get_dtype(svalue)
         raise SyntaxError('%s = %r (field #%s) on card must be a float (not %s).\n'
-                          'card=%s' % (fieldname, svalue, ifield, dtype, card))
+                          'card=%s%s' % (fieldname, svalue, ifield, dtype, card, end))
 
     #if svalue.isdigit():  # 1, not +1, or -1
         ## if only int
@@ -71,7 +72,7 @@ def force_double(card: BDFCard, ifield: int, fieldname: str) -> float:
     except TypeError:
         dtype = _get_dtype(svalue)
         raise SyntaxError('%s = %r (field #%s) on card must be a float (not %s).\n'
-                          'card=%s' % (fieldname, svalue, ifield, dtype, card))
+                          'card=%s%s' % (fieldname, svalue, ifield, dtype, card, end))
     except ValueError:
         # 1D+3, 1D-3, 1-3
         try:
@@ -95,7 +96,7 @@ def force_double(card: BDFCard, ifield: int, fieldname: str) -> float:
         except ValueError:
             dtype = _get_dtype(svalue)
             raise SyntaxError('%s = %r (field #%s) on card must be a float (not %s).\n'
-                              'card=%s' % (fieldname, svalue, ifield, dtype, card))
+                              'card=%s%s' % (fieldname, svalue, ifield, dtype, card, end))
     return value
 
 def force_integer_or_blank(card: BDFCard, ifield: int, fieldname: str,
@@ -141,11 +142,12 @@ def force_double_or_blank(card: BDFCard, ifield: int, fieldname: str,
         return svalue
     elif isinstance(svalue, integer_types):
         fvalue = float(svalue)
-        warnings.warn('%s = %r (field #%s) on card must be a float or blank (not an integer) -> %s.\n'
-                      'card=%s' % (fieldname, svalue, ifield, card))
+        warnings.warn(f'{fieldname} = {svalue!r} (field #{ifield}) on card must be a float or blank (not an integer).\n'
+                      f'card={card}')
         return fvalue
     elif isinstance(svalue, str):
         try:
+            # if it casts as an integer, it's not typed right
             ivalue = int(svalue)
             fvalue = float(ivalue)
             warnings.warn('%s = %r (field #%s) on card must be a float or blank (not an integer) -> %s.\n'
@@ -174,13 +176,13 @@ def force_double_or_string(card: BDFCard, ifield: int, fieldname: str):
         return svalue
     elif isinstance(svalue, integer_types):
         fvalue = float(svalue)
-        warnings.warn('%s = %r (field #%s) on card must be a float or string (not an integer) -> %s.\n'
+        warnings.warn('%s = %r (field #%s) on card must be a float or string (not an integer).\n'
                       'card=%s' % (fieldname, svalue, ifield, card))
         return fvalue
 
     elif isinstance(svalue, str):
         if len(svalue) == 0:
-            warnings.warn('%s = %r (field #%s) on card must be a float or string (not an blank) -> %s.\n'
+            warnings.warn('%s = %r (field #%s) on card must be a float or string (not an blank).\n'
                           'card=%s' % (fieldname, svalue, ifield, card))
             raise RuntimeError('no blanks allowed')
 
