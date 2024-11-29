@@ -15,6 +15,7 @@ All rigid elements are RigidElement and Element objects.
 """
 from __future__ import annotations
 from itertools import count
+import warnings
 from typing import Optional, Any, TYPE_CHECKING
 import numpy as np
 
@@ -1335,6 +1336,60 @@ class RBE3(RigidElementBase):
         self.nodes_ref = None
         self.pid_ref = None
 
+        for comp, nids in zip(comps, Gijs):
+            assert isinstance(comp, str), ('RBE3 comps', comp, nids)
+        for comp, nid in zip(Cmi, Gmi):
+            assert isinstance(comp, str), ('RBE3 Cmi', comp, nid)
+
+
+    def validate(self):
+        """
+        refgrid / refc : int
+            dependent node/component
+        comps : list[str]
+            independent components
+            len(comps) = len(weights)
+        GiJs : varies
+            independent nodes
+            list[list[int]]:
+                allows for different nodes for the different weights
+                len(GiJs) = len(weights)
+            list[int, ..., int]:
+                intended for a single weight
+                This will be expanded into list[list[int]]
+        Gmi : list[int]; default=None -> []
+            dependent nodes / UM Set
+        Cmi : list[str]; default=None -> []
+            dependent components / UM Set
+
+        Returns
+        -------
+
+        """
+        grid_components = set([(self.refgrid, self.refc),])
+        bad_grid_components = set()
+        for comp, nids in zip(self.comps, self.Gijs):
+            assert isinstance(comp, str), (comp, nids)
+            assert isinstance(nids, list), (comp, nids)
+            for nid in nids:
+                grid_comp = (nid, comp)
+                if grid_comp in grid_components:
+                    bad_grid_components.add(grid_comp)
+                grid_components.add(grid_comp)
+
+        for comp, nid in zip(self.Cmi, self.Gmi):
+            assert isinstance(comp, str), (comp, nids)
+            grid_comp = (nid, comp)
+            if grid_comp in grid_components:
+                bad_grid_components.add(grid_comp)
+            grid_components.add(grid_comp)
+
+        if len(bad_grid_components):
+            warnings.warn(f'RBE3 eid={self.eid}; duplicate grid_components = {bad_grid_components}')
+        #print('Gmi =', self.Gmi)
+        #print('Cmi =', self.Cmi)
+        #print('Cmi =', self.Cmi)
+
     @classmethod
     def add_card(cls, card: BDFCard, comment: str=''):
         """
@@ -1454,8 +1509,11 @@ class RBE3(RigidElementBase):
             tref = 0.0
         else:
             eid, refgrid, refc, weights, comps, gijs, gmi, cmi, alpha, tref = data
-        return RBE3(eid, refgrid, refc, weights, comps, gijs,
-                    Gmi=gmi, Cmi=cmi, alpha=alpha, tref=tref, comment=comment)
+
+        comps2 = [str(comp) for comp in comps]
+        cmi2 = [str(comp) for comp in cmi]
+        return RBE3(eid, refgrid, refc, weights, comps2, gijs,
+                    Gmi=gmi, Cmi=cmi2, alpha=alpha, tref=tref, comment=comment)
 
     @property
     def wt_cg_groups(self) -> list[tuple[float, str, int]]:
@@ -1572,8 +1630,8 @@ class RBE3(RigidElementBase):
         self.Gijs_ref = []
         for Gij in self.Gijs:
             nodes, msgi = model.safe_empty_nodes(Gij, msg=msg)
-            if msgi:
-                model.log.warning(msgi)
+            #if msgi:
+                #model.log.warning(msgi)
             self.Gijs_ref.append(nodes)
 
     def uncross_reference(self) -> None:

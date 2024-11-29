@@ -24,13 +24,14 @@ except ModuleNotFoundError:  # pragma: no cover
 
 from cpylog import get_logger2, SimpleLogger
 from pyNastran.f06.flutter_response import FlutterResponse, get_flutter_units
+from pyNastran.utils import PathLike
 from pyNastran.utils.numpy_utils import float_types
 
 
-def make_flutter_response(f06_filename: str,
+def make_flutter_response(f06_filename: PathLike,
                           f06_units=None, out_units=None,
                           make_alt: bool=False,
-                          log: Optional[SimpleLogger]=None) -> list[FlutterResponse]:
+                          log: Optional[SimpleLogger]=None) -> dict[int, FlutterResponse]:
     """
     Creates the FlutterResponse object
 
@@ -130,13 +131,13 @@ def make_flutter_response(f06_filename: str,
                     nblank += 1
                 if nblank == 100:
                     print(line.strip())
-                    log.warning('breaking on nblank=100 a')
+                    log.warning('breaking on nblank=100')
                     break
 
             if '* * * END OF JOB * * *' in line:
                 break
             if nblank == 100:
-                log.warning('breaking on nblank=100 b')
+                log.warning('breaking on nblank=100')
                 break
             if 'FLUTTER  SUMMARY' in line:
                 found_flutter_summary = True
@@ -264,7 +265,7 @@ def make_flutter_response(f06_filename: str,
         flutters[subcase] = flutter
     return flutters
 
-def plot_flutter_f06(f06_filename: str,
+def plot_flutter_f06(f06_filename: PathLike,
                      f06_units: Optional[dict[str, str]]=None,
                      out_units: Optional[dict[str, str]]=None,
                      make_alt: bool=False,
@@ -486,6 +487,8 @@ def _make_flutter_subcase_plot(modes, flutter: FlutterResponse, subcase: int,
                                show: bool=True, clear: bool=False, close: bool=False,
                                log: Optional[SimpleLogger]=None):
         #_remove_neutrinos(flutter, log)
+        flutter.nopoints = nopoints
+        flutter.noline = noline
         if plot_vg:
             filenamei = None if vg_filename is None else (vg_filename % subcase)
             flutter.plot_vg(modes=modes,
@@ -501,7 +504,6 @@ def _make_flutter_subcase_plot(modes, flutter: FlutterResponse, subcase: int,
                                xlim=xlim,
                                ylim_damping=ylim_damping, ylim_freq=ylim_freq,
                                vd_limit=vd_limit, damping_limit=damping_limit,
-                               nopoints=nopoints, noline=noline,
                                ncol=ncol,
                                legend=legend,
                                png_filename=filenamei, show=False, clear=clear, close=close)
@@ -509,7 +511,7 @@ def _make_flutter_subcase_plot(modes, flutter: FlutterResponse, subcase: int,
             filenamei = None if root_locus_filename is None else (root_locus_filename % subcase)
             flutter.plot_root_locus(modes=modes,
                                     fig=None, axes=None,
-                                    xlim=None, ylim=None,
+                                    eigr_lim=None, eigi_lim=None,
                                     ncol=ncol,
                                     clear=clear, legend=True,
                                     png_filename=filenamei,
@@ -522,7 +524,6 @@ def _make_flutter_subcase_plot(modes, flutter: FlutterResponse, subcase: int,
                                        ylim_damping=ylim_damping,
                                        ylim_kfreq=ylim_kfreq,
                                        vd_limit=vd_limit, damping_limit=damping_limit,
-                                       nopoints=nopoints, noline=noline,
                                        ncol=ncol,
                                        png_filename=filenamei, show=False, clear=clear, close=close)
 

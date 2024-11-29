@@ -5,14 +5,16 @@ defines:
 """
 from __future__ import annotations
 import math
-from typing import TYPE_CHECKING
+from typing import TextIO, TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:  # pragma: no cover
+    from pyNastran.utils import PathLike
     from pyNastran.bdf.bdf import BDF
 from pyNastran.bdf.field_writer_8 import print_card_8
 
-def export_caero_mesh(model: BDF, caero_bdf_filename: str='caero.bdf',
+def export_caero_mesh(model: BDF,
+                      caero_bdf_filename: PathLike='caero.bdf',
                       is_subpanel_model: bool=True,
                       pid_method: str='aesurf',
                       write_panel_xyz: bool=True) -> None:
@@ -357,7 +359,9 @@ def _write_dmi(model: BDF,
         isubcase += 1
     return isubcase, loads, subcases
 
-def _write_subpanel_strips(bdf_file, model, caero_eid, points, elements):
+def _write_subpanel_strips(bdf_file: TextIO, model: BDF,
+                           caero_eid: int,
+                           points: np.ndarray, elements: np.ndarray) -> None:
     """writes the strips for the subpanels"""
     #bdf_file.write("$   CAEROID       ID       XLE      YLE      ZLE     CHORD      SPAN\n")
     bdf_file.write('$$\n$$ XYZ_LE is taken at the center of the leading edge; (p1+p4)/2\n$$\n')
@@ -381,7 +385,8 @@ def _write_subpanel_strips(bdf_file, model, caero_eid, points, elements):
         bdf_file.write("$$ %8d %8d %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f\n" % (
             caero_eid, caero_eid+i, le[0], le[1], le[2], chord, span, xqc, xmid))
 
-def _get_subpanel_property(model: BDF, caero_id: int, eid: int, pid_method: str='aesurf') -> int:
+def _get_subpanel_property(model: BDF, caero_id: int, eid: int,
+                           pid_method: str='aesurf') -> int:
     """gets the property id for the subpanel"""
     pid = None
     if pid_method == 'aesurf':
@@ -403,7 +408,8 @@ def _get_subpanel_property(model: BDF, caero_id: int, eid: int, pid_method: str=
         pid = 1
     return pid
 
-def _write_properties(model: BDF, bdf_file, pid_method: str='aesurf') -> None:
+def _write_properties(model: BDF, bdf_file: TextIO,
+                      pid_method: str='aesurf') -> None:
     if pid_method == 'aesurf':
         _write_aesurf_properties(model, bdf_file)
     elif pid_method == 'paero':
@@ -420,7 +426,7 @@ def _write_properties(model: BDF, bdf_file, pid_method: str='aesurf') -> None:
         raise RuntimeError(f'pid_method={repr(pid_method)} is not [aesurf, caero, paero]')
 
 
-def _write_aesurf_properties(model: BDF, bdf_file):
+def _write_aesurf_properties(model: BDF, bdf_file: TextIO) -> None:
     aesurf_mid = 1
     for aesurf_id, aesurf in model.aesurf.items():
         #cid = aesurf.cid1
